@@ -38,7 +38,7 @@ from visualpath.core import Pipeline
 from visualpath.plugins.face_detect import FaceDetect, IoUTracker
 
 from momentscan.stash import write_detections, write_process_trace, write_stitch
-from momentscan.stitch import stitch_tracks, track_purity
+from momentscan.stages.stitch import stitch_tracks, track_purity
 
 log = logging.getLogger("momentscan.detect")
 
@@ -273,7 +273,7 @@ def process_clip(
         timeline_path = None
         if ptrace_path is not None:
             try:
-                from momentscan.viz import render_process_timeline
+                from momentscan.surface.viz import render_process_timeline
                 timeline_path = render_process_timeline(out_root, clip_id).get("timeline_path")
             except Exception:
                 log.exception("process_timeline render failed")

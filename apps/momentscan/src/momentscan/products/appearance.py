@@ -32,8 +32,8 @@ from momentscan.stash import (
     read_detections, read_features, read_gate_trace, read_landmarks, read_parse,
     read_fashion, write_appearance,
 )
-from momentscan.pose import CAMERA_FRONTAL_DEG
-from momentscan.signals import _canonicalize, _norm468, _template
+from momentscan.domains.pose import CAMERA_FRONTAL_DEG
+from momentscan.domains.signals import _canonicalize, _norm468, _template
 
 log = logging.getLogger("momentscan.appearance")
 

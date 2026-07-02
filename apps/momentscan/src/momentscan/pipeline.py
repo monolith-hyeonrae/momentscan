@@ -14,19 +14,20 @@ import logging
 import time
 from pathlib import Path
 
-from momentscan import analyzers, freshness
+from momentscan import analyzers
+from momentscan.verify import freshness
 from momentscan.stash import clip_dir, provenance_path, write_provenance, write_run
 
 log = logging.getLogger("momentscan.pipeline")
 
 
 def _attribute(out, clip, src, fps):
-    from momentscan.attribute import attribute_clip
+    from momentscan.stages.attribute import attribute_clip
     return attribute_clip(src, out, fps=fps)
 
 
 def _tubelets(out, clip, src, fps):
-    from momentscan.tubelets import synthesize_tubelets
+    from momentscan.stages.tubelets import synthesize_tubelets
     return synthesize_tubelets(src, out, fps=fps)
 
 
@@ -41,42 +42,42 @@ def _features(out, clip, src, fps):
 
 
 def _crops(out, clip, src, fps):
-    from momentscan.crops import extract_crops
+    from momentscan.stages.crops import extract_crops
     return extract_crops(src, out, clip, fps=fps)
 
 
 def _parse(out, clip, src, fps):
-    from momentscan.parse import extract_parse
+    from momentscan.stages.parse import extract_parse
     return extract_parse(out, clip, fps=fps)
 
 
 def _fashion(out, clip, src, fps):
-    from momentscan.fashion import extract_fashion
+    from momentscan.stages.fashion import extract_fashion
     return extract_fashion(out, clip, fps=fps)
 
 
 def _headpose(out, clip, src, fps):
-    from momentscan.headpose import extract_headpose
+    from momentscan.stages.headpose import extract_headpose
     return extract_headpose(out, clip, fps=fps)
 
 
 def _emotion(out, clip, src, fps):
-    from momentscan.emotion import extract_emotion
+    from momentscan.domains.emotion import extract_emotion
     return extract_emotion(out, clip, fps=fps)
 
 
 def _portrait(out, clip, src, fps):
-    from momentscan.portrait import select_portrait
+    from momentscan.products.portrait import select_portrait
     return select_portrait(out, clip, fps=fps)
 
 
 def _likeness(out, clip, src, fps):
-    from momentscan.appearance import appearance_clip
+    from momentscan.products.appearance import appearance_clip
     return appearance_clip(out, clip)
 
 
 def _select(out, clip, src, fps):
-    from momentscan.select import select_clip
+    from momentscan.products.select import select_clip
     return select_clip(out, clip, fps=fps)
 
 

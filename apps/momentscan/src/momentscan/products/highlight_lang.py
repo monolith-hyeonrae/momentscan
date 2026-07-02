@@ -165,7 +165,7 @@ def score_highlight_lang(out_root, clip_id: str, *, expectation: str = "default"
     import cv2
     import polars as pl
 
-    from momentscan.select import frame_scores
+    from momentscan.products.select import frame_scores
 
     t0 = time.perf_counter()
     exp_text = EXPECTATIONS.get(expectation, EXPECTATIONS["default"])

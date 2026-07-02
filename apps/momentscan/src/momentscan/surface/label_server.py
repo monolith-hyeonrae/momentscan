@@ -117,10 +117,10 @@ class _Handler(BaseHTTPRequestHandler):
             pp = ev / f"pairs{self._suffix}.jsonl"
             if not pp.exists():
                 if self.lane == "segment":
-                    from momentscan.evalharness import make_segment_pairs
+                    from momentscan.verify.evalharness import make_segment_pairs
                     make_segment_pairs(self.out_root)
                 else:
-                    from momentscan.evalharness import make_pairs
+                    from momentscan.verify.evalharness import make_pairs
                     make_pairs(self.out_root, **_LANES[self.lane])
             pairs = [json.loads(ln) for ln in pp.read_text().splitlines() if ln.strip()]
             vp = ev / f"pair_verdicts{self._suffix}.jsonl"

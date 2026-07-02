@@ -314,7 +314,7 @@ def rescore_pairs(out_root) -> dict:
     """
     import numpy as np
 
-    from momentscan.select import frame_scores
+    from momentscan.products.select import frame_scores
 
     vp = Path(out_root) / "eval" / "pair_verdicts.jsonl"
     if not vp.exists():

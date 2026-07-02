@@ -39,18 +39,18 @@ INFRA = frozenset({"stash", "telemetry"})
 # live in the sibling features package. Kept in lockstep with RUNNERS by an
 # import-time assert in pipeline.py.
 STAGE_MODULE = {
-    "attribute":  "momentscan.attribute",
-    "tubelets":   "momentscan.tubelets",
+    "attribute":  "momentscan.stages.attribute",
+    "tubelets":   "momentscan.stages.tubelets",
     "scene":      "momentscan_features_specialist45d.scene",
     "features":   "momentscan_features_specialist45d.extractor",
-    "crops":      "momentscan.crops",
-    "parse":      "momentscan.parse",
-    "fashion":    "momentscan.fashion",
-    "headpose6d": "momentscan.headpose",
-    "emotion":    "momentscan.emotion",
-    "portrait":   "momentscan.portrait",
-    "likeness":   "momentscan.appearance",
-    "select":     "momentscan.select",
+    "crops":      "momentscan.stages.crops",
+    "parse":      "momentscan.stages.parse",
+    "fashion":    "momentscan.stages.fashion",
+    "headpose6d": "momentscan.stages.headpose",
+    "emotion":    "momentscan.domains.emotion",
+    "portrait":   "momentscan.products.portrait",
+    "likeness":   "momentscan.products.appearance",
+    "select":     "momentscan.products.select",
 }
 
 
@@ -66,7 +66,9 @@ def _pkg_dir(top: str) -> Path | None:
     package is located via find_spec once (its __init__ runs at most once/process).
     """
     if top == "momentscan":
-        return Path(__file__).resolve().parent
+        base = Path(__file__).resolve().parents[1]   # this file: momentscan/verify/freshness.py
+        assert base.name == "momentscan", base       # guards the NEXT file move of this module
+        return base
     try:
         spec = importlib.util.find_spec(top)
     except (ImportError, AttributeError, ValueError):
@@ -148,13 +150,13 @@ def _external_deps() -> dict[str, tuple[Path, ...]]:
     """
     deps: dict[str, tuple[Path, ...]] = {}
     try:
-        from momentscan.headpose import DEFAULT_ONNX            # 6DRepNet weights
-        deps["momentscan.headpose"] = (Path(DEFAULT_ONNX),)
+        from momentscan.stages.headpose import DEFAULT_ONNX            # 6DRepNet weights
+        deps["momentscan.stages.headpose"] = (Path(DEFAULT_ONNX),)
     except Exception:
         pass
     try:
-        from momentscan.signals import CANONICAL_OBJ            # MediaPipe canonical mesh
-        deps["momentscan.signals"] = (Path(CANONICAL_OBJ),)
+        from momentscan.domains.signals import CANONICAL_OBJ            # MediaPipe canonical mesh
+        deps["momentscan.domains.signals"] = (Path(CANONICAL_OBJ),)
     except Exception:
         pass
     return deps

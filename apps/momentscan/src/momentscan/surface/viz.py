@@ -26,8 +26,9 @@ from visualbus import BBox, DrawBBox, DrawText, FileSource, apply_hint
 from visualbus.structured_log import log_context
 from visualbus.timestamp import ns_to_seconds
 
-from momentscan import gates, pose, signals
-from momentscan._inspector_html import _TUBELET_INSPECT_HTML
+from momentscan import gates
+from momentscan.domains import pose, signals
+from momentscan.surface._inspector_html import _TUBELET_INSPECT_HTML
 from momentscan.stash import (
     read_attribution, read_candidates, read_detections, read_features,
     read_gate_trace, read_headpose, read_landmarks, read_parse,
@@ -550,8 +551,8 @@ def render_select_timeline(out_root: str | Path, clip_id: str, *, fps: int = 6, 
     """
     import numpy as np
 
-    from momentscan.select import frame_scores
-    from momentscan.signals import _rolling_median
+    from momentscan.products.select import frame_scores
+    from momentscan.domains.signals import _rolling_median
 
     out_dir = Path(out_root) / clip_id
     cands = read_candidates(out_root, clip_id)
@@ -815,7 +816,7 @@ def render_appearance_card(out_root: str | Path, clip_id: str, *,
     """
     import numpy as np
 
-    from momentscan.signals import _canonicalize, _norm468, _template
+    from momentscan.domains.signals import _canonicalize, _norm468, _template
     from momentscan_features_specialist45d.registry import INDEX
 
     from mediapipe.tasks.python.vision.face_landmarker import (
@@ -972,7 +973,7 @@ def render_portrait_card(out_root: str | Path, clip_id: str, *, tile: int = 120)
     """
     import numpy as np
 
-    from momentscan.select import frame_scores
+    from momentscan.products.select import frame_scores
 
     out_dir = Path(out_root) / clip_id
     cands = read_candidates(out_root, clip_id)
@@ -1307,7 +1308,7 @@ def render_tubelet_inspect(out_root: str | Path, clip_id: str, *,
     # candidates.jsonl on each run, so portrait candidates are a racy/wiped source. the
     # json always reflects the PNGs actually extracted from the crop track.
     portrait_riders = (read_portrait(out_root, clip_id) or {}).get("riders", {})
-    from momentscan.portrait import MIN_ADMIT          # threshold, for the "why empty" readout
+    from momentscan.products.portrait import MIN_ADMIT          # threshold, for the "why empty" readout
     from momentscan.stash import read_appearance
     likeness_riders = (read_appearance(out_root, clip_id) or {}).get("riders", {})   # ③ likeness reading (how identity was read)
     # highlight-lang (optional stage): the generated NL description + its LLM-judge match to the
@@ -1488,7 +1489,7 @@ def render_tubelet_inspect(out_root: str | Path, clip_id: str, *,
                         _f = int(_r["frame_idx"])
                         ev[_f] = _r["valence"]; ec[_f] = _r["em_conf"]; ea[_f] = _r["arousal"]
             else:
-                from momentscan.emotion import reading as _emo_reading
+                from momentscan.domains.emotion import reading as _emo_reading
                 efx, er, emo_base = _emo_reading(out_root, clip_id, int(sid))
                 ev = {int(f): er["valence_signed"][i] for i, f in enumerate(efx)}
                 ec = {int(f): er["em_conf"][i] for i, f in enumerate(efx)}
@@ -1584,7 +1585,7 @@ def render_tubelet_inspect(out_root: str | Path, clip_id: str, *,
         sel["query"] = {"portrait": portrait_qlabel, "highlight": _hll.get("expectation_text")}
         # highlight's per-frame WHEN receptive field width (the rarity state-window; the moving
         # attention span that exists at EVERY ride frame, ≠ the intermittent delivered segment).
-        from momentscan.select import RARITY_WIN_S as _RFW
+        from momentscan.products.select import RARITY_WIN_S as _RFW
         sel["rf_win_s"] = _RFW
         return {"sid": int(sid), "role": role, "coherence": coh.get(int(sid)),
                 "frames": [int(f) for f in fx],
@@ -1659,7 +1660,7 @@ def render_tubelet_inspect(out_root: str | Path, clip_id: str, *,
     # freshness: displayed artifacts that PREDATE their producing source — the
     # algorithm was edited but this clip was not re-run, so what's shown is the OLD
     # algorithm's result. Surfaced so the researcher never trusts a stale read.
-    from momentscan import freshness
+    from momentscan.verify import freshness
     from momentscan.pipeline import RUNNERS as _RUNNERS
     _cd = clip_dir(out_root, clip_id)
     obs["stale"] = [st for st in _RUNNERS

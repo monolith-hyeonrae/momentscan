@@ -34,7 +34,7 @@ from dataclasses import dataclass, field
 
 import numpy as np
 
-from momentscan.pose import POSE_MAX_DEG, pose_class
+from momentscan.domains.pose import POSE_MAX_DEG, pose_class
 
 # ── gate parameters (the calibrated thresholds the predicates read) ──────────
 # pose thresholds (POSE_MAX/FRONTAL/SIDE/CORROB) + the view quantizer now live in

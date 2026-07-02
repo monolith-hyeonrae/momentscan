@@ -36,15 +36,15 @@ from visualbus.structured_log import setup_logging
 
 
 def _cmd_ingest(args: argparse.Namespace) -> int:
-    from momentscan.ingest import ingest_paths
+    from momentscan.stages.ingest import ingest_paths
 
     results = ingest_paths(args.path, args.out, fps=args.fps, trace=not args.no_trace)
     return 0 if all(r.ok for r in results) else 1
 
 
 def _cmd_serve(args: argparse.Namespace) -> int:
-    from momentscan.daemon import DEFAULT_SOCKET, serve
-    from momentscan.detect import DEFAULT_MODEL_ROOT
+    from momentscan.stages.daemon import DEFAULT_SOCKET, serve
+    from momentscan.stages.detect import DEFAULT_MODEL_ROOT
 
     return serve(
         socket_path=args.socket or DEFAULT_SOCKET,
@@ -62,7 +62,7 @@ def _cmd_serve(args: argparse.Namespace) -> int:
 def _call_daemon(args: argparse.Namespace, cmd: str, *, timeout: float | None = 5.0, **kw):
     from visualbus.control import call
 
-    from momentscan.daemon import DEFAULT_SOCKET
+    from momentscan.stages.daemon import DEFAULT_SOCKET
 
     sock = Path(args.socket).expanduser() if args.socket else DEFAULT_SOCKET
     try:
@@ -103,8 +103,8 @@ def _cmd_shutdown(args: argparse.Namespace) -> int:
 
 
 def _cmd_appearance(args: argparse.Namespace) -> int:
-    from momentscan.appearance import appearance_clip
-    from momentscan.viz import render_appearance_card
+    from momentscan.products.appearance import appearance_clip
+    from momentscan.surface.viz import render_appearance_card
 
     result = appearance_clip(args.out, args.clip_id)
     if result["ok"]:
@@ -114,21 +114,21 @@ def _cmd_appearance(args: argparse.Namespace) -> int:
 
 
 def _cmd_label(args: argparse.Namespace) -> int:
-    from momentscan.label_server import serve_labels
+    from momentscan.surface.label_server import serve_labels
 
     serve_labels(args.out, port=args.port, lane=args.lane)
     return 0
 
 
 def _cmd_eval(args: argparse.Namespace) -> int:
-    from momentscan.evalharness import make_template, score
+    from momentscan.verify.evalharness import make_template, score
 
-    from momentscan.evalharness import score_pairs
+    from momentscan.verify.evalharness import score_pairs
 
     if args.template:
         result = make_template(args.out, args.template)
     elif args.rescore:
-        from momentscan.evalharness import rescore_pairs
+        from momentscan.verify.evalharness import rescore_pairs
         result = rescore_pairs(args.out)
     elif (Path(args.out) / "eval" / "pair_verdicts.jsonl").exists():
         result = score_pairs(args.out)     # pairwise = the eval of record
@@ -147,8 +147,8 @@ def _cmd_eval(args: argparse.Namespace) -> int:
 
 
 def _cmd_select(args: argparse.Namespace) -> int:
-    from momentscan.select import select_clip
-    from momentscan.viz import (
+    from momentscan.products.select import select_clip
+    from momentscan.surface.viz import (
         render_highlight_clips, render_portrait_card, render_select_timeline,
     )
 
@@ -184,7 +184,7 @@ def _cmd_scene(args: argparse.Namespace) -> int:
 
 
 def _cmd_tubelets(args: argparse.Namespace) -> int:
-    from momentscan.tubelets import synthesize_tubelets
+    from momentscan.stages.tubelets import synthesize_tubelets
 
     result = synthesize_tubelets(args.path, args.out, fps=args.fps)
     print(json.dumps(result, ensure_ascii=False, indent=2))
@@ -303,8 +303,8 @@ def _cmd_frame(args: argparse.Namespace) -> int:
     + provenance. The coordinate analogue of gates.py / `momentscan products`: ONE
     declared frame every consumer (appearance/portrait/select/inspector/eval) reads
     via signals.py (verified single home)."""
-    from momentscan.signals import CANONICAL_FRAME as F
-    from momentscan.signals import frame_provenance
+    from momentscan.domains.signals import CANONICAL_FRAME as F
+    from momentscan.domains.signals import frame_provenance
 
     pv = frame_provenance()
     if args.json:
@@ -331,7 +331,7 @@ def _cmd_frame(args: argparse.Namespace) -> int:
 
 
 def _cmd_graph(args: argparse.Namespace) -> int:
-    from momentscan import graph
+    from momentscan.verify import graph
 
     if args.json:
         from dataclasses import asdict
@@ -343,7 +343,7 @@ def _cmd_graph(args: argparse.Namespace) -> int:
 
 
 def _cmd_replay_check(args: argparse.Namespace) -> int:
-    from momentscan.replay import replay_check
+    from momentscan.verify.replay import replay_check
 
     clips = [args.clip_id] if args.clip_id else ["cap_1"]
     print("\n── replay-check (re-run CPU stages on frozen inputs → diff vs refs; ignore volatile + float tol) ──")
@@ -384,7 +384,7 @@ def _cmd_check(args: argparse.Namespace) -> int:
 
 def _cmd_fashion(args: argparse.Namespace) -> int:
     try:
-        from momentscan.fashion import extract_fashion
+        from momentscan.stages.fashion import extract_fashion
     except ImportError as exc:
         print(f"momentscan: fashion stage needs torch/transformers: {exc}", file=sys.stderr)
         return 2
@@ -395,7 +395,7 @@ def _cmd_fashion(args: argparse.Namespace) -> int:
 
 def _cmd_headpose(args: argparse.Namespace) -> int:
     try:
-        from momentscan.headpose import extract_headpose
+        from momentscan.stages.headpose import extract_headpose
     except ImportError as exc:
         print(f"momentscan: headpose stage needs onnxruntime: {exc}", file=sys.stderr)
         return 2
@@ -405,7 +405,7 @@ def _cmd_headpose(args: argparse.Namespace) -> int:
 
 
 def _cmd_emotion(args: argparse.Namespace) -> int:
-    from momentscan.emotion import extract_emotion
+    from momentscan.domains.emotion import extract_emotion
     result = extract_emotion(args.out, args.clip_id, fps=args.fps)
     print(json.dumps(result, ensure_ascii=False, indent=2))
     return 0 if result["ok"] else 1
@@ -413,7 +413,7 @@ def _cmd_emotion(args: argparse.Namespace) -> int:
 
 def _cmd_parse(args: argparse.Namespace) -> int:
     try:
-        from momentscan.parse import extract_parse
+        from momentscan.stages.parse import extract_parse
     except ImportError as exc:
         print(f"momentscan: parse stage needs torch/transformers: {exc}", file=sys.stderr)
         return 2
@@ -423,7 +423,7 @@ def _cmd_parse(args: argparse.Namespace) -> int:
 
 
 def _cmd_portrait(args: argparse.Namespace) -> int:
-    from momentscan.portrait import select_portrait
+    from momentscan.products.portrait import select_portrait
 
     result = select_portrait(args.out, args.clip_id, fps=args.fps)
     print(json.dumps(result, ensure_ascii=False, indent=2))
@@ -432,7 +432,7 @@ def _cmd_portrait(args: argparse.Namespace) -> int:
 
 def _cmd_highlight_lang(args: argparse.Namespace) -> int:
     try:
-        from momentscan.highlight_lang import score_highlight_lang
+        from momentscan.products.highlight_lang import score_highlight_lang
     except ImportError as exc:
         print(f"momentscan: highlight-lang needs torch/transformers/opencv: {exc}", file=sys.stderr)
         return 2
@@ -442,7 +442,7 @@ def _cmd_highlight_lang(args: argparse.Namespace) -> int:
 
 
 def _cmd_crops(args: argparse.Namespace) -> int:
-    from momentscan.crops import extract_crops
+    from momentscan.stages.crops import extract_crops
 
     result = extract_crops(args.source, args.out, args.clip_id, fps=args.fps)
     print(json.dumps(result, ensure_ascii=False, indent=2))
@@ -450,7 +450,7 @@ def _cmd_crops(args: argparse.Namespace) -> int:
 
 
 def _cmd_inspect(args: argparse.Namespace) -> int:
-    from momentscan.viz import render_tubelet_inspect
+    from momentscan.surface.viz import render_tubelet_inspect
 
     result = render_tubelet_inspect(args.out, args.clip_id, fps=args.fps,
                                     video_path=args.source)
@@ -460,7 +460,7 @@ def _cmd_inspect(args: argparse.Namespace) -> int:
 
 def _cmd_viz(args: argparse.Namespace) -> int:
     from momentscan.stash import candidates_path, process_trace_path
-    from momentscan.viz import (
+    from momentscan.surface.viz import (
         render_attribution, render_highlight_clips, render_identity_strip,
         render_portrait_card, render_process_timeline, render_select_timeline,
     )
@@ -481,7 +481,7 @@ def _cmd_viz(args: argparse.Namespace) -> int:
 
 def _cmd_attribute(args: argparse.Namespace) -> int:
     try:
-        from momentscan.attribute import attribute_clip
+        from momentscan.stages.attribute import attribute_clip
     except ImportError as exc:
         print(
             f"momentscan: attribute stage needs the step0b extra (torch/depth): {exc}\n"
