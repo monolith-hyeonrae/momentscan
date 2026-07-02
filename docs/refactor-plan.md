@@ -58,6 +58,10 @@ plugins = 격리 모델 백엔드로 선언(plugins/README·stages/__init__·ana
 FeatureSource 포트 + 서비스 워커 경계) · freshness STAGE_MODULE→어댑터(클로저가 백엔드까지 추적 검증) ·
 앱 __init__ stale JEPA 프레이밍→3제품+레이아웃 지도. vjepa 스텁=예약석 유지(연구 결정이라 정리로 안 지움).
 
+**+ stages 순수화 (c293e62)**: user "ls stages/가 분석노드로 안 읽힘" → 3종 혼재 해소:
+분석노드 9 잔류 / ingest·daemon→top-level(pipeline 러너 가족) / stitch→domains/(identity 예비석).
+**stages/의 계약 = "무슨 분석이 도는가", 기계는 아님.** landmarks(모듈 없는 노드)는 __init__에 선언.
+
 ### 다음: 로직 재개 — 6D-가림 신뢰도
 
 이음매 = `pose.fuse_pose`(docstring에 blind spot 명시해둠) + `id_valid`. 절차: **영향 측정**

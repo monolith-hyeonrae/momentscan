@@ -1,9 +1,9 @@
 """scene stage — thin adapter over the isolated specialist45d DINO backend.
 
-Stage NODE here (``ls stages/`` = the full DAG vocabulary); the model BACKEND
+Stage NODE here (``ls extraction/`` = the full DAG vocabulary); the model BACKEND
 (DINO CLS frame-grain scene stream, E012) lives in
 ``plugins/features-specialist45d`` alongside the 46-dim extractor — see
-stages/features.py for why the split exists (dependency seam · FeatureSource
+extraction/features.py for why the split exists (dependency seam · FeatureSource
 port · service-worker boundary; not an architecture layer).
 """
 from __future__ import annotations

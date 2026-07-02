@@ -27,7 +27,7 @@ from visualbus.structured_log import log_context
 from visualbus.timestamp import ns_to_seconds
 
 from momentscan import gates
-from momentscan.domains import pose, signals
+from momentscan.domains import geometry, pose, signals
 from momentscan.surface._inspector_html import _TUBELET_INSPECT_HTML
 from momentscan.stash import (
     read_attribution, read_candidates, read_detections, read_features,
@@ -552,7 +552,7 @@ def render_select_timeline(out_root: str | Path, clip_id: str, *, fps: int = 6, 
     import numpy as np
 
     from momentscan.products.select import frame_scores
-    from momentscan.domains.signals import _rolling_median
+    from momentscan.products.select import rolling_median
 
     out_dir = Path(out_root) / clip_id
     cands = read_candidates(out_root, clip_id)
@@ -697,7 +697,7 @@ def render_select_timeline(out_root: str | Path, clip_id: str, *, fps: int = 6, 
             # E010: the WHEN ridge — the line segmentation actually cuts on
             # (smoothed, own scale). White so it reads against the orange bars.
             when = s["when"]
-            wsm = _rolling_median(when, 3)
+            wsm = rolling_median(when, 3)
             wmax = float(np.nanmax(wsm)) + 1e-9 if np.isfinite(wsm).any() else 1.0
             wpts = [(x_of(int(f)) + cw // 2,
                      y_base - int(np.sqrt(min(max(wsm[i], 0.0) / wmax, 1.0)) * (hl_h - 14)))
@@ -816,7 +816,7 @@ def render_appearance_card(out_root: str | Path, clip_id: str, *,
     """
     import numpy as np
 
-    from momentscan.domains.signals import _canonicalize, _norm468, _template
+    from momentscan.domains.geometry import canonicalize, norm468, template
     from momentscan_features_specialist45d.registry import INDEX
 
     from mediapipe.tasks.python.vision.face_landmarker import (
@@ -861,7 +861,7 @@ def render_appearance_card(out_root: str | Path, clip_id: str, *,
         P = np.array(lm["landmarks"].to_list(), dtype=np.float64).reshape(len(fx), 478, 3)
         T = np.array(lm["transform"].to_list(), dtype=np.float64).reshape(len(fx), 4, 4)
         cb = np.array(lm["crop_box"].to_list(), dtype=np.float64)
-        canon, raw = _canonicalize(P, T, cb)
+        canon, raw = canonicalize(P, T, cb)
         med = np.median(canon, axis=0)
         dev = np.sqrt(((canon - med) ** 2).sum(axis=2)).mean(axis=0)   # per-landmark
         feats = feats_all.filter(pl.col("track_id") == tid).sort("frame_idx")
@@ -908,8 +908,8 @@ def render_appearance_card(out_root: str | Path, clip_id: str, *,
         # template panel — person median (green) over canonical template (gray)
         tx = hx + heat_w + 16
         cx2 = tx + heat_w // 2
-        person = _norm468(med)
-        tmpl = _template()
+        person = norm468(med)
+        tmpl = template()
         off_rms = float(np.sqrt((((person - tmpl) ** 2).sum(axis=1)).mean()))
         wire(tmpl, cx2, cy, s, (110, 110, 110))
         wire(person, cx2, cy, s, (90, 220, 90))
@@ -1531,7 +1531,7 @@ def render_tubelet_inspect(out_root: str | Path, clip_id: str, *,
         picks["highlight"] = [[s["lo"], s["hi"], s["score"], s["peak"], s["resolved"]] for s in hl_segs]
 
         # landmark wireframe — OBSERVED (full-frame px, for the video overlay = per-frame
-        # fit) + CANONICAL (pose-removed, via signals._canonicalize = the DECLARED frame,
+        # fit) + CANONICAL (pose-removed, via geometry.canonicalize = the DECLARED frame,
         # single home). Points from landmarks.parquet; downsampled (≤~180 frames) to bound
         # the embedded HTML. canonical pre-scaled to the 170×210 mini-canvas (y flipped for
         # screen: CANONICAL_FRAME is +y up).
@@ -1543,7 +1543,7 @@ def render_tubelet_inspect(out_root: str | Path, clip_id: str, *,
             Pm = np.array(lm_sub["landmarks"].to_list(), float).reshape(len(mfx), 478, 3)
             Tm = np.array(lm_sub["transform"].to_list(), float).reshape(len(mfx), 4, 4)
             cbm = np.array(lm_sub["crop_box"].to_list(), float)
-            canon_m, _ = signals._canonicalize(Pm, Tm, cbm)
+            canon_m, _ = signals.canonicalize(Pm, Tm, cbm)
             cwm, chm = cbm[:, 2] - cbm[:, 0], cbm[:, 3] - cbm[:, 1]
             stride = max(1, len(mfx) // 180)
             mf, obs, can = [], [], []

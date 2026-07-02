@@ -54,7 +54,6 @@ from momentscan.domains.pose import CAMERA_FRONTAL_DEG
 from momentscan.stash import (
     append_candidate, candidates_path, read_features, read_gate_trace, read_tubelets,
 )
-from momentscan.domains.signals import _rolling_median
 from momentscan.telemetry import CandidateLog
 
 log = logging.getLogger("momentscan.select")
@@ -89,6 +88,17 @@ RARITY_FIELDS = (
     "face_light_lr", "face_light_tb", "face_light_harsh",
     *(f"face_sh_{i}" for i in range(9)),
 )
+
+
+def rolling_median(x: np.ndarray, win: int) -> np.ndarray:
+    """NaN-tolerant rolling median — the WHEN-ridge smoother (kills 1-frame spikes).
+    PUBLIC: the inspector's select-timeline subscribes to THIS (never re-implements),
+    so the rendered ridge is byte-identical to the one the segments were cut from."""
+    out = np.empty_like(x)
+    h = win // 2
+    for i in range(len(x)):
+        out[i] = np.nanmedian(x[max(0, i - h): i + h + 1])
+    return out
 
 
 def _z(x: np.ndarray) -> np.ndarray:
@@ -291,7 +301,7 @@ def frame_scores(out_root, clip_id: str, track_id: int, *, fps: int = 6) -> dict
     smile = np.full(len(fx), np.nan)
     d_center = np.full(len(fx), np.nan)
     try:
-        from momentscan.domains.signals import _canonicalize
+        from momentscan.domains.geometry import canonicalize
         from momentscan.stash import read_appearance, read_landmarks
         from momentscan_features_specialist45d.specialists import BLENDSHAPE_ORDER
 
@@ -314,7 +324,7 @@ def frame_scores(out_root, clip_id: str, track_id: int, *, fps: int = 6) -> dict
                 P = np.array(lmdf["landmarks"].to_list(), dtype=np.float64).reshape(len(lfx), 478, 3)
                 T = np.array(lmdf["transform"].to_list(), dtype=np.float64).reshape(len(lfx), 4, 4)
                 cbx = np.array(lmdf["crop_box"].to_list(), dtype=np.float64)
-                canon, _ = _canonicalize(P, T, cbx)
+                canon, _ = canonicalize(P, T, cbx)
                 c = np.asarray(ctr, dtype=np.float64).reshape(478, 3)
                 dd = np.sqrt(((canon - c) ** 2).sum(axis=2).mean(axis=1))
             for j, f in enumerate(lfx):
@@ -388,7 +398,7 @@ def _phrase_segments(s: dict, *, fps: int, top_k: int) -> list[dict]:
     valence = s.get("valence", np.zeros(len(fx)))
     if np.isfinite(when).sum() < 10:
         return []
-    sm = _rolling_median(when, 3)                        # kill 1-frame spikes
+    sm = rolling_median(when, 3)                        # kill 1-frame spikes
 
     peaks = [i for i in range(1, len(sm) - 1)
              if np.isfinite(sm[i]) and sm[i] >= sm[i - 1] and sm[i] >= sm[i + 1]]

@@ -36,7 +36,7 @@ CANVAS_W = int(round(CANVAS_H * PASPECT))   # 448
 MARGIN = 1.4                                # reframing headroom around the portrait box
 
 
-def _portrait_box(bbox: list[float], *, margin: float = MARGIN) -> tuple[int, int, int, int]:
+def portrait_box(bbox: list[float], *, margin: float = MARGIN) -> tuple[int, int, int, int]:
     """face bbox → portrait box (4:5, face=FACEH of height), expanded by margin."""
     x1, y1, x2, y2 = bbox
     fh = y2 - y1
@@ -119,7 +119,7 @@ def extract_crops(video_path: str | Path, out_root: str | Path, clip_id: str,
                 bbox = s["fb"].get(f)
                 if bbox is None:
                     continue
-                tile = _letterbox(frame, _portrait_box(bbox, margin=margin))
+                tile = _letterbox(frame, portrait_box(bbox, margin=margin))
                 writers[sid].stdin.write(tile.tobytes())
                 order[sid].append(f)
             f += 1

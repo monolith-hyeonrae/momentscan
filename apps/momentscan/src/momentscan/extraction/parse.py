@@ -32,7 +32,7 @@ from pathlib import Path
 import cv2
 import numpy as np
 
-from momentscan.stages.crops import _portrait_box
+from momentscan.extraction.crops import portrait_box
 from momentscan.stash import clip_dir, read_detections, read_landmarks, write_parse
 
 log = logging.getLogger("momentscan.parse")
@@ -75,7 +75,7 @@ def _crop_pixels(lm_row, det_bbox, w, h):
     cb = np.asarray(lm_row["crop_box"], np.float64)
     ox = cb[0] + P[:, 0] * (cb[2] - cb[0])
     oy = cb[1] + P[:, 1] * (cb[3] - cb[1])
-    bx1, by1, bx2, by2 = _portrait_box(list(np.asarray(det_bbox, float)))
+    bx1, by1, bx2, by2 = portrait_box(list(np.asarray(det_bbox, float)))
     crx = (ox - bx1) / (bx2 - bx1) * w
     cry = (oy - by1) / (by2 - by1) * h
     return np.stack([crx, cry], 1)

@@ -44,7 +44,7 @@ def _cmd_ingest(args: argparse.Namespace) -> int:
 
 def _cmd_serve(args: argparse.Namespace) -> int:
     from momentscan.daemon import DEFAULT_SOCKET, serve
-    from momentscan.stages.detect import DEFAULT_MODEL_ROOT
+    from momentscan.extraction.detect import DEFAULT_MODEL_ROOT
 
     return serve(
         socket_path=args.socket or DEFAULT_SOCKET,
@@ -103,7 +103,7 @@ def _cmd_shutdown(args: argparse.Namespace) -> int:
 
 
 def _cmd_appearance(args: argparse.Namespace) -> int:
-    from momentscan.products.appearance import appearance_clip
+    from momentscan.products.likeness import appearance_clip
     from momentscan.surface.viz import render_appearance_card
 
     result = appearance_clip(args.out, args.clip_id)
@@ -162,7 +162,7 @@ def _cmd_select(args: argparse.Namespace) -> int:
 
 
 def _cmd_features(args: argparse.Namespace) -> int:
-    from momentscan.stages.features import extract_features
+    from momentscan.extraction.features import extract_features
 
     try:
         result = extract_features(args.path, args.out, fps=args.fps)
@@ -174,7 +174,7 @@ def _cmd_features(args: argparse.Namespace) -> int:
 
 
 def _cmd_scene(args: argparse.Namespace) -> int:
-    from momentscan.stages.scene import extract_scene
+    from momentscan.extraction.scene import extract_scene
 
     try:
         result = extract_scene(args.path, args.out, fps=args.fps)
@@ -186,7 +186,7 @@ def _cmd_scene(args: argparse.Namespace) -> int:
 
 
 def _cmd_tubelets(args: argparse.Namespace) -> int:
-    from momentscan.stages.tubelets import synthesize_tubelets
+    from momentscan.extraction.tubelets import synthesize_tubelets
 
     result = synthesize_tubelets(args.path, args.out, fps=args.fps)
     print(json.dumps(result, ensure_ascii=False, indent=2))
@@ -305,8 +305,8 @@ def _cmd_frame(args: argparse.Namespace) -> int:
     + provenance. The coordinate analogue of gates.py / `momentscan products`: ONE
     declared frame every consumer (appearance/portrait/select/inspector/eval) reads
     via signals.py (verified single home)."""
-    from momentscan.domains.signals import CANONICAL_FRAME as F
-    from momentscan.domains.signals import frame_provenance
+    from momentscan.domains.geometry import CANONICAL_FRAME as F
+    from momentscan.domains.geometry import frame_provenance
 
     pv = frame_provenance()
     if args.json:
@@ -328,7 +328,7 @@ def _cmd_frame(args: argparse.Namespace) -> int:
     print(f"  basis     : distribution/PCA = {F.basis_full} verts (incl. iris)  ·  template/ratios = {F.basis_mesh} (excl. iris)")
     print(f"              ⚠ two bases coexist — unify candidate (settle under split-half eval · STEP 2)")
     print(f"  pose      : {F.pose_convention} — referenced, not redefined")
-    print(f"  consumers : signals._canonicalize / _norm468 / _template · pose.euler_from_transform  (verified single home)")
+    print(f"  consumers : geometry.canonicalize / norm468 / template · pose.euler_from_transform  (verified single home)")
     return 0
 
 
@@ -386,7 +386,7 @@ def _cmd_check(args: argparse.Namespace) -> int:
 
 def _cmd_fashion(args: argparse.Namespace) -> int:
     try:
-        from momentscan.stages.fashion import extract_fashion
+        from momentscan.extraction.fashion import extract_fashion
     except ImportError as exc:
         print(f"momentscan: fashion stage needs torch/transformers: {exc}", file=sys.stderr)
         return 2
@@ -397,7 +397,7 @@ def _cmd_fashion(args: argparse.Namespace) -> int:
 
 def _cmd_headpose(args: argparse.Namespace) -> int:
     try:
-        from momentscan.stages.headpose import extract_headpose
+        from momentscan.extraction.headpose import extract_headpose
     except ImportError as exc:
         print(f"momentscan: headpose stage needs onnxruntime: {exc}", file=sys.stderr)
         return 2
@@ -415,7 +415,7 @@ def _cmd_emotion(args: argparse.Namespace) -> int:
 
 def _cmd_parse(args: argparse.Namespace) -> int:
     try:
-        from momentscan.stages.parse import extract_parse
+        from momentscan.extraction.parse import extract_parse
     except ImportError as exc:
         print(f"momentscan: parse stage needs torch/transformers: {exc}", file=sys.stderr)
         return 2
@@ -444,7 +444,7 @@ def _cmd_highlight_lang(args: argparse.Namespace) -> int:
 
 
 def _cmd_crops(args: argparse.Namespace) -> int:
-    from momentscan.stages.crops import extract_crops
+    from momentscan.extraction.crops import extract_crops
 
     result = extract_crops(args.source, args.out, args.clip_id, fps=args.fps)
     print(json.dumps(result, ensure_ascii=False, indent=2))
@@ -483,7 +483,7 @@ def _cmd_viz(args: argparse.Namespace) -> int:
 
 def _cmd_attribute(args: argparse.Namespace) -> int:
     try:
-        from momentscan.stages.attribute import attribute_clip
+        from momentscan.extraction.attribute import attribute_clip
     except ImportError as exc:
         print(
             f"momentscan: attribute stage needs the step0b extra (torch/depth): {exc}\n"

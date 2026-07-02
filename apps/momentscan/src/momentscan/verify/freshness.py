@@ -39,17 +39,17 @@ INFRA = frozenset({"stash", "telemetry"})
 # live in the sibling features package. Kept in lockstep with RUNNERS by an
 # import-time assert in pipeline.py.
 STAGE_MODULE = {
-    "attribute":  "momentscan.stages.attribute",
-    "tubelets":   "momentscan.stages.tubelets",
-    "scene":      "momentscan.stages.scene",        # thin adapter; closure follows into
-    "features":   "momentscan.stages.features",     # the specialist45d backend it imports
-    "crops":      "momentscan.stages.crops",
-    "parse":      "momentscan.stages.parse",
-    "fashion":    "momentscan.stages.fashion",
-    "headpose6d": "momentscan.stages.headpose",
+    "attribute":  "momentscan.extraction.attribute",
+    "tubelets":   "momentscan.extraction.tubelets",
+    "scene":      "momentscan.extraction.scene",        # thin adapter; closure follows into
+    "features":   "momentscan.extraction.features",     # the specialist45d backend it imports
+    "crops":      "momentscan.extraction.crops",
+    "parse":      "momentscan.extraction.parse",
+    "fashion":    "momentscan.extraction.fashion",
+    "headpose6d": "momentscan.extraction.headpose",
     "emotion":    "momentscan.domains.emotion",
     "portrait":   "momentscan.products.portrait",
-    "likeness":   "momentscan.products.appearance",
+    "likeness":   "momentscan.products.likeness",
     "select":     "momentscan.products.select",
 }
 
@@ -150,13 +150,13 @@ def _external_deps() -> dict[str, tuple[Path, ...]]:
     """
     deps: dict[str, tuple[Path, ...]] = {}
     try:
-        from momentscan.stages.headpose import DEFAULT_ONNX            # 6DRepNet weights
-        deps["momentscan.stages.headpose"] = (Path(DEFAULT_ONNX),)
+        from momentscan.extraction.headpose import DEFAULT_ONNX            # 6DRepNet weights
+        deps["momentscan.extraction.headpose"] = (Path(DEFAULT_ONNX),)
     except Exception:
         pass
     try:
-        from momentscan.domains.signals import CANONICAL_OBJ            # MediaPipe canonical mesh
-        deps["momentscan.domains.signals"] = (Path(CANONICAL_OBJ),)
+        from momentscan.domains.geometry import CANONICAL_OBJ            # MediaPipe canonical mesh
+        deps["momentscan.domains.geometry"] = (Path(CANONICAL_OBJ),)
     except Exception:
         pass
     return deps

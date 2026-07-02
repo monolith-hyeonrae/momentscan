@@ -33,7 +33,7 @@ from momentscan.stash import (
     read_fashion, write_appearance,
 )
 from momentscan.domains.pose import CAMERA_FRONTAL_DEG
-from momentscan.domains.signals import _canonicalize, _norm468, _template
+from momentscan.domains.geometry import canonicalize, norm468, template
 
 log = logging.getLogger("momentscan.appearance")
 
@@ -126,7 +126,7 @@ def _track_reading(out_root, clip_id: str, track_id: int,
     P = np.array(lm["landmarks"].to_list(), dtype=np.float64).reshape(len(fx), N_LM, 3)
     T = np.array(lm["transform"].to_list(), dtype=np.float64).reshape(len(fx), 4, 4)
     cb = np.array(lm["crop_box"].to_list(), dtype=np.float64)
-    canon, raw = _canonicalize(P, T, cb)
+    canon, raw = canonicalize(P, T, cb)
 
     center = np.median(canon, axis=0)
     flat = (canon - center).reshape(len(fx), -1)
@@ -167,8 +167,8 @@ def _track_reading(out_root, clip_id: str, track_id: int,
         blur_all = np.full(len(fx), np.nan)
 
     # ── 평균 대비: canonical template offset + anthropometric ratios ─────────
-    person = _norm468(center)
-    tmpl = _template()
+    person = norm468(center)
+    tmpl = template()
     off = np.sqrt(((person - tmpl) ** 2).sum(axis=1))
     pr, tr = face_ratios(person), face_ratios(tmpl)
     template = {
@@ -230,8 +230,8 @@ def _track_reading(out_root, clip_id: str, track_id: int,
             d1 = _fit_neutral(slice(0, h))[0].reshape(N_LM, 3)
             d2 = _fit_neutral(slice(h, None))[0].reshape(N_LM, 3)
             n_drift = float(np.sqrt(((d1 - d2) ** 2).sum(axis=1).mean()))
-        npr = face_ratios(_norm468(neutral_face))
-        n_off = np.sqrt(((_norm468(neutral_face) - tmpl) ** 2).sum(axis=1))
+        npr = face_ratios(norm468(neutral_face))
+        n_off = np.sqrt(((norm468(neutral_face) - tmpl) ** 2).sum(axis=1))
         neutral = {
             # expression-regressed canonical geometry — what downstream
             # adapters (e.g. appearance-engine face recipe) consume.

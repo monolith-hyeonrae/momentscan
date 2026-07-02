@@ -22,42 +22,42 @@ log = logging.getLogger("momentscan.pipeline")
 
 
 def _attribute(out, clip, src, fps):
-    from momentscan.stages.attribute import attribute_clip
+    from momentscan.extraction.attribute import attribute_clip
     return attribute_clip(src, out, fps=fps)
 
 
 def _tubelets(out, clip, src, fps):
-    from momentscan.stages.tubelets import synthesize_tubelets
+    from momentscan.extraction.tubelets import synthesize_tubelets
     return synthesize_tubelets(src, out, fps=fps)
 
 
 def _scene(out, clip, src, fps):
-    from momentscan.stages.scene import extract_scene
+    from momentscan.extraction.scene import extract_scene
     return extract_scene(src, out, fps=fps)
 
 
 def _features(out, clip, src, fps):
-    from momentscan.stages.features import extract_features
+    from momentscan.extraction.features import extract_features
     return extract_features(src, out, fps=fps)
 
 
 def _crops(out, clip, src, fps):
-    from momentscan.stages.crops import extract_crops
+    from momentscan.extraction.crops import extract_crops
     return extract_crops(src, out, clip, fps=fps)
 
 
 def _parse(out, clip, src, fps):
-    from momentscan.stages.parse import extract_parse
+    from momentscan.extraction.parse import extract_parse
     return extract_parse(out, clip, fps=fps)
 
 
 def _fashion(out, clip, src, fps):
-    from momentscan.stages.fashion import extract_fashion
+    from momentscan.extraction.fashion import extract_fashion
     return extract_fashion(out, clip, fps=fps)
 
 
 def _headpose(out, clip, src, fps):
-    from momentscan.stages.headpose import extract_headpose
+    from momentscan.extraction.headpose import extract_headpose
     return extract_headpose(out, clip, fps=fps)
 
 
@@ -72,7 +72,7 @@ def _portrait(out, clip, src, fps):
 
 
 def _likeness(out, clip, src, fps):
-    from momentscan.products.appearance import appearance_clip
+    from momentscan.products.likeness import appearance_clip
     return appearance_clip(out, clip)
 
 

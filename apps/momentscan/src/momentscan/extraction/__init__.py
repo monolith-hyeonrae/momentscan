@@ -1,4 +1,4 @@
-"""L0-L1 extraction stages - the ANALYSIS NODES of the clip DAG, one module per
+"""L0-L1 extraction - the ANALYSIS NODES of the clip DAG, one module per
 node (declared DAG: analyzers.py): detect attribute tubelets crops parse fashion
 headpose features scene.
 
@@ -12,5 +12,5 @@ headpose features scene.
 
 Deliberately NOT here: ingest.py / daemon.py = frame-grain runtime machinery
 (pipeline.py's siblings, package root); stitch.py = identity-domain algorithm
-(domains/). stages/ answers "what analysis runs", not "what machinery runs it".
+(domains/). extraction/ answers "what analysis runs", not "what machinery runs it".
 """
