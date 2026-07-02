@@ -69,23 +69,10 @@ def _mesh_topology():
 
 
 def _transcode_h264(src, dst, *, fps=None):
-    """detect.mp4 is mpeg4 (browsers can't play it) → H.264 all-intra for
-    frame-accurate seek. fps=N re-samples (clean source 30fps → 6fps, aligned
-    with detect.mp4). Cached: skips if dst already exists."""
-    import subprocess
-    dst = Path(dst)
-    if dst.exists():
-        return dst
-    # setpts=PTS-STARTPTS zeroes the first PTS — phone sources carry a start_time
-    # offset (cap_1 ≈1.33s) that the browser's TIME-based seek honors but cv2's
-    # FRAME-index extraction (bbox · crop track · thumbnails) ignores → a constant
-    # frame offset. Resetting it aligns browser time with frame index.
-    vf = ["-vf", (f"fps={fps}," if fps else "") + "setpts=PTS-STARTPTS"]
-    subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-i", str(src), *vf,
-                    "-c:v", "libx264", "-pix_fmt", "yuv420p", "-x264-params", "keyint=1",
-                    "-an", "-reset_timestamps", "1", "-muxdelay", "0", "-muxpreload", "0",
-                    str(dst)], check=True)
-    return dst
+    """detect.mp4 is mpeg4 (browsers can't play it) → H.264 all-intra, browser-
+    aligned (zero_pts) + cached. Recipe single home: media.transcode_h264."""
+    from momentscan.media import transcode_h264
+    return transcode_h264(src, dst, fps=fps, zero_pts=True, cached=True)
 
 
 def render_tubelet_inspect(out_root: str | Path, clip_id: str, *,

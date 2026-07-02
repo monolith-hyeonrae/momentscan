@@ -32,7 +32,7 @@
 | `products/` | 무엇을 **내놓나** | 제품 정의(molten) | frozen eval 쌍 |
 | `surface/` | 사람에게 어떻게 **보여주나** | 렌더 방식(행동 대가 0) | 눈 (replay 밖) |
 | `verify/` | 스스로를 어떻게 **믿나** | 검증 방법론 자체 | 스스로 |
-| top-level | 층들을 무엇으로 **잇나** | 러너(pipeline·ingest·daemon)·포트(stash·ports)·선언(analyzers)·CLI | check |
+| top-level | 층들을 무엇으로 **잇나** | 러너(pipeline·ingest·daemon)·포트(stash·ports)·규약(media=인코딩)·선언(analyzers)·CLI | check |
 
 멤버십 테스트 (파일 배치 시):
 - `extraction/`: *"전담 전문가가 소유하고 심화할 수 있는 신호 처리 전문분야인가?
@@ -40,7 +40,9 @@
   tubelets는 아니다(조립), crops도 아니다(영속화) → subjects/.
 - `subjects/`: *"subject 계약이 바뀔 때 함께 바뀌는가?"* — attribute(좌석 판정)
   → tubelets(**경계 계약**: 추출기는 tubelets만 읽는다, raw detections 금지)
-  → crops(튜브의 픽셀, data retention).
+  → crops(튜브의 픽셀, data retention). ROI **기하**(portrait_box)는 subject
+  계약이라 여기; 자르기/인코딩 **실행**은 범용 유틸이라 `media.py`(H.264
+  all-intra 규약의 단일 홈).
 - `domains/`: *"이 값을 바꾸면 세 제품이 전부 함께 바뀌어야 하는가?"* (백엔드-중립
   해석 정책). signals=얇은 단일-백엔드 리더, geometry=정준 프레임 계약,
   pose=MP⊕6D 융합·양자화, emotion=valence 척추, stitch=identity 병합.

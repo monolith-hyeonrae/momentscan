@@ -17,14 +17,13 @@ from __future__ import annotations
 
 import json
 import logging
-import subprocess
 import time
 from datetime import datetime, timezone
 from pathlib import Path
 
 import cv2
-import numpy as np
 
+from momentscan.media import h264_writer, letterbox, transcode_h264
 from momentscan.stash import clip_dir, read_tubelets
 
 log = logging.getLogger("momentscan.crops")
@@ -49,27 +48,8 @@ def portrait_box(bbox: list[float], *, margin: float = MARGIN) -> tuple[int, int
             int(round(cx + Wd / 2)), int(round(cy + H / 2)))
 
 
-def _letterbox(frame: np.ndarray, box: tuple[int, int, int, int]) -> np.ndarray:
-    """Crop `box` from frame (black-padding where it exceeds bounds — honest: no
-    source there), resize to the fixed canvas preserving aspect (box is already
-    canvas aspect, so this is distortion-free)."""
-    fh, fw = frame.shape[:2]
-    x1, y1, x2, y2 = box
-    bw, bh = x2 - x1, y2 - y1
-    canvas = np.zeros((bh, bw, 3), np.uint8)
-    sx1, sy1, sx2, sy2 = max(0, x1), max(0, y1), min(fw, x2), min(fh, y2)
-    if sx2 > sx1 and sy2 > sy1:
-        canvas[sy1 - y1:sy2 - y1, sx1 - x1:sx2 - x1] = frame[sy1:sy2, sx1:sx2]
-    return cv2.resize(canvas, (CANVAS_W, CANVAS_H), interpolation=cv2.INTER_AREA)
-
-
-def _h264_writer(path: Path, fps: int) -> subprocess.Popen:
-    """ffmpeg stdin(rawvideo BGR) → H.264 all-intra mp4 (frame-accurate seek)."""
-    return subprocess.Popen(
-        ["ffmpeg", "-y", "-loglevel", "error", "-f", "rawvideo", "-pix_fmt", "bgr24",
-         "-s", f"{CANVAS_W}x{CANVAS_H}", "-r", str(fps), "-i", "pipe:0",
-         "-c:v", "libx264", "-pix_fmt", "yuv420p", "-x264-params", "keyint=1",
-         "-an", str(path)], stdin=subprocess.PIPE)
+# cutting/encoding = media.py (letterbox · h264_writer · transcode_h264); this
+# module keeps only the ROI GEOMETRY (portrait_box) + the retention orchestration.
 
 
 def _fingerprint(src: Path) -> dict:
@@ -103,11 +83,10 @@ def extract_crops(video_path: str | Path, out_root: str | Path, clip_id: str,
 
         # transcode source → temp clean@fps (frame-aligned 0..N-1), read once, then DELETE.
         tmp_clean = crops_dir / "_clean_tmp.mp4"
-        subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-i", str(src),
-                        "-vf", f"fps={fps}", "-c:v", "libx264", "-pix_fmt", "yuv420p",
-                        "-x264-params", "keyint=1", "-an", str(tmp_clean)], check=True)
+        transcode_h264(src, tmp_clean, fps=fps)
 
-        writers = {sid: _h264_writer(crops_dir / f"s{sid}.mp4", fps) for sid in subs}
+        writers = {sid: h264_writer(crops_dir / f"s{sid}.mp4", fps, (CANVAS_W, CANVAS_H))
+                   for sid in subs}
         order = {sid: [] for sid in subs}      # crop-frame i → original frame_idx
         cap = cv2.VideoCapture(str(tmp_clean))
         f = 0
@@ -119,7 +98,7 @@ def extract_crops(video_path: str | Path, out_root: str | Path, clip_id: str,
                 bbox = s["fb"].get(f)
                 if bbox is None:
                     continue
-                tile = _letterbox(frame, portrait_box(bbox, margin=margin))
+                tile = letterbox(frame, portrait_box(bbox, margin=margin), (CANVAS_W, CANVAS_H))
                 writers[sid].stdin.write(tile.tobytes())
                 order[sid].append(f)
             f += 1
