@@ -39,11 +39,11 @@ INFRA = frozenset({"stash", "telemetry"})
 # live in the sibling features package. Kept in lockstep with RUNNERS by an
 # import-time assert in pipeline.py.
 STAGE_MODULE = {
-    "attribute":  "momentscan.extraction.attribute",
-    "tubelets":   "momentscan.extraction.tubelets",
+    "attribute":  "momentscan.subjects.attribute",
+    "tubelets":   "momentscan.subjects.tubelets",
     "scene":      "momentscan.extraction.scene",        # thin adapter; closure follows into
     "features":   "momentscan.extraction.features",     # the specialist45d backend it imports
-    "crops":      "momentscan.extraction.crops",
+    "crops":      "momentscan.subjects.crops",
     "parse":      "momentscan.extraction.parse",
     "fashion":    "momentscan.extraction.fashion",
     "headpose6d": "momentscan.extraction.headpose",

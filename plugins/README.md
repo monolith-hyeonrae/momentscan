@@ -1,9 +1,9 @@
-# plugins/ — 격리된 모델 백엔드 (스테이지 노드가 아님)
+# plugins/ — 격리된 모델 백엔드 (분석 노드가 아님)
 
-여기 패키지들은 **선택적 확장이 아니라 필수 백엔드**다. 스테이지 *노드*는 전부
-`apps/momentscan/src/momentscan/extraction/`에 있고(`ls extraction/` = DAG 어휘 전체),
+여기 패키지들은 **선택적 확장이 아니라 필수 백엔드**다. 신호 추출 *노드*는
+`apps/momentscan/src/momentscan/extraction/`에 있고(`ls extraction/` = 신호 분석 리스트),
 이 디렉토리는 그중 features/scene 노드가 호출하는 **모델-무거운 절반**을 격리한다 —
-visualstack의 plugins가 detect/landmarks 뒤에 있는 것과 같은 관계.
+격리 사다리 ②단(workspace 패키지; ①in-app ③plugin+bus는 extraction/__init__ 참조).
 
 격리의 이유 (아키텍처 계층이 아니라 이음매):
 1. **의존성** — 무겁고 충돌 가능한 모델 스택(onnx·torch·transformers)을 코어와 분리

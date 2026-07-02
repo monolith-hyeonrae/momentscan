@@ -186,7 +186,7 @@ def _cmd_scene(args: argparse.Namespace) -> int:
 
 
 def _cmd_tubelets(args: argparse.Namespace) -> int:
-    from momentscan.extraction.tubelets import synthesize_tubelets
+    from momentscan.subjects.tubelets import synthesize_tubelets
 
     result = synthesize_tubelets(args.path, args.out, fps=args.fps)
     print(json.dumps(result, ensure_ascii=False, indent=2))
@@ -444,7 +444,7 @@ def _cmd_highlight_lang(args: argparse.Namespace) -> int:
 
 
 def _cmd_crops(args: argparse.Namespace) -> int:
-    from momentscan.extraction.crops import extract_crops
+    from momentscan.subjects.crops import extract_crops
 
     result = extract_crops(args.source, args.out, args.clip_id, fps=args.fps)
     print(json.dumps(result, ensure_ascii=False, indent=2))
@@ -483,7 +483,7 @@ def _cmd_viz(args: argparse.Namespace) -> int:
 
 def _cmd_attribute(args: argparse.Namespace) -> int:
     try:
-        from momentscan.extraction.attribute import attribute_clip
+        from momentscan.subjects.attribute import attribute_clip
     except ImportError as exc:
         print(
             f"momentscan: attribute stage needs the step0b extra (torch/depth): {exc}\n"

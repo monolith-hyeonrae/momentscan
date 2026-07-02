@@ -22,12 +22,12 @@ log = logging.getLogger("momentscan.pipeline")
 
 
 def _attribute(out, clip, src, fps):
-    from momentscan.extraction.attribute import attribute_clip
+    from momentscan.subjects.attribute import attribute_clip
     return attribute_clip(src, out, fps=fps)
 
 
 def _tubelets(out, clip, src, fps):
-    from momentscan.extraction.tubelets import synthesize_tubelets
+    from momentscan.subjects.tubelets import synthesize_tubelets
     return synthesize_tubelets(src, out, fps=fps)
 
 
@@ -42,7 +42,7 @@ def _features(out, clip, src, fps):
 
 
 def _crops(out, clip, src, fps):
-    from momentscan.extraction.crops import extract_crops
+    from momentscan.subjects.crops import extract_crops
     return extract_crops(src, out, clip, fps=fps)
 
 

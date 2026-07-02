@@ -62,6 +62,16 @@ FeatureSource 포트 + 서비스 워커 경계) · freshness STAGE_MODULE→어�
 분석노드 9 잔류 / ingest·daemon→top-level(pipeline 러너 가족) / stitch→domains/(identity 예비석).
 **stages/의 계약 = "무슨 분석이 도는가", 기계는 아님.** landmarks(모듈 없는 노드)는 __init__에 선언.
 
+**+ 전 파일 역할감사 → 경계 재설계 (c692673 · 0066fd3, user와 4결정)**:
+① `stages/`→**`extraction/`** 개명(내용=L1 추출 노드만; 상위 레이어 스테이지는 자기 레이어 홈 —
+이름이 이제 그걸 말함) ② **`domains/geometry.py` 졸업**(CanonicalFrame 계약+canonicalize/norm468/
+template+.obj dep; signals.py=얇은 단일-백엔드 리더만) · rolling_median→select 공개이름(인스펙터 구독) ·
+사적 층간 import 3건 공개화(canonicalize·rolling_median·portrait_box) ③ 이름 정렬: `features.py`→
+**`ports.py`**(features 3중 충돌 해소) · `appearance.py`→**`likeness.py`**(stage=제품=파일; 함수명 유지)
+④ **viz.py(1695) 분할**: `surface/cards.py`(제품/과정 렌더러 1121)+`surface/inspector.py`(한-런 창 589).
+분할이 잠복버그 노출: sed 순서 탓 `signals.canonicalize` 잔존(함수-내부라 import 스모크 무감) →
+geometry.canonicalize + **inspect 실렌더로 증명**. 교훈: 전역 rename sed는 좁은 패턴부터.
+
 ### 다음: 로직 재개 — 6D-가림 신뢰도
 
 이음매 = `pose.fuse_pose`(docstring에 blind spot 명시해둠) + `id_valid`. 절차: **영향 측정**

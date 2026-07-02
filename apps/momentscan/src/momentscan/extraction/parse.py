@@ -32,7 +32,7 @@ from pathlib import Path
 import cv2
 import numpy as np
 
-from momentscan.extraction.crops import portrait_box
+from momentscan.subjects.crops import portrait_box
 from momentscan.stash import clip_dir, read_detections, read_landmarks, write_parse
 
 log = logging.getLogger("momentscan.parse")
