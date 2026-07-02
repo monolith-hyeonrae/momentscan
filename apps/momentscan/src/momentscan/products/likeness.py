@@ -171,7 +171,7 @@ def _track_reading(out_root, clip_id: str, track_id: int,
     tmpl = template()
     off = np.sqrt(((person - tmpl) ** 2).sum(axis=1))
     pr, tr = face_ratios(person), face_ratios(tmpl)
-    template = {
+    template_rec = {   # (record; a local named `template` would shadow geometry.template)
         "offset_rms": round(float(np.sqrt((off ** 2).mean())), 4),
         "ratios": {k: {"person": round(pr[k], 4), "template": round(tr[k], 4),
                        "diff_pct": round((pr[k] / tr[k] - 1) * 100, 1)} for k in pr},
@@ -265,7 +265,7 @@ def _track_reading(out_root, clip_id: str, track_id: int,
         "resid_rms": round(resid_rms, 5),
         "evr_top5": [round(float(e), 4) for e in evr],
         "axes": axes,
-        "template": template,
+        "template": template_rec,
         "neutral": neutral,
         "blendshapes": blend,
         "samples": {"center_nearest": center_nearest, "pose_bins": bins},
@@ -328,15 +328,24 @@ def _face_ids(out_root, clip_id: str,
 
 # fashion/accessory thresholds (parse.parquet) — preset policy, calibrated on cap_1.
 _F_EYEWEAR, _F_SUN_LUM, _F_MASK, _F_HAT, _F_WORN = 0.03, 0.7, 0.01, 0.05, 0.5
+_F_MIN_JUDGEABLE = 10   # < this many clean-frontal frames → all-frames fallback (mostly-profile track)
 
 
-def _fashion_reading(out_root, clip_id: str) -> dict[int, dict]:
+def _fashion_reading(out_root, clip_id: str,
+                     cohorts: dict[int, dict[str, set[int]]] | None = None) -> dict[int, dict]:
     """Per-rider visit-scoped fashion reading — per-frame parse signals aggregated
     to a stable conclusion (worn = persistent), NOT a per-frame classification.
     Worn items (sunglasses/mask/hat) are part of "오늘 이 사람의 ID". Eyewear is
     split sunglasses vs clear by eye-region luminance. Mid-range fraction →
     'variable' (put on/off mid-ride = a state-change segment candidate). Empty if
-    no parse.parquet."""
+    no parse.parquet.
+
+    JUDGEABILITY: rows are conditioned on the clean-frontal cohort (frontal_clean)
+    — SegFormer presence parsing is frontal-premised, so off-frontal "mouth
+    invisible" is a POSE fact, not a worn mask (test_0 s2: false mask_frac 0.352 →
+    0.000 under frontal-conditioning while the real mask wearer s18 stays 1.000).
+    A mostly-profile track (< _F_MIN_JUDGEABLE frontal frames) falls back to all
+    rows — the FACE_ID_MIN_FRONTAL pattern (don't starve; degrade to the old read)."""
     df = read_parse(out_root, clip_id)
     if df is None:
         return {}
@@ -351,6 +360,11 @@ def _fashion_reading(out_root, clip_id: str) -> dict[int, dict]:
     out: dict[int, dict] = {}
     for sid in df["track_id"].unique().to_list():
         d = df.filter(pl.col("track_id") == int(sid))
+        frontal = cohorts.get(int(sid), {}).get("frontal") if cohorts else None
+        if frontal is not None and len(frontal) >= _F_MIN_JUDGEABLE:
+            dj = d.filter(pl.col("frame_idx").is_in(list(frontal)))
+            if dj.height >= _F_MIN_JUDGEABLE:
+                d = dj
         n = d.height
         eyewear = d["glasses_frac"].to_numpy() > _F_EYEWEAR
         sun = eyewear & (d["eye_lum_rel"].fill_null(1.0).to_numpy() < _F_SUN_LUM)
@@ -378,7 +392,7 @@ def appearance_clip(out_root, clip_id: str) -> dict:
     roles = dict(zip(lm["track_id"], lm["rider_role"], strict=False))
     cohorts = _gate_cohorts(out_root, clip_id)  # {tid: {valid, frontal}} (None → all-frames fallback)
     face_ids = _face_ids(out_root, clip_id, cohorts)   # identity core → FRONTAL cohort
-    fashion = _fashion_reading(out_root, clip_id)
+    fashion = _fashion_reading(out_root, clip_id, cohorts)   # judgeable = clean-frontal cohort
     for tid in sorted(set(lm["track_id"].to_list())):
         r = _track_reading(out_root, clip_id, tid, cohorts)
         if r is None:

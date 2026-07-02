@@ -251,8 +251,8 @@ def select_portrait(out_root, clip_id: str, *, fps: int = 6) -> dict:
         admit1 = gates.evaluate(sig)["admit"]
         ctxs.append({"sid": sid, "fx": fx, "role": role, "ts": ts, "emb": emb, "cap": cap,
                      "N": N, "blink": blink, "yaw": yaw, "yaw_f": yaw_f, "pit_f": pit_f,
-                     "rol_f": rol_f, "blur": blur, "pose_6d": pose_6d, "sunglasses": sunglasses,
-                     "masked": masked, "sig": sig, "admit1": admit1, "em_conf": em_conf, "vel": vel})
+                     "rol_f": rol_f, "blur": blur, "pose_6d": pose_6d,
+                     "sig": sig, "admit1": admit1, "em_conf": em_conf, "vel": vel})
 
     # CENTROIDS — each subject's clean ArcFace anchor = L2-normalised mean of its admit-frame
     # (L2-normalised) embeddings. < ID_MIN_CENTROID admits → no centroid (no rescue, no rival).
@@ -272,7 +272,7 @@ def select_portrait(out_root, clip_id: str, *, fps: int = 6) -> dict:
         emb, cap, N = c["emb"], c["cap"], c["N"]
         blink, yaw, yaw_f = c["blink"], c["yaw"], c["yaw_f"]
         pit_f, rol_f, blur = c["pit_f"], c["rol_f"], c["blur"]
-        pose_6d, sunglasses, masked, sig = c["pose_6d"], c["sunglasses"], c["masked"], c["sig"]
+        pose_6d, sig = c["pose_6d"], c["sig"]   # raw sunglasses/masked ride in sig; verdicts come judged from gv
         em_conf, vel = c["em_conf"], c["vel"]   # computed in PASS 1 (em_conf also gates expr_ok)
         en = emb / (np.linalg.norm(emb, axis=1, keepdims=True) + 1e-9)
         own = cents.get(sid)
@@ -283,8 +283,10 @@ def select_portrait(out_root, clip_id: str, *, fps: int = 6) -> dict:
         gv = gates.evaluate(sig)
         admit, quarter_ok, side_ok = gv["admit"], gv["quarter_ok"], gv["side_ok"]
         n_admit = int(admit.sum())
-        fashion = {"sunglasses": round(float(sunglasses.mean()), 3) if N else 0.0,
-                   "mask": round(float(masked.mean()), 3) if N else 0.0}
+        # judgeability-derived verdicts (gv, not the raw parse booleans) — off-frontal
+        # frames abstain, so a profile ride no longer reads as "wore a mask".
+        fashion = {"sunglasses": round(float(gv["sunglasses"].mean()), 3) if N else 0.0,
+                   "mask": round(float(gv["masked"].mean()), 3) if N else 0.0}
         # gate_trace.parquet rows — the gate's own self-record (the inspector renders
         # it instead of re-deciding). Schema owned by gates.py; written after the loop.
         trace_rows += gates.trace_rows(sid, fx, sig, gv)

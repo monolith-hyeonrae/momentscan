@@ -423,6 +423,18 @@ def _derive(G: "_Ctx") -> None:
     # the policy-FREE clean-frontal identity cohort clean_ref reduces over — a derived
     # geometric mask (NOT the ② frontal_pose gate), the cut that keeps ① query-independent.
     G.v["frontal_clean"] = (G.v["pose_class"] == "frontal") & G.v["have_bs"]
+    # parse PRESENCE judgeability = the same clean-frontal cohort. The SegFormer
+    # face-parsing envelope is frontal-premised — measured on test_0: at |yaw|≈39°
+    # it stops segmenting a VISIBLE profile mouth, so "invisible" misreads as "worn
+    # mask" (s2 false mask_frac 0.352; frontal-conditioning → 0.000 while the real
+    # mask wearer s18 stays 1.000). Off-frontal the worn-item verdicts ABSTAIN
+    # (False — no evidence) and presence abstains PASSING (True — never reject on
+    # an unjudgeable reading, the mask_valid precedent); the occlusion/wrong-person
+    # reject duty falls to id_valid, whose embedding evidence works at any pose.
+    jud = G.v["frontal_clean"]
+    G.v["sunglasses"] = np.asarray(s["sunglasses"], bool) & jud
+    G.v["masked"] = np.asarray(s["masked"], bool) & jud
+    G.v["face_present"] = np.asarray(s["face_present"], bool) | ~jud
 
 
 def evaluate_validity(signals: dict) -> dict:
@@ -475,8 +487,10 @@ def trace_rows(sid: int, fx, s: dict, v: dict) -> list[dict]:
             "id_ok": bool(v["id_ok"][k]), "id_valid": bool(v["id_valid"][k]),
             "cos_self": _r(s["cos_self"][k]), "cos_other": _r(s["cos_other"][k]),
             "em_conf": _r(s["em_conf"][k]), "expr_ok": bool(v["expr_ok"][k]),
-            "face_present": bool(s["face_present"][k]),
-            "fashion": bool(s["sunglasses"][k] or s["masked"][k]), "valid": bool(v["valid"][k]),  # T0
+            # EFFECTIVE (judgeability-derived) verdicts, not the raw parse booleans —
+            # the trace records what the ladder DECIDED on; raw stays in parse.parquet.
+            "face_present": bool(v["face_present"][k]),
+            "fashion": bool(v["sunglasses"][k] or v["masked"][k]), "valid": bool(v["valid"][k]),  # T0
             "have_bs": bool(v["have_bs"][k]), "pose_finite": bool(v["pose_finite"][k]),
             "eyes_ok": bool(v["eyes_ok"][k]),
             "query_dist": _r(qd[k]), "query_ok": bool(v["query_ok"][k]),                 # ② query-proximity

@@ -167,6 +167,7 @@ def render_tubelet_inspect(out_root: str | Path, clip_id: str, *,
     # keystone likeness/highlight read; id_valid/expr_ok make the relative-id + coherent-
     # expression rungs visible. (frontal_pose is intermediate — its effect shows via admit.)
     LADDER_KEYS = ("face_present", "sharp_ok", "exposure_ok", "id_ok", "id_valid", "valid",
+                   "have_bs",   # → likeness ACTUAL consumption = valid∩landmarks (not all of valid)
                    "eyes_ok", "expr_ok", "query_ok", "admit", "quarter_ok", "side_ok")
     _gt = read_gate_trace(out_root, clip_id)
     if _gt is not None:

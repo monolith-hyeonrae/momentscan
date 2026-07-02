@@ -364,11 +364,14 @@ function draw(){
      +(scope||'')
      +(crit?`<div style="color:#9a9;font-size:11px;margin:1px 0 3px">기준: ${crit}</div>`:'');};
  // LIKENESS — who (visit-invariant)
- // likeness attention = the SELECTED, aggregated set over ALL time (NOT the current frame):
- // valid pool → the STRICT-frontal core that actually feeds the identity centroid.
- const lkValid=s.frames.filter((fr,i)=>((s.gate_ladder||{}).valid||[])[i]);
+ // likeness attention = the SELECTED, aggregated set over ALL time (NOT the current frame).
+ // lkValid = ACTUAL geometry consumption (valid∩landmarks) — valid alone OVERSTATES:
+ // no-landmark frames can't enter the distribution reading (drawing them as attention
+ // exaggerated the test_0 early-occlusion "contamination" that measurement refuted).
+ const GLk=s.gate_ladder||{};
+ const lkValid=s.frames.filter((fr,i)=>(GLk.valid||[])[i]&&((GLk.have_bs||[])[i]!==false));
  const lkCore=s.frames.filter((fr,i)=>((s.gate_open||{}).likeness||[])[i]);
- html+=box('#7ab0ea','LIKENESS · who · 전 시간 선택·집계','정면 정체성 코어 (query 없음 — 정체성은 사실) · gate ① valid + STRICT frontal',scopebar('cohort',[lkValid,lkCore],'#7ab0ea','선택·집계'));
+ html+=box('#7ab0ea','LIKENESS · who · 전 시간 선택·집계','정면 정체성 코어 (query 없음 — 정체성은 사실) · gate ① valid∩landmarks(실소비) + STRICT frontal',scopebar('cohort',[lkValid,lkCore],'#7ab0ea','선택·집계'));
  html+=`role ${s.role} · coherence ${nf(s.coherence)}`;
  // likeness CONVERGES to clean_ref: face_id (identity centroid) is built from the STRICT
  // FRONTAL core; the broader `valid` set feeds only its variation (geometry / hair / fashion).
@@ -376,7 +379,7 @@ function draw(){
  const lkO=ex>=0?((s.gate_open||{}).likeness||[])[ex]:null;
  if(ex>=0)html+='<br>① valid: '+(lv===true?chip('✓','#5e5'):lv===false?chip('✗ excluded','#f66'):'—')
    +' · face_id core: '+(lkO===true?chip('✓ frontal — collected','#5e5'):chip('✗ non-frontal — variation only','#888'));
- html+=`<br><span style="color:#8a9">attention:</span> 시간 전역에서 게이트 통과 프레임을 선택·집계 (재생 위치와 무관) · 선택 `+chip(lkCore.length,'#7ab0ea')+`/valid ${lkValid.length}`+(lkO===true?chip(' · N도 포함','#5e5'):lkO===false?'<span style="color:#666"> · N 미포함</span>':'');
+ html+=`<br><span style="color:#8a9">attention:</span> 시간 전역에서 게이트 통과 프레임을 선택·집계 (재생 위치와 무관) · 선택 `+chip(lkCore.length,'#7ab0ea')+`/실소비 ${lkValid.length}`+(lkO===true?chip(' · N도 포함','#5e5'):lkO===false?'<span style="color:#666"> · N 미포함</span>':'');
  if(s.fashion)html+=`<br>fashion: ${s.fashion}`;
  // ③ how the identity was READ: cohort size · reliability(split-half drift, lower=better) ·
  // what the face varies with (top PC axis) · whether an ArcFace centroid was formed.
