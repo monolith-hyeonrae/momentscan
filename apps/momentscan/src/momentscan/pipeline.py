@@ -32,13 +32,13 @@ def _tubelets(out, clip, src, fps):
 
 
 def _scene(out, clip, src, fps):
-    from momentscan_features_specialist45d.scene import extract_scene
+    from momentscan.stages.scene import extract_scene
     return extract_scene(src, out, fps=fps)
 
 
 def _features(out, clip, src, fps):
-    from momentscan_features_specialist45d.extractor import extract_clip
-    return extract_clip(src, out, fps=fps)
+    from momentscan.stages.features import extract_features
+    return extract_features(src, out, fps=fps)
 
 
 def _crops(out, clip, src, fps):

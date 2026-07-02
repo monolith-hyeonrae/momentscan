@@ -39,6 +39,18 @@ flavor-1 drift는 무작위가 아니라 홈 없는 도메인의 그림자였다
 - emotion = 핵 존재, STEP4+ 때 잔여 통합. blur/노출/scene/occlusion = 단일 백엔드·홈 있음, 잔류.
 - open: appearance.BIN_EDGE_DEG=15는 routing FRONTAL 15와 같은 값·다른 사실일 가능성 — 병합 보류.
 
+### 파일 구조 재구조 완료 (2026-07-02, 커밋 7d7ca68)
+
+**flat 33모듈 → L0–L4 미러** (전부 whole-file 이동, 분할/병합 0):
+`stages/`(L0-L1 어댑터 10) · `domains/`(L2: signals·pose·emotion) · `products/`(L4 4) ·
+`surface/`(viz·inspector·label) · `verify/`(replay·freshness·eval·graph) + top-level 척추
+(`__main__·pipeline·stash·analyzers·features·telemetry·gates`). readings.py 삭제(소비자 0).
+**git init + baseline(a63c040)** — 06-24부터 standing queue였던 항목; 커밋은 co-author 트레일러 없이(사용자 선호).
+**이동이 노출한 잠복 결합 3건(전부 freshness)**: ①`_pkg_dir`가 자기 파일 위치로 패키지 루트 유도
+(→parents[1]+가드 assert) ②`STAGE_MODULE` 모듈명 문자열 하드코딩 ③외부모델 dep 키 — 문자열 모듈참조는
+import 재작성기가 못 봄, **이동 시 `grep "['\"]momentscan\."` 전수(로거 제외) 필수**.
+검증: 31모듈 import 스모크·check 0err·replay 0drift×2·freshness closure/is_stale 실호출·inspect 렌더.
+
 ### 다음: 로직 재개 — 6D-가림 신뢰도
 
 이음매 = `pose.fuse_pose`(docstring에 blind spot 명시해둠) + `id_valid`. 절차: **영향 측정**

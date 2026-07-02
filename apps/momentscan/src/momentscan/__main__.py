@@ -162,23 +162,25 @@ def _cmd_select(args: argparse.Namespace) -> int:
 
 
 def _cmd_features(args: argparse.Namespace) -> int:
+    from momentscan.stages.features import extract_features
+
     try:
-        from momentscan_features_specialist45d.extractor import extract_clip
+        result = extract_features(args.path, args.out, fps=args.fps)
     except ImportError as exc:
         print(f"momentscan: features stage needs the specialist45d package: {exc}", file=sys.stderr)
         return 2
-    result = extract_clip(args.path, args.out, fps=args.fps)
     print(json.dumps(result, ensure_ascii=False, indent=2))
     return 0 if result["ok"] else 1
 
 
 def _cmd_scene(args: argparse.Namespace) -> int:
+    from momentscan.stages.scene import extract_scene
+
     try:
-        from momentscan_features_specialist45d.scene import extract_scene
+        result = extract_scene(args.path, args.out, fps=args.fps)
     except ImportError as exc:
         print(f"momentscan: scene stage needs the specialist45d package: {exc}", file=sys.stderr)
         return 2
-    result = extract_scene(args.path, args.out, fps=args.fps)
     print(json.dumps(result, ensure_ascii=False, indent=2))
     return 0 if result["ok"] else 1
 

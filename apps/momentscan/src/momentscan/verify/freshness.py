@@ -41,8 +41,8 @@ INFRA = frozenset({"stash", "telemetry"})
 STAGE_MODULE = {
     "attribute":  "momentscan.stages.attribute",
     "tubelets":   "momentscan.stages.tubelets",
-    "scene":      "momentscan_features_specialist45d.scene",
-    "features":   "momentscan_features_specialist45d.extractor",
+    "scene":      "momentscan.stages.scene",        # thin adapter; closure follows into
+    "features":   "momentscan.stages.features",     # the specialist45d backend it imports
     "crops":      "momentscan.stages.crops",
     "parse":      "momentscan.stages.parse",
     "fashion":    "momentscan.stages.fashion",
