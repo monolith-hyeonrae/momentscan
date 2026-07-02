@@ -273,7 +273,7 @@ def process_clip(
         timeline_path = None
         if ptrace_path is not None:
             try:
-                from momentscan.surface.viz import render_process_timeline
+                from momentscan.surface.cards import render_process_timeline
                 timeline_path = render_process_timeline(out_root, clip_id).get("timeline_path")
             except Exception:
                 log.exception("process_timeline render failed")

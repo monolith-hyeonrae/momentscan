@@ -104,7 +104,7 @@ def _cmd_shutdown(args: argparse.Namespace) -> int:
 
 def _cmd_appearance(args: argparse.Namespace) -> int:
     from momentscan.products.likeness import appearance_clip
-    from momentscan.surface.viz import render_appearance_card
+    from momentscan.surface.cards import render_appearance_card
 
     result = appearance_clip(args.out, args.clip_id)
     if result["ok"]:
@@ -148,7 +148,7 @@ def _cmd_eval(args: argparse.Namespace) -> int:
 
 def _cmd_select(args: argparse.Namespace) -> int:
     from momentscan.products.select import select_clip
-    from momentscan.surface.viz import (
+    from momentscan.surface.cards import (
         render_highlight_clips, render_portrait_card, render_select_timeline,
     )
 
@@ -452,7 +452,7 @@ def _cmd_crops(args: argparse.Namespace) -> int:
 
 
 def _cmd_inspect(args: argparse.Namespace) -> int:
-    from momentscan.surface.viz import render_tubelet_inspect
+    from momentscan.surface.inspector import render_tubelet_inspect
 
     result = render_tubelet_inspect(args.out, args.clip_id, fps=args.fps,
                                     video_path=args.source)
@@ -462,7 +462,7 @@ def _cmd_inspect(args: argparse.Namespace) -> int:
 
 def _cmd_viz(args: argparse.Namespace) -> int:
     from momentscan.stash import candidates_path, process_trace_path
-    from momentscan.surface.viz import (
+    from momentscan.surface.cards import (
         render_attribution, render_highlight_clips, render_identity_strip,
         render_portrait_card, render_process_timeline, render_select_timeline,
     )
