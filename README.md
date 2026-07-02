@@ -11,8 +11,9 @@
 > 세 제품(likeness·portrait·highlight)의 정확한 정의·관계·명명은
 > [`docs/products.md`](docs/products.md)가 단일 진실.
 
-> **이 문서는 *도메인 design intent*다.** 코드 레이아웃과 실행 방법은
-> [`SETUP.md`](SETUP.md)에. visualstack 위에 부트스트랩된 워커가 이미
+> **이 문서는 *도메인 design intent*다.** 코드가 왜 이렇게 배치되어 있는가
+> (층 지도·격리 사다리·졸업 규칙·멤버십 테스트)는 [`ARCHITECTURE.md`](ARCHITECTURE.md),
+> 실행 방법은 [`SETUP.md`](SETUP.md)에. visualstack 위에 부트스트랩된 워커가 이미
 > 돌아간다 — `uv sync && uv run momentscan-worker <video>`.
 >
 > **북극성(2026-06-08~): [`docs/jepa-poc.md`](docs/jepa-poc.md).** 이 레포는 그 PoC의

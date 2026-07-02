@@ -72,6 +72,14 @@ template+.obj dep; signals.py=얇은 단일-백엔드 리더만) · rolling_medi
 분할이 잠복버그 노출: sed 순서 탓 `signals.canonicalize` 잔존(함수-내부라 import 스모크 무감) →
 geometry.canonicalize + **inspect 실렌더로 증명**. 교훈: 전역 rename sed는 좁은 패턴부터.
 
+**+ extraction 정합 세션 (4a90269, user "tubelets는 extractor야?")**: extraction/이 캐스케이드
+위상으로 잘려 있던 것을 **user의 멤버십 테스트**("개별 신호 처리로 연구될 전문분야인가")로 재단 —
+내 테스트("모델 교체가 변경 이유인가")와 같은 멤버십으로 수렴. `extraction/`=신호 전문분야만
+(detect parse fashion headpose features scene; detect는 관측 전문분야라 잔류) · **`subjects/` 신설**
+=신호가 붙을 대상 구성(attribute→tubelets[경계계약]→crops). **격리 사다리 선언**(①in-app ②workspace
+pkg ③plugin+bus)=레거시 vpx-plugins 의도를 기계 없이 유지. **지배 원칙 확정(user)**: /dev 원칙 —
+실행 없이 트리가 "무엇이 돌고 있나"를 답한다(ls extraction/=신호 분석 리스트).
+
 ### 다음: 로직 재개 — 6D-가림 신뢰도
 
 이음매 = `pose.fuse_pose`(docstring에 blind spot 명시해둠) + `id_valid`. 절차: **영향 측정**
