@@ -1,0 +1,30 @@
+{
+  "_doc": "Threshold / K / weight policy for the three task selectors. This is the *only* stage where cross-signal scoring is allowed (redesign-2026-05 §3).",
+
+  "highlight": {
+    "_doc": "score = w_outlier · d_M(signal) + w_delta · |Δsignal|_sliding + w_diversity · diversity_term. Weights default per redesign §3 — α, β, γ. Tune on real source data.",
+    "count": 5,
+    "weights": {
+      "outlier": 0.5,
+      "delta": 0.3,
+      "diversity": 0.2
+    },
+    "clip_seconds": 2.5,
+    "min_face_height_px": 120
+  },
+
+  "diversity": {
+    "_doc": "N per-subject samples evenly spread on the signal_statistics PC1 / PC2 plane. Soft target 8-12 per redesign §1.",
+    "target_count": 10,
+    "min_count": 8,
+    "frontality_threshold": 0.6,
+    "min_face_height_px": 100
+  },
+
+  "standard": {
+    "_doc": "One per-subject canonical record. Needs enough frontal frames to populate appearance + shape statistics stably.",
+    "frontality_threshold": 0.85,
+    "min_frontal_frames": 20,
+    "ref_crop_size_px": 512
+  }
+}

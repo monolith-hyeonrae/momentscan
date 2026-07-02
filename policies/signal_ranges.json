@@ -1,0 +1,16 @@
+{
+  "_doc": "Policy-driven normalize spec injected into visualbind.Normalizer. Each column is one scalar signal that the worker pipeline publishes (after structuring); the worker maps the raw value into a per-column [-1, 1] / (sin, cos) coordinate so statistics accumulators can treat every column on the same scale. Plugin-derived columns carry a 'mediapipe__' / 'head_pose__' prefix to keep the source explicit — the two head-pose estimators are complementary (MediaPipe = frontal mesh precision; 6DRepNet = side-angle robustness) and both feed signal_statistics; downstream selectors / appearance_statistics decide which source to weight per task.",
+
+  "expression__smile":        {"kind": "linear",   "min": 0.0, "max": 1.0},
+  "face__detection_score":    {"kind": "linear",   "min": 0.0, "max": 1.0},
+
+  "mediapipe__frontality":    {"kind": "linear",   "min": 0.0, "max": 1.0},
+  "mediapipe__yaw_deg":       {"kind": "circular", "period_deg": 360.0},
+  "mediapipe__pitch_deg":     {"kind": "circular", "period_deg": 360.0},
+  "mediapipe__roll_deg":      {"kind": "circular", "period_deg": 360.0},
+
+  "head_pose__frontality":    {"kind": "linear",   "min": 0.0, "max": 1.0},
+  "head_pose__yaw_deg":       {"kind": "circular", "period_deg": 360.0},
+  "head_pose__pitch_deg":     {"kind": "circular", "period_deg": 360.0},
+  "head_pose__roll_deg":      {"kind": "circular", "period_deg": 360.0}
+}

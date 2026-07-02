@@ -1,0 +1,33 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "momentscan"
+version = "0.0.0"
+description = "momentscan core — Step 0 (tracks + attribution), Distribution wiring, readings (Profile/Highlight), shared eval harness + telemetry. Track-agnostic; feature extraction is a swappable, isolated FeatureSource."
+requires-python = ">=3.11"
+license = { text = "TBD" }
+# Light, shared deps only. The heavy / conflicting stacks (onnx+mediapipe for
+# Track A, torch for Track B) live in the isolated FeatureSource packages under
+# plugins/, never here — that is what keeps the venvs from colliding.
+dependencies = [
+    "numpy",
+    "polars",
+    "visualbind",   # Distribution (merge / center / distance) lives in visualstack
+    "visualbus",                       # bus, FileSource, VideoFileSink, control plane, structured log
+    "visualpath-core",                 # Module/Pipeline runtime (wires FaceDetect onto the bus)
+    "visualpath-plugin-face-detect",   # buffalo_l detector (Layer 1, warm)
+]
+
+[project.optional-dependencies]
+# step0b (depth attribution) pulls the torch stack — deliberately NOT a core
+# dep (comment above). `uv sync --extra step0b`; `momentscan attribute` runs
+# as its own process, so the onnx daemon and the torch stage never share one.
+step0b = ["visualpath-plugin-depth"]
+
+[project.scripts]
+momentscan = "momentscan.__main__:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/momentscan"]

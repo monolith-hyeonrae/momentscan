@@ -1,0 +1,26 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "momentscan-features-vjepa"
+version = "0.0.0"
+description = "Track B FeatureSource — frozen V-JEPA 2 embeddings per track tubelet. Isolated venv (torch / V-JEPA stack; conflicts with Track A's onnx/mediapipe; may run on RunPod A100)."
+requires-python = ">=3.11"
+license = { text = "TBD" }
+dependencies = [
+    "momentscan",   # FeatureSource Protocol + Tubelet / TrackFeatures types
+    "numpy",
+]
+
+# The torch / V-JEPA backbone is heavy and GPU-box-specific — keep it out of the
+# default sync so the light core/workspace stays installable. Install on the GPU
+# host: `uv sync --extra backbone` (or pin a CUDA wheel index there).
+[project.optional-dependencies]
+backbone = [
+    "torch",
+    "transformers",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/momentscan_features_vjepa"]

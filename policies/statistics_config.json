@@ -1,0 +1,44 @@
+{
+  "_doc": "Which signal column feeds which per-subject statistics accumulator, plus accumulator hyperparameters. Per redesign-2026-05 §3: cross-lens information must not combine inside an accumulator's update(); only the *Selector* stage may combine across lenses. Each statistics block stands on its own.",
+
+  "signal_statistics": {
+    "_doc": "Per-subject Welford μ/Σ + dynamic-K PCA over the unified signal vector. Includes both MediaPipe and 6DRepNet head-pose columns so downstream selectors can compare/blend the two estimators (cross-signal interaction permitted only at the selector stage). Note: NaN in any column triggers full-frame skip — a side-angle frame where MediaPipe returns no mesh leaves mediapipe__* NaN, so that frame is not accumulated. Resolving this without breaking cov-matrix semantics is a task #26 decision (split accumulator vs NaN-aware Welford).",
+    "columns": [
+      "expression__smile",
+      "face__detection_score",
+      "mediapipe__frontality",
+      "mediapipe__yaw_deg",
+      "mediapipe__pitch_deg",
+      "mediapipe__roll_deg",
+      "head_pose__frontality",
+      "head_pose__yaw_deg",
+      "head_pose__pitch_deg",
+      "head_pose__roll_deg"
+    ],
+    "sliding_window": 30,
+    "variance_target": 0.95
+  },
+
+  "appearance_statistics": {
+    "_doc": "Eigenface bank (mean_face + top-K eigen_faces). Frontal-only. Per the spec decision: MediaPipe is the authoritative source for the *appearance / shape standard* — its 468pt mesh is the most precise on frontal faces, and the mesh failing on side angles works as a natural admission gate (no signal → no contribution). Admission threshold is on mediapipe__frontality; head_pose__frontality is *not* used here (6DRepNet keeps running on side angles, defeating the purpose). Placeholder for visualbind/statistics/appearance.py.",
+    "frontality_source": "mediapipe__frontality",
+    "frontality_threshold": 0.85,
+    "variance_target": 0.95,
+    "crop_size_px": 224
+  },
+
+  "shape_statistics": {
+    "_doc": "Eigen face-landmark (ASM-style). Frontal-only, MediaPipe-sourced (mediapipe__frontality admission, signal/face__landmarks for the mesh). Placeholder for visualbind/statistics/shape.py.",
+    "frontality_source": "mediapipe__frontality",
+    "frontality_threshold": 0.85,
+    "variance_target": 0.95,
+    "landmark_indices": null
+  },
+
+  "category_statistics": {
+    "_doc": "Per-attribute vote counting (hair / accessory / etc.). Frontal-gated for static attributes. No columns wired yet — needs a face-attribute plugin upstream.",
+    "frontality_source": "mediapipe__frontality",
+    "frontality_threshold": 0.85,
+    "attributes": []
+  }
+}

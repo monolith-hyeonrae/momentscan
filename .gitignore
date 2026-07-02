@@ -1,0 +1,39 @@
+# Python
+__pycache__/
+*.py[cod]
+*.so
+*.egg-info/
+.eggs/
+dist/
+build/
+
+# uv / virtualenv
+.venv/
+.python-version
+
+# Tooling caches
+.ruff_cache/
+.mypy_cache/
+.pytest_cache/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# Local-only artifacts — anchored at repo root so the names don't collide
+# with package source directories.
+/stash/
+/clips/
+/data/
+/logs/
+
+# Model checkpoints by extension
+*.onnx
+*.pt
+*.pth
+*.safetensors
+
+# Regenerable pipeline artifacts / external experiment clones
+/output/
+/experiments/IC-Light/

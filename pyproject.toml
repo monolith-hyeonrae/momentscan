@@ -1,0 +1,35 @@
+[tool.uv.workspace]
+members = [
+    "apps/momentscan",                  # core: selection + eval + telemetry (light, shared)
+    "plugins/features-specialist45d",   # Track A FeatureSource (isolated: onnx/mediapipe)
+    "plugins/features-vjepa",           # Track B FeatureSource (isolated: torch/V-JEPA)
+]
+exclude = ["_legacy"]                    # archived pre-reorientation worker (2026-06-08)
+
+[tool.uv.sources]
+# Editable path dependencies on the visualstack repo next door. When
+# visualstack publishes a release, swap these for version specifiers
+# (e.g. `visualbus = "^0.1"`).
+visualbus                         = { path = "../visualstack/visualbus", editable = true }
+visualpath-core                   = { path = "../visualstack/visualpath/core", editable = true }
+visualpath-isolation              = { path = "../visualstack/visualpath/isolation", editable = true }
+visualpath-stash                  = { path = "../visualstack/visualpath/stash", editable = true }
+visualbind                        = { path = "../visualstack/visualbind", editable = true }
+visualpath-plugin-face-detect     = { path = "../visualstack/plugins/face-detect", editable = true }
+visualpath-plugin-depth           = { path = "../visualstack/plugins/depth", editable = true }
+visualpath-plugin-face-expression = { path = "../visualstack/plugins/face-expression", editable = true }
+visualpath-plugin-face-landmarks  = { path = "../visualstack/plugins/face-landmarks", editable = true }
+visualpath-plugin-head-pose       = { path = "../visualstack/plugins/head-pose", editable = true }
+
+# Workspace-internal:
+momentscan                        = { workspace = true }
+momentscan-features-specialist45d = { workspace = true }
+momentscan-features-vjepa         = { workspace = true }
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "RUF"]
+ignore = ["E501"]

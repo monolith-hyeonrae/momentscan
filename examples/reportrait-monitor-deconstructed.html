@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>REPORTRAIT · MONITOR</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Inter:wght@400;500&family=IBM+Plex+Mono:wght@400;500&display=swap');
+:root{
+  --ink:#0A0C10; --ink2:#0D1015; --bone:#EAE7DE; --bone6:rgba(234,231,222,.62);
+  --hair:rgba(234,231,222,.16); --hair2:rgba(234,231,222,.07); --grid:rgba(234,231,222,.045);
+  --ok:#84C98C; --warn:#D6A24E; --err:#E0584B;
+  --disp:'Space Grotesk',sans-serif; --ui:'Inter',sans-serif;
+  --mono:'IBM Plex Mono',ui-monospace,monospace;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{background:var(--ink);color:var(--bone);font-family:var(--ui);line-height:1.45;
+  -webkit-font-smoothing:antialiased}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.disp{font-family:var(--disp)}
+/* technical annotation label */
+.an{font-family:var(--mono);font-size:9.5px;letter-spacing:1.6px;text-transform:uppercase;color:var(--bone6)}
+.dim{color:var(--bone6)}
+.hr{height:1px;background:var(--hair);border:0}
+
+/* frame + registration marks + exposed grid */
+.frame{max-width:1200px;margin:0 auto;position:relative;min-height:100vh;
+  border-left:1px solid var(--hair2);border-right:1px solid var(--hair2);
+  background-image:repeating-linear-gradient(90deg,var(--grid) 0 1px,transparent 1px calc(100%/12));}
+.reg{position:absolute;width:13px;height:13px;z-index:5;pointer-events:none}
+.reg.tl{top:8px;left:8px;border-top:1px solid var(--bone6);border-left:1px solid var(--bone6)}
+.reg.tr{top:8px;right:8px;border-top:1px solid var(--bone6);border-right:1px solid var(--bone6)}
+.reg.bl{bottom:8px;left:8px;border-bottom:1px solid var(--bone6);border-left:1px solid var(--bone6)}
+.reg.br{bottom:8px;right:8px;border-bottom:1px solid var(--bone6);border-right:1px solid var(--bone6)}
+
+/* header */
+.head{display:flex;align-items:flex-end;gap:22px;padding:26px 30px 14px;border-bottom:1px solid var(--hair);flex-wrap:wrap}
+.mark{display:flex;align-items:center;gap:11px}
+.ring{width:16px;height:16px;border:1.5px solid var(--bone);border-radius:50%;position:relative}
+.ring::after{content:"";position:absolute;inset:5px;border-radius:50%;background:var(--bone)}
+.wordmark{font-family:var(--disp);font-weight:700;font-size:15px;letter-spacing:.5px;line-height:1}
+.wordmark small{display:block;font-family:var(--mono);font-weight:400;font-size:9px;letter-spacing:2.5px;color:var(--bone6);margin-top:3px}
+.tabs{display:flex;gap:20px;margin-left:8px}
+.tab{background:none;border:0;cursor:pointer;color:var(--bone6);font-family:var(--mono);font-size:11px;
+  letter-spacing:1px;padding:0 0 6px;position:relative;text-align:left}
+.tab .ix{display:block;font-size:9px;letter-spacing:2px;margin-bottom:3px}
+.tab[aria-selected="true"]{color:var(--bone)}
+.tab[aria-selected="true"]::after{content:"";position:absolute;bottom:-1px;left:0;width:100%;height:2px;background:var(--bone)}
+.tab[aria-selected="true"] .ix{color:var(--bone)}
+.beat{margin-left:auto;display:flex;align-items:flex-end;gap:10px}
+.beat canvas{display:block;width:150px;height:30px}
+.beat .lab{text-align:right}
+.beat .lab b{font-family:var(--mono);font-size:11px;color:var(--ok)}
+
+.stage{padding:0 30px 70px;position:relative}
+.view{display:none}
+.view.on{display:block;animation:fade .4s ease}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+.vhead{display:flex;align-items:baseline;gap:14px;padding:18px 0 4px}
+.vhead h1{font-family:var(--disp);font-weight:500;font-size:15px;letter-spacing:.3px}
+.vhead p{color:var(--bone6);font-size:12px;max-width:560px}
+
+/* vertical edge label */
+.edge{position:absolute;left:6px;top:240px;writing-mode:vertical-rl;transform:rotate(180deg);
+  font-family:var(--mono);font-size:9px;letter-spacing:4px;color:var(--bone6);text-transform:uppercase}
+
+/* ============ V1 CONTROL ROOM ============ */
+.cr{position:relative;padding-top:14px}
+.cr-state{position:relative;padding:30px 0 22px}
+.cr-state .big{font-family:var(--disp);font-weight:700;font-size:clamp(54px,11vw,128px);line-height:.82;
+  letter-spacing:-2px;margin-left:-4px}
+.cr-state .code{position:absolute;top:30px;right:0;text-align:right}
+.cr-rule{height:1px;background:var(--bone);opacity:.5;margin:6px 0 0;width:100%}
+.cr-state .meta{display:flex;gap:34px;margin-top:14px;flex-wrap:wrap}
+.cr-state .meta div b{font-family:var(--mono);font-size:14px}
+/* clock ring top-right overlay */
+.cr-clock{position:absolute;right:0;top:96px;width:132px;height:132px}
+.cr-clock .t{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  font-family:var(--disp);font-weight:500;font-size:26px;letter-spacing:-.5px}
+/* KPI deconstructed row */
+.kpis{display:flex;gap:0;margin-top:30px;border-top:1px solid var(--hair);flex-wrap:wrap}
+.kpi{flex:1;min-width:130px;padding:16px 18px 18px;border-right:1px solid var(--hair);position:relative}
+.kpi:last-child{border-right:0}
+.kpi:nth-child(2){transform:translateY(20px)} .kpi:nth-child(3){transform:translateY(-8px)} .kpi:nth-child(4){transform:translateY(12px)}
+.kpi .n{font-family:var(--disp);font-weight:700;font-size:40px;line-height:1;letter-spacing:-1px}
+.kpi .an{margin-bottom:9px;display:block}
+.cr-low{display:grid;grid-template-columns:1.4fr 1fr;gap:0;margin-top:46px;border-top:1px solid var(--hair)}
+.cr-low>div{padding:18px 0}
+.cr-low .stages{padding-right:30px;border-right:1px solid var(--hair)}
+.cr-low .res{padding-left:30px}
+.srow{display:flex;align-items:center;gap:14px;padding:9px 0;border-bottom:1px solid var(--hair2);font-size:12px}
+.srow .gm{width:8px;height:8px;flex:none}
+.srow .nm{width:120px}.srow .sp{flex:1;text-align:right;font-family:var(--mono);font-size:11px;color:var(--bone6)}
+.linebar{height:1px;background:var(--hair);position:relative;margin:14px 0}
+.linebar i{position:absolute;top:-2px;height:5px;background:var(--bone)}
+.resrow{display:flex;justify-content:space-between;font-family:var(--mono);font-size:12px;padding:7px 0}
+
+/* ============ V2 PIPELINE ============ */
+.pp{position:relative;padding:60px 0 10px;min-height:300px}
+.pp .ghost{position:absolute;top:0;right:10px;font-family:var(--disp);font-weight:700;
+  font-size:160px;line-height:.8;color:var(--hair2);letter-spacing:-6px;pointer-events:none;z-index:0}
+.axis{position:relative;height:170px;margin:40px 0 10px;z-index:1}
+.axisline{position:absolute;top:85px;left:0;right:0;height:1px;background:var(--bone);opacity:.55}
+.flowdot{position:absolute;top:82px;width:7px;height:7px;border:1px solid var(--bone);border-radius:50%;z-index:3}
+.flowdot::after{content:"";position:absolute;inset:1.5px;border-radius:50%;background:var(--bone)}
+.pstage{position:absolute;top:85px;transform:translateX(-50%)}
+.pstage .riser{width:1px;background:var(--hair);position:absolute;left:50%}
+.pstage .gm{width:9px;height:9px;position:absolute;left:50%;top:-4.5px;transform:translateX(-50%);background:var(--bone)}
+.pstage .blk{position:absolute;left:50%;transform:translateX(-50%);width:140px;text-align:center}
+.pstage .nm{font-family:var(--mono);font-size:10px;letter-spacing:1.5px;text-transform:uppercase}
+.pstage .v{font-family:var(--disp);font-weight:700;font-size:26px;line-height:1.1}
+.pstage .x{font-family:var(--mono);font-size:9.5px;color:var(--bone6)}
+.fanout{position:relative;margin-top:18px;padding-top:18px;border-top:1px solid var(--hair)}
+.fanrow{display:grid;grid-template-columns:160px 1fr 90px;align-items:center;gap:14px;padding:8px 0;border-bottom:1px solid var(--hair2);font-size:12px}
+.fanrow .ln{height:1px;background:var(--hair);position:relative}
+.fanrow .ln::after{content:"";position:absolute;right:0;top:-2.5px;width:5px;height:5px;border-radius:50%;background:var(--bone)}
+.fanrow.fail .ln{background:repeating-linear-gradient(90deg,var(--err) 0 4px,transparent 4px 9px)}
+.fanrow.fail .ln::after{background:var(--err)}
+
+/* ============ V3 TIMELINE ============ */
+.tl{position:relative;padding:28px 0 10px;display:grid;grid-template-columns:34% 1fr;gap:0}
+.tl-life{padding:18px 30px 0 0;border-right:1px solid var(--hair)}
+.tl-life .big{font-family:var(--disp);font-weight:700;font-size:46px;line-height:1;color:var(--ok)}
+.tl-life .seis{width:100%;height:50px;display:block;margin:16px 0}
+.spine{position:relative;padding:18px 0 0 40px}
+.spine::before{content:"";position:absolute;left:8px;top:0;bottom:10px;width:1px;background:var(--hair)}
+.ev{position:relative;margin-bottom:6px;cursor:pointer;padding:13px 0;border-bottom:1px solid var(--hair2)}
+.ev .pip{position:absolute;left:-36px;top:18px;width:11px;height:11px;border:1px solid var(--bone);border-radius:50%;background:var(--ink)}
+.ev.ok .pip::after,.ev.warn .pip::after{content:"";position:absolute;inset:3px;border-radius:50%}
+.ev.ok .pip::after{background:var(--ok)} .ev.warn .pip{border-color:var(--warn)} .ev.warn .pip::after{background:var(--warn)}
+.ev.err .pip{border-color:var(--err);transform:rotate(45deg);border-radius:0} 
+.ev.now .pip{border-color:var(--warn)} .ev.now .pip::after{content:"";position:absolute;inset:3px;border-radius:50%;background:var(--warn)}
+.ev .top{display:flex;align-items:baseline;gap:16px}
+.ev .ts{font-family:var(--disp);font-weight:500;font-size:30px;letter-spacing:-1px;line-height:1}
+.ev .jid{font-family:var(--mono);font-size:12px}
+.ev .arts{margin-left:auto;display:flex;gap:7px}
+.art{font-family:var(--mono);font-size:9px;letter-spacing:.5px;color:var(--bone6);display:flex;align-items:center;gap:4px}
+.art .d{width:6px;height:6px;border:1px solid var(--bone6)}
+.art.ok .d{background:var(--ok);border-color:var(--ok)} .art.miss .d{background:var(--err);border-color:var(--err)}
+.art.miss{color:var(--err)}
+.ev .body{max-height:0;overflow:hidden;transition:max-height .3s}
+.ev.open .body{max-height:120px;margin-top:13px}
+.segbar{display:flex;gap:3px;margin-bottom:9px}
+.segbar div{flex:1;height:3px;background:var(--hair)}
+.segbar div.done{background:var(--ok)} .segbar div.now{background:var(--warn)} .segbar div.fail{background:var(--err)}
+.tick{position:relative;height:13px}
+.tick::before{content:"";position:absolute;left:-31px;top:5px;width:4px;height:1px;background:var(--bone6)}
+.tick span{position:absolute;left:-31px;top:9px;font-family:var(--mono);font-size:8px;letter-spacing:2px;color:var(--hair)}
+.evnote{font-size:11.5px;color:var(--bone6);line-height:1.6}
+
+@media(max-width:820px){
+  .cr-clock{position:static;margin-top:18px}.cr-state .code{position:static;text-align:left;margin-top:10px}
+  .cr-low,.tl{grid-template-columns:1fr}.cr-low .stages{border-right:0;border-bottom:1px solid var(--hair);padding-right:0}
+  .cr-low .res{padding-left:0}.kpi{transform:none!important;min-width:45%}
+  .pp .ghost{font-size:90px}.tl-life{border-right:0;border-bottom:1px solid var(--hair);padding-right:0}
+  .edge{display:none}.head{padding:20px}.stage{padding:0 18px 60px}
+}
+@media(prefers-reduced-motion:reduce){*{animation:none!important}}
+</style>
+</head>
+<body>
+<div class="frame">
+  <span class="reg tl"></span><span class="reg tr"></span><span class="reg bl"></span><span class="reg br"></span>
+  <span class="edge">REPORTRAIT — OPERATIONS MONITOR — 981 PARK</span>
+
+  <header class="head">
+    <div class="mark"><span class="ring"></span>
+      <span class="wordmark">REPORTRAIT<small>APPLIED VISION / DAEMON</small></span></div>
+    <div class="tabs" role="tablist">
+      <button class="tab" role="tab" aria-selected="true" data-v="cr"><span class="ix">01</span>컨트롤룸</button>
+      <button class="tab" role="tab" aria-selected="false" data-v="pp"><span class="ix">02</span>파이프라인</button>
+      <button class="tab" role="tab" aria-selected="false" data-v="tl"><span class="ix">03</span>타임라인</button>
+    </div>
+    <div class="beat">
+      <canvas id="seis" width="300" height="60"></canvas>
+      <div class="lab"><span class="an">HEARTBEAT</span><br><b id="hb">● 2S</b></div>
+    </div>
+  </header>
+
+  <div class="stage">
+
+  <!-- ============ CONTROL ROOM ============ -->
+  <section class="view on" id="cr">
+    <div class="vhead"><h1>컨트롤룸</h1><p class="dim">— 상태 우선. 단일 신호와 heartbeat를 가장 크게.</p></div>
+    <div class="cr">
+      <div class="cr-state">
+        <span class="an">S/01 · DAEMON STATE</span>
+        <div class="big">RUNNING</div>
+        <div class="cr-rule"></div>
+        <div class="code an">HEALTHY<br>PID 2241<br>UP 6H12M</div>
+        <div class="meta">
+          <div><span class="an">마지막 신호</span><br><b id="hb2">● 2s ago</b></div>
+          <div><span class="an">운영 윈도우</span><br><b>09:00–19:00 · OPEN</b></div>
+          <div><span class="an">큐 / 처리중</span><br><b>2 / 1</b></div>
+          <div><span class="an">VRAM 추세 8H</span><br><b style="color:var(--ok)">STABLE</b></div>
+        </div>
+        <svg class="cr-clock" id="clockring" viewBox="0 0 132 132">
+          <circle cx="66" cy="66" r="58" fill="none" stroke="rgba(234,231,222,.16)" stroke-width="1"/>
+          <circle cx="66" cy="66" r="58" fill="none" stroke="var(--bone)" stroke-width="1.5"
+            stroke-dasharray="364" stroke-dashoffset="167" transform="rotate(-90 66 66)" stroke-linecap="butt"/>
+          <line x1="66" y1="8" x2="66" y2="16" stroke="var(--bone)" stroke-width="1.5"/>
+        </svg>
+        <div class="cr-clock t mono" style="pointer-events:none"><span id="clk">14:23</span></div>
+      </div>
+
+      <div class="kpis">
+        <div class="kpi"><span class="an">T/01 처리 · TODAY</span><div class="n">47</div></div>
+        <div class="kpi"><span class="an">T/02 성공률</span><div class="n" style="color:var(--ok)">93<small style="font-size:18px">.6%</small></div></div>
+        <div class="kpi"><span class="an">T/03 대기열</span><div class="n">02</div></div>
+        <div class="kpi"><span class="an">T/04 처리중</span><div class="n" style="color:var(--warn)">01</div></div>
+      </div>
+
+      <div class="cr-low">
+        <div class="stages">
+          <span class="an">P/ STAGES</span>
+          <div style="margin-top:12px">
+            <div class="srow"><span class="gm" style="background:var(--ok)"></span><span class="nm">ingest</span><span>47</span><span class="sp">p95 0.4s</span></div>
+            <div class="srow"><span class="gm" style="background:var(--ok)"></span><span class="nm">momentscan</span><span>47</span><span class="sp">p95 1.8s</span></div>
+            <div class="srow"><span class="gm" style="background:var(--ok)"></span><span class="nm">personmemory</span><span>46</span><span class="sp">p95 2.6s · 1누락</span></div>
+            <div class="srow"><span class="gm" style="background:var(--warn)"></span><span class="nm">depict</span><span style="color:var(--warn)">1▸</span><span class="sp">p95 9.1s</span></div>
+            <div class="srow"><span class="gm" style="background:var(--err)"></span><span class="nm">store</span><span style="color:var(--err)">2부분</span><span class="sp">p95 0.7s</span></div>
+          </div>
+        </div>
+        <div class="res">
+          <span class="an">R/ RESOURCES</span>
+          <div style="margin-top:14px">
+            <div class="resrow"><span>GPU</span><span>38%</span></div><div class="linebar"><i style="width:38%"></i></div>
+            <div class="resrow"><span>VRAM</span><span>11.2 / 24G</span></div><div class="linebar"><i style="width:47%"></i></div>
+            <div class="resrow"><span>DISK</span><span>1.4 / 4.0T</span></div><div class="linebar"><i style="width:35%;background:var(--warn)"></i></div>
+            <div class="an" style="margin-top:10px">Δ +6.2GB/D · ~11.5MO 잔여</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ PIPELINE ============ -->
+  <section class="view" id="pp">
+    <div class="vhead"><h1>파이프라인</h1><p class="dim">— 흐름 우선. 측정 축 위의 좌표로서의 스테이지.</p></div>
+    <div class="pp">
+      <span class="ghost">05</span>
+      <span class="an">F/ FLOW · INGEST → STORE</span>
+      <div class="axis" id="axis">
+        <div class="axisline"></div>
+        <div class="flowdot" id="flowdot" style="left:0"></div>
+      </div>
+      <div class="fanout">
+        <span class="an">O/ OUTPUT FANOUT · 산출물 3종 무결성</span>
+        <div style="margin-top:12px">
+          <div class="fanrow"><span class="mono">analysis.json</span><span class="ln"></span><span class="mono" style="text-align:right;color:var(--ok)">✓ 44</span></div>
+          <div class="fanrow"><span class="mono">clip.mp4</span><span class="ln"></span><span class="mono" style="text-align:right;color:var(--ok)">✓ 44</span></div>
+          <div class="fanrow fail"><span class="mono">capture.jpg</span><span class="ln"></span><span class="mono" style="text-align:right;color:var(--err)">✕ 42 · 2miss</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ TIMELINE ============ -->
+  <section class="view" id="tl">
+    <div class="vhead"><h1>타임라인</h1><p class="dim">— 시간 우선. 간헐적 유입 + idle≠dead. 클릭하여 드릴다운.</p></div>
+    <div class="tl">
+      <div class="tl-life">
+        <span class="an">L/ LIVENESS</span>
+        <div class="big">LIVE</div>
+        <canvas class="seis" id="seis2" width="500" height="100"></canvas>
+        <p class="evnote">요청이 없어도 heartbeat 틱이 멈추지 않으면 정상. 마지막 신호 <b class="mono" id="hb3">2s</b> 전.</p>
+      </div>
+      <div class="spine" id="spine"></div>
+    </div>
+  </section>
+
+  </div>
+</div>
+
+<script>
+const RM=matchMedia('(prefers-reduced-motion: reduce)').matches;
+const $=s=>document.querySelector(s);
+
+// tabs
+const tabs=[...document.querySelectorAll('.tab')];
+tabs.forEach(b=>b.onclick=()=>{
+  tabs.forEach(x=>x.setAttribute('aria-selected',x===b));
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('on'));
+  $('#'+b.dataset.v).classList.add('on');
+});
+
+// ---- pipeline stages on axis (zigzag, deconstructed) ----
+const PS=[
+ {nm:'ingest',v:'47',x:'p95 0.4s',up:1,h:42},
+ {nm:'momentscan',v:'47',x:'trig .91',up:0,h:54},
+ {nm:'personmemory',v:'46',x:'2 tracks',up:1,h:48},
+ {nm:'depict',v:'01▸',x:'runpod a40',up:0,h:74,act:1},
+ {nm:'store',v:'44',x:'2 부분실패',up:1,h:42,err:1},
+];
+const axis=$('#axis');
+PS.forEach((s,i)=>{
+  const left=8+i*21;            // % across
+  const g=document.createElement('div'); g.className='pstage'; g.style.left=left+'%';
+  const dir=s.up?-1:1;
+  g.innerHTML=`<div class="riser" style="height:${s.h}px;top:${s.up?-s.h:0}px"></div>
+    <div class="gm" style="${s.act?'outline:1px solid var(--warn);outline-offset:2px':''};${s.err?'background:var(--err)':''}"></div>
+    <div class="blk" style="top:${s.up? -s.h-58 : s.h+10}px">
+      <div class="nm" ${s.act?'style="color:var(--warn)"':s.err?'style="color:var(--err)"':''}>${s.nm}</div>
+      <div class="v">${s.v}</div><div class="x">${s.x}</div></div>`;
+  axis.appendChild(g);
+});
+// flow marker travels the axis
+if(!RM){let t=0;const fd=$('#flowdot');
+  setInterval(()=>{t=(t+0.6)%108; fd.style.left=(t-4)+'%'; fd.style.opacity=(t<2||t>104)?0:1;},40);}
+
+// ---- timeline ----
+const jobs=[
+ {t:'14:22',id:'vid_8841',c:'now', seg:[1,1,1,2,0],a:1,cl:0,cap:0,n:'라이더 2명 · depict 진행 72% · 산출물 미완'},
+ {t:'14:19',id:'vid_8840',c:'ok',  seg:[1,1,1,1,1],a:1,cl:1,cap:1,n:'정상 완료 · 분석/클립/캡처 3종 저장'},
+ {t:'14:11',id:'vid_8839',c:'warn',seg:[1,1,1,1,3],a:1,cl:1,cap:0,n:'저장 부분 실패 — 캡처 write 타임아웃, 재시도 1/3'},
+ {t:'14:02',id:'vid_8838',c:'ok',  seg:[1,1,1,1,1],a:1,cl:1,cap:1,n:'정상 완료'},
+ {t:'13:48',id:'vid_8837',c:'err', seg:[1,1,3,0,0],a:0,cl:0,cap:0,n:'personmemory 다인 귀속 실패 — depth tiebreaker 미해결, DLQ'},
+ {t:'13:31',id:'vid_8836',c:'ok',  seg:[1,1,1,1,1],a:1,cl:1,cap:1,n:'정상 완료'},
+];
+const seg=v=>v===1?'done':v===2?'now':v===3?'fail':'';
+const artx=(v,l)=>`<span class="art ${v?'ok':'miss'}"><span class="d"></span>${l}${v?'':' ✕'}</span>`;
+const indents=[0,18,8,24,0,14]; // deconstructed varied indent
+let html='';
+jobs.forEach((j,k)=>{
+  html+=`<div class="ev ${j.c}" style="margin-left:${indents[k]}px" onclick="this.classList.toggle('open')">
+    <span class="pip"></span>
+    <div class="top"><span class="ts disp">${j.t}</span><span class="jid">${j.id}</span>
+      <span class="arts">${artx(j.a,'A')}${artx(j.cl,'C')}${artx(j.cap,'I')}</span></div>
+    <div class="body">
+      <div class="segbar">${j.seg.map(s=>`<div class="${seg(s)}"></div>`).join('')}</div>
+      <div class="evnote">${j.n}</div></div></div>`;
+  if(k<jobs.length-1) html+=`<div class="tick"><span>· HB ·</span></div>`;
+});
+$('#spine').innerHTML=html;
+
+// ---- heartbeat seismograph (shared geometry) ----
+function scope(cv){
+  const c=cv.getContext('2d'),dpr=devicePixelRatio||1;
+  const W=cv.width=cv.clientWidth*dpr, H=cv.height=cv.clientHeight*dpr;
+  let buf=new Array(120).fill(0),hd=0,ph=0;
+  function bone(){return getComputedStyle(document.body).getPropertyValue('--bone').trim();}
+  function frame(){
+    ph++; let v=0;
+    if(ph%34===0)v=-1; if(ph%34===2)v=1.4;          // heartbeat tick
+    if(ph%97===0)v=-1.7;                              // job event
+    buf[hd]=v; hd=(hd+1)%buf.length;
+    c.clearRect(0,0,W,H); const mid=H/2;
+    c.strokeStyle='rgba(234,231,222,.1)';c.lineWidth=1;
+    c.beginPath();c.moveTo(0,mid);c.lineTo(W,mid);c.stroke();
+    c.strokeStyle=bone();c.lineWidth=1*dpr;c.beginPath();
+    for(let i=0;i<buf.length;i++){const idx=(hd+i)%buf.length;
+      const x=i/buf.length*W, y=mid - buf[idx]*(H*0.34);
+      i?c.lineTo(x,y):c.moveTo(x,y);}
+    c.stroke();
+  }
+  if(RM){buf=buf.map((_,i)=>i%34<2?1.2:0);frame();}
+  else setInterval(frame,46);
+}
+scope($('#seis')); scope($('#seis2'));
+
+// ---- live clock + heartbeat + clock ring ----
+let s=2;
+setInterval(()=>{ s=s>=8?1:s+1;
+  $('#hb').textContent=`● ${s}S`;
+  ['hb2','hb3'].forEach(id=>{const e=$('#'+id);if(e)e.textContent=id==='hb3'?`${s}s`:`● ${s}s ago`;});
+  const d=new Date(); $('#clk').textContent=d.toTimeString().slice(0,5);
+},1000);
+</script>
+</body>
+</html>

@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>reportrait.patch</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@400;500;600&display=swap');
+:root{
+  --bg:#0A0D11; --canvas:#0C0F14; --node:#13181F; --node2:#171D26;
+  --line:#222B36; --text:#D5DDE6; --muted:#7C8A99; --dim:#4E5A67;
+  --teal:#34D8C5; --blue:#5BA8FF; --violet:#A78BFF; --amber:#F4A93C; --coral:#FF6B6B; --ok:#5BE37D;
+  --ui:'Inter',ui-sans-serif,system-ui,-apple-system,sans-serif;
+  --mono:'JetBrains Mono',ui-monospace,'SF Mono',Menlo,monospace;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{background:var(--bg);color:var(--text);font-family:var(--ui);font-size:13px;min-height:100vh}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+
+/* toolbar */
+.bar{display:flex;align-items:center;gap:14px;padding:11px 18px;border-bottom:1px solid var(--line);
+  background:rgba(10,13,17,.85);backdrop-filter:blur(10px);position:sticky;top:0;z-index:40;flex-wrap:wrap}
+.bar .ttl{font-family:var(--mono);font-weight:500;letter-spacing:.4px;color:var(--text)}
+.bar .ttl b{color:var(--teal)}
+.bar .mode{font-size:11px;color:var(--ok);display:flex;align-items:center;gap:6px}
+.bar .mode .d{width:8px;height:8px;border-radius:50%;background:var(--ok);box-shadow:0 0 8px var(--ok);
+  animation:beat 2.2s infinite}
+@keyframes beat{0%{box-shadow:0 0 0 0 rgba(91,227,125,.5)}70%{box-shadow:0 0 0 7px transparent}100%{box-shadow:0 0 0 0 transparent}}
+.legend{margin-left:auto;display:flex;gap:14px;font-size:10.5px;color:var(--muted);flex-wrap:wrap}
+.legend span{display:flex;align-items:center;gap:6px}
+.legend i{width:16px;height:2px;border-radius:2px;display:inline-block}
+
+.lede{padding:16px 18px 4px;max-width:760px}
+.lede h1{font-size:17px;font-weight:600}
+.lede p{color:var(--muted);font-size:13px;margin-top:4px}
+
+/* layout */
+.work{display:grid;grid-template-columns:1fr 300px;gap:0;align-items:start}
+.scroll{overflow-x:auto;overflow-y:hidden}
+.stage{position:relative;width:1560px;height:700px;
+  background:var(--canvas);
+  background-image:radial-gradient(circle,rgba(255,255,255,.045) 1px,transparent 1.4px);
+  background-size:26px 26px;
+  -webkit-mask-image:radial-gradient(130% 110% at 50% 45%,#000 60%,transparent);
+  mask-image:radial-gradient(130% 110% at 50% 45%,#000 60%,transparent)}
+svg.cables{position:absolute;inset:0;width:1560px;height:700px;pointer-events:none;z-index:1}
+.cable{fill:none;stroke-width:2}
+.c-ok{stroke:var(--teal);filter:drop-shadow(0 0 4px rgba(52,216,197,.6))}
+.c-proc{stroke:var(--amber);filter:drop-shadow(0 0 4px rgba(244,169,60,.5))}
+.c-keep{stroke:var(--teal);opacity:.45;stroke-width:1.5}
+.c-param{stroke:var(--amber);opacity:.4;stroke-width:1.4;stroke-dasharray:2 5}
+.c-fail{stroke:var(--coral);stroke-width:1.8;stroke-dasharray:5 6;opacity:.85}
+.flow{stroke-dasharray:7 9;animation:dash 1s linear infinite}
+@keyframes dash{to{stroke-dashoffset:-16}}
+.pulse{fill:#eafffb}
+
+/* nodes */
+.node{position:absolute;z-index:3;background:linear-gradient(180deg,var(--node2),var(--node));
+  border:1px solid var(--line);border-radius:7px;overflow:hidden;cursor:pointer;transition:.16s;
+  box-shadow:0 6px 20px rgba(0,0,0,.35)}
+.node:hover{border-color:var(--teal);transform:translateY(-1px)}
+.node.sel{border-color:var(--teal);box-shadow:0 0 0 1px var(--teal),0 8px 26px rgba(0,0,0,.45)}
+.node .hd{font-family:var(--mono);font-size:11px;letter-spacing:.4px;padding:6px 10px;
+  display:flex;align-items:center;gap:7px;border-bottom:1px solid var(--line);font-weight:500}
+.node .hd .tp{width:9px;height:9px;border-radius:2px}
+.node .bd{padding:9px 11px;display:flex;flex-direction:column;gap:3px}
+.node .bd .big{font-family:var(--mono);font-size:18px;font-weight:700;letter-spacing:-.4px;line-height:1.1}
+.node .bd .sub{font-size:11px;color:var(--muted);font-family:var(--mono)}
+.node.act{animation:nodepulse 1.8s ease-in-out infinite}
+@keyframes nodepulse{0%,100%{box-shadow:0 0 0 0 rgba(244,169,60,.0),0 6px 20px rgba(0,0,0,.35)}
+  50%{box-shadow:0 0 0 3px rgba(244,169,60,.18),0 6px 20px rgba(0,0,0,.35)}}
+/* ports (CircleDot) */
+.port{position:absolute;width:13px;height:13px;border-radius:50%;background:var(--canvas);
+  border:1.5px solid var(--dim);z-index:4;top:50%;transform:translateY(-50%)}
+.port::after{content:"";position:absolute;inset:3.5px;border-radius:50%;background:var(--teal);box-shadow:0 0 5px var(--teal)}
+.port.in{left:-7px} .port.out{right:-7px}
+.port.t{top:-7px;left:50%;transform:translateX(-50%)} .port.b{bottom:-7px;top:auto;left:50%;transform:translateX(-50%)}
+
+/* inspector */
+.insp{border-left:1px solid var(--line);min-height:700px;padding:16px 16px 30px;position:sticky;top:53px;
+  background:var(--bg)}
+.insp .ih{font-family:var(--mono);font-size:13px;color:var(--teal);display:flex;align-items:center;gap:8px;margin-bottom:3px}
+.insp .ik{font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--dim);margin:16px 0 8px}
+.insp .row{display:flex;justify-content:space-between;font-size:12px;padding:5px 0;border-bottom:1px solid var(--line)}
+.insp .row .k{color:var(--muted)} .insp .row .v{font-family:var(--mono)}
+.insp .note{font-size:11.5px;color:var(--muted);line-height:1.6;margin-top:12px;
+  border-left:2px solid var(--teal);padding:2px 0 2px 11px}
+.tag{font-family:var(--mono);font-size:10px;padding:2px 7px;border-radius:99px;border:1px solid var(--line)}
+.t-ok{color:var(--ok);border-color:rgba(91,227,125,.4)} .t-proc{color:var(--amber);border-color:rgba(244,169,60,.4)}
+.t-err{color:var(--coral);border-color:rgba(255,107,107,.4)}
+
+footer{color:var(--dim);font-size:11.5px;text-align:center;padding:18px;border-top:1px solid var(--line)}
+@media(max-width:840px){.work{grid-template-columns:1fr}.insp{position:static;min-height:auto;border-left:0;border-top:1px solid var(--line)}}
+@media(prefers-reduced-motion:reduce){.flow{animation:none}.mode .d,.node.act{animation:none}.pulse{display:none}}
+</style>
+</head>
+<body>
+<div class="bar">
+  <span class="ttl"><b>reportrait</b>.patch</span>
+  <span class="mode"><span class="d"></span>perform mode</span>
+  <div class="legend">
+    <span><i style="background:var(--teal)"></i>정상 흐름</span>
+    <span><i style="background:var(--amber)"></i>처리중</span>
+    <span><i style="background:var(--coral)"></i>실패</span>
+    <span><i style="background:var(--teal);opacity:.45"></i>keep-alive</span>
+  </div>
+</div>
+
+<div class="lede">
+  <h1>패치 — 노드 그래프 (vvvv / TouchDesigner 계열)</h1>
+  <p>파이프라인을 노드 패치로. 케이블을 흐르는 펄스가 데이터 흐름이고, 끊기지 않는 keep-alive 펄스가 idle≠dead를 증명합니다. 노드를 클릭하면 우측 인스펙터로 드릴다운됩니다.</p>
+</div>
+
+<div class="work">
+  <div class="scroll">
+    <div class="stage" id="stage">
+      <svg class="cables" id="cables" viewBox="0 0 1560 700"></svg>
+    </div>
+  </div>
+  <aside class="insp" id="insp"></aside>
+</div>
+
+<footer>네 번째 방향 · 노드 그래프 — CircleDot 포트는 NODE Institute 모티프 차용 · heartbeat = 흐르는 펄스</footer>
+
+<script>
+const RM=matchMedia('(prefers-reduced-motion: reduce)').matches;
+// ---- nodes ----
+const N={
+ heartbeat:{x:40,y:60,w:184,h:92,tp:'var(--teal)',hd:'daemon.heartbeat',big:'RUNNING',bigC:'var(--ok)',sub:'● 2s · alive'},
+ ingest:{x:60,y:330,w:170,h:92,tp:'var(--teal)',hd:'ingest',big:'47',sub:'p95 0.4s'},
+ momentscan:{x:300,y:330,w:184,h:92,tp:'var(--teal)',hd:'momentscan',big:'47',sub:'trig 0.91 · p95 1.8s'},
+ personmemory:{x:560,y:310,w:196,h:100,tp:'var(--blue)',hd:'personmemory',big:'46',bigC:'var(--text)',sub:'2 tracks · 1 누락',subC:'var(--amber)'},
+ gpu:{x:840,y:150,w:168,h:80,tp:'var(--amber)',hd:'monitor.gpu',big:'38%',sub:'vram 11.2G'},
+ depict:{x:840,y:310,w:184,h:100,tp:'var(--violet)',hd:'depict',big:'1 ▸',bigC:'var(--amber)',sub:'runpod a40 · 72%',act:true},
+ store:{x:1110,y:330,w:172,h:96,tp:'var(--amber)',hd:'store',big:'44',sub:'2 부분 · p95 0.7s',subC:'var(--coral)'},
+ analysis:{x:1380,y:240,w:150,h:62,tp:'var(--teal)',hd:'out.analysis',big:'✓',bigC:'var(--ok)',sub:'written'},
+ clip:{x:1380,y:330,w:150,h:62,tp:'var(--teal)',hd:'out.clip',big:'✓',bigC:'var(--ok)',sub:'written'},
+ capture:{x:1380,y:420,w:150,h:62,tp:'var(--coral)',hd:'out.capture',big:'✗',bigC:'var(--coral)',sub:'miss · retry 1/3',subC:'var(--coral)'},
+};
+// ---- inspector detail ----
+const DET={
+ heartbeat:{tag:['t-ok','HEALTHY'],rows:[['상태','RUNNING'],['마지막 신호','2s ago'],['운영 윈도우','09:00–19:00'],['오늘 가동','6h 12m'],['윈도우 밖 알림','억제']],note:'작업과 무관하게 독립적으로 뛰는 신호. 이 펄스가 멈추면 데몬 정지 — 요청이 없는 idle 상태와 구분되는 유일한 근거입니다.'},
+ ingest:{tag:['t-ok','OK'],rows:[['오늘 수집','47'],['p95 지연','0.4s'],['실패','0'],['입력 검증','pass']],note:'라이드 영상 수신 및 검증. 모든 펄스의 출발점.'},
+ momentscan:{tag:['t-ok','OK'],rows:[['처리','47'],['frontal trigger','0.91'],['p95','1.8s'],['skip','0']],note:'정면 포착 트리거 엔진. 트리거 신뢰도 0.91.'},
+ personmemory:{tag:['t-proc','1 누락'],rows:[['처리','46 / 47'],['활성 트랙','2 gaussians'],['귀속 실패','1'],['p95','2.6s']],note:'다인 귀속 1건 실패 — depth tiebreaker 미해결로 DLQ 이동. 2D 위치만으로 라이더 2명 분리 한계.'},
+ gpu:{tag:['t-ok','OK'],rows:[['GPU util','38%'],['VRAM','11.2 / 24 GB'],['온도','61°C'],['8h 추세','안정']],note:'depict로 공급되는 리소스 파라미터. 장시간 구동 VRAM 누수 추세 안정.'},
+ depict:{tag:['t-proc','처리중'],rows:[['처리중','vid_8841'],['백엔드','runpod a40'],['진행','72%'],['p95','9.1s'],['라이더','2명']],note:'context-aware 생성. 가장 무거운 단계 — 처리중 펄스(amber)로 표시. ComfyUI 잡 큐잉.'},
+ store:{tag:['t-err','2 부분'],rows:[['완전 성공','44'],['부분 실패','2'],['p95','0.7s'],['분기','분석·클립·캡처']],note:'산출물 3종 팬아웃의 분기점. 클립·분석은 저장됐으나 캡처 write 타임아웃 — "부분 실패"는 합산 지표에 묻히므로 케이블을 분리해 가시화.'},
+ analysis:{tag:['t-ok','WRITTEN'],rows:[['포맷','analysis.json'],['경로','s3://out/']],note:'분석 파일 구조 저장 완료.'},
+ clip:{tag:['t-ok','WRITTEN'],rows:[['포맷','mp4 clip'],['경로','s3://out/']],note:'하이라이트 클립 저장 완료.'},
+ capture:{tag:['t-err','MISS'],rows:[['포맷','capture.jpg'],['오류','write timeout'],['재시도','1 / 3']],note:'캡처 이미지 누락. store는 "성공"으로 보여도 이 출력만 실패하는 부분 실패 — 이 케이블이 붉어지는 것으로 즉시 포착됩니다.'},
+};
+
+const stage=document.getElementById('stage');
+const svg=document.getElementById('cables');
+
+// render nodes
+for(const id in N){const n=N[id];
+  const el=document.createElement('div');
+  el.className='node'+(n.act&&!RM?' act':'');
+  el.dataset.id=id;
+  el.style.cssText=`left:${n.x}px;top:${n.y}px;width:${n.w}px;height:${n.h}px`;
+  el.innerHTML=`<div class="hd"><span class="tp" style="background:${n.tp}"></span>${n.hd}</div>
+    <div class="bd"><span class="big" style="color:${n.bigC||'var(--text)'}">${n.big}</span>
+    <span class="sub" style="color:${n.subC||'var(--muted)'}">${n.sub}</span></div>
+    <span class="port in"></span><span class="port out"></span>`;
+  stage.appendChild(el);
+  el.onclick=()=>select(id);
+}
+
+// ---- cables ----
+function pOut(n){return {x:n.x+n.w,y:n.y+n.h/2};}
+function pIn(n){return {x:n.x,y:n.y+n.h/2};}
+function pBot(n){return {x:n.x+n.w/2,y:n.y+n.h};}
+function pTop(n){return {x:n.x+n.w/2,y:n.y};}
+function bezH(a,b){const dx=Math.max(50,Math.abs(b.x-a.x)*0.45);
+  return `M${a.x},${a.y} C${a.x+dx},${a.y} ${b.x-dx},${b.y} ${b.x},${b.y}`;}
+function bezV(a,b){const dy=Math.max(40,Math.abs(b.y-a.y)*0.5);
+  return `M${a.x},${a.y} C${a.x},${a.y+dy} ${b.x},${b.y-dy} ${b.x},${b.y}`;}
+
+const CABLES=[
+ ['heartbeat','ingest','c-keep','v',true],
+ ['ingest','momentscan','c-ok','h',true],
+ ['momentscan','personmemory','c-ok','h',true],
+ ['personmemory','depict','c-ok','h',true],
+ ['gpu','depict','c-param','v',false],
+ ['depict','store','c-proc','h',true],
+ ['store','analysis','c-ok','h',true],
+ ['store','clip','c-ok','h',true],
+ ['store','capture','c-fail','h',false],
+];
+let svgInner='';
+let pulseInner='';
+CABLES.forEach((c,i)=>{
+  const [from,to,cls,dir,flow]=c;
+  let a,b;
+  if(dir==='v'){a=pBot(N[from]);b=pTop(N[to]);}
+  else{a=pOut(N[from]);b=pIn(N[to]);}
+  const d=dir==='v'?bezV(a,b):bezH(a,b);
+  const pid='p'+i;
+  const flowCls=(flow&&!RM)?' flow':'';
+  svgInner+=`<path id="${pid}" class="cable ${cls}${flowCls}" d="${d}"/>`;
+  if(flow&&!RM){
+    const dur=(cls==='c-keep')?2.6:(cls==='c-proc'?2.2:1.8);
+    const npulse=(cls==='c-keep')?1:2;
+    for(let k=0;k<npulse;k++){
+      const r=(cls==='c-keep')?2.4:3;
+      pulseInner+=`<circle class="pulse" r="${r}"><animateMotion dur="${dur}s" begin="${k*dur/npulse}s" repeatCount="indefinite"><mpath href="#${pid}"/></animateMotion></circle>`;
+    }
+  }
+});
+svg.innerHTML=svgInner+pulseInner;
+
+// ---- inspector ----
+const insp=document.getElementById('insp');
+function select(id){
+  document.querySelectorAll('.node').forEach(e=>e.classList.toggle('sel',e.dataset.id===id));
+  const n=N[id], d=DET[id];
+  insp.innerHTML=`<div class="ih"><span class="port" style="position:relative;width:12px;height:12px;left:0;top:0;transform:none"></span>${n.hd}</div>
+    <div style="margin:6px 0"><span class="tag ${d.tag[0]}">${d.tag[1]}</span></div>
+    <div class="ik">parameters</div>
+    ${d.rows.map(r=>`<div class="row"><span class="k">${r[0]}</span><span class="v">${r[1]}</span></div>`).join('')}
+    <div class="note">${d.note}</div>`;
+}
+select('store');
+
+// live heartbeat label
+let s=2;
+setInterval(()=>{s=s>=8?1:s+1; const n=N.heartbeat;
+  const el=[...document.querySelectorAll('.node')].find(e=>e.dataset.id==='heartbeat');
+  if(el) el.querySelector('.sub').textContent=`● ${s}s · alive`;
+},1000);
+</script>
+</body>
+</html>
