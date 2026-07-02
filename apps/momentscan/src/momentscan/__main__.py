@@ -36,14 +36,14 @@ from visualbus.structured_log import setup_logging
 
 
 def _cmd_ingest(args: argparse.Namespace) -> int:
-    from momentscan.stages.ingest import ingest_paths
+    from momentscan.ingest import ingest_paths
 
     results = ingest_paths(args.path, args.out, fps=args.fps, trace=not args.no_trace)
     return 0 if all(r.ok for r in results) else 1
 
 
 def _cmd_serve(args: argparse.Namespace) -> int:
-    from momentscan.stages.daemon import DEFAULT_SOCKET, serve
+    from momentscan.daemon import DEFAULT_SOCKET, serve
     from momentscan.stages.detect import DEFAULT_MODEL_ROOT
 
     return serve(
@@ -62,7 +62,7 @@ def _cmd_serve(args: argparse.Namespace) -> int:
 def _call_daemon(args: argparse.Namespace, cmd: str, *, timeout: float | None = 5.0, **kw):
     from visualbus.control import call
 
-    from momentscan.stages.daemon import DEFAULT_SOCKET
+    from momentscan.daemon import DEFAULT_SOCKET
 
     sock = Path(args.socket).expanduser() if args.socket else DEFAULT_SOCKET
     try:

@@ -51,6 +51,13 @@ flavor-1 drift는 무작위가 아니라 홈 없는 도메인의 그림자였다
 import 재작성기가 못 봄, **이동 시 `grep "['\"]momentscan\."` 전수(로거 제외) 필수**.
 검증: 31모듈 import 스모크·check 0err·replay 0drift×2·freshness closure/is_stale 실호출·inspect 렌더.
 
+**+ stages 노드 완전성 (9d96c2c)**: user "stages vs plugins/45D 역할 구분이 구조에서 안 읽힘" →
+진단 = 갈림 기준이 계층이 아니라 의존성 격리 + features/scene은 앱에 노드 파일조차 없음(pipeline
+인라인 래퍼). 해법 = `stages/features.py`·`scene.py` 얇은 어댑터 신설(`ls stages/`=DAG 12노드 전체) ·
+plugins = 격리 모델 백엔드로 선언(plugins/README·stages/__init__·analyzers 노트: 의존성 이음매 +
+FeatureSource 포트 + 서비스 워커 경계) · freshness STAGE_MODULE→어댑터(클로저가 백엔드까지 추적 검증) ·
+앱 __init__ stale JEPA 프레이밍→3제품+레이아웃 지도. vjepa 스텁=예약석 유지(연구 결정이라 정리로 안 지움).
+
 ### 다음: 로직 재개 — 6D-가림 신뢰도
 
 이음매 = `pose.fuse_pose`(docstring에 blind spot 명시해둠) + `id_valid`. 절차: **영향 측정**
