@@ -74,6 +74,14 @@ VAL_EMIT_FLOOR = -0.1    # STEP 3: a highlight is a positive moment — do NOT e
                          # segment whose DELIVERY window is valence-negative (a frowning
                          # scene), even if motion/rarity made it a candidate. Better one
                          # genuine highlight than padding top-k with scowls.
+# 2026-07-03: emission = 맥락적 정합성 — 창이 어느 타겟 축에서든 양성 증거를 내면
+# 방출한다 (joy 축 = valence ≥ floor  OR  thrill/energy 축 = arousal ≥ τ). 절대
+# 기준·사람-baseline 없음. valence 단독 floor는 극단 포즈에서 em_*가 웃음을
+# 음수로 오판하면 그 사람의 최고 순간을 통째로 지웠다 (test_0 s2 head-back
+# laugh: valence −0.28, arousal 86~98백분위 — 코퍼스 스윕이 τ를 앵커).
+# τ=0.30: test_3 지속-찡그림 창 전부 wa≤0.086 (차단 유지), 현행-통과 창 p90=0.169,
+# s2 웃음 최강 창 wa=0.362 (구제). 코퍼스 후보 179 차단 중 10만 구제 (보수).
+AROUSAL_EMIT_TAU = 0.30
 RARITY_WIN_S = 2.0       # E010: state-window grain for the rarity reading
 MAX_PHRASE_S = 12.0      # E010: 제품 제약 — 순간은 챕터가 아니다 (aux 평탄
                          # 신호의 반높이 확장이 36s까지 자라던 문제의 캡)
@@ -369,7 +377,7 @@ def frame_scores(out_root, clip_id: str, track_id: int, *, fps: int = 6) -> dict
 
     return {"fx": fx, "ts": ts, "likeness": likeness, "highlight": highlight,
             "rarity": rarity, "when": when, "rank_sig": rank_sig, "scene": scene,
-            "statevec": Xn, "valence": valence_signed,
+            "statevec": Xn, "valence": valence_signed, "arousal": _emo["arousal"],
             "impact": impact, "which": which, "is_ride": is_ride,
             "portrait": portrait, "yaw": yaw,
             # term breakdowns — the viz cards show WHY, not just the composite
@@ -398,6 +406,7 @@ def _phrase_segments(s: dict, *, fps: int, top_k: int) -> list[dict]:
     when, fx, ts = s["when"], s["fx"], s["ts"]
     hl, which, Xn = s["rank_sig"], s["which"], s["statevec"]
     valence = s.get("valence", np.zeros(len(fx)))
+    arousal = s.get("arousal", np.zeros(len(fx)))
     if np.isfinite(when).sum() < 10:
         return []
     sm = rolling_median(when, 3)                        # kill 1-frame spikes
@@ -461,12 +470,17 @@ def _phrase_segments(s: dict, *, fps: int, top_k: int) -> list[dict]:
     for pi, p in enumerate(phrases):
         if len(picked) >= top_k:
             break
-        # highlight = a positive moment: drop a phrase whose DELIVERY window is
-        # valence-negative (a scowling scene), regardless of the motion/rarity that
-        # made it a candidate. One genuine highlight beats top-k padded with scowls.
-        wv = [valence[j] for j in range(len(fx))
-              if p["start_ms"] <= int(ts[int(fx[j])]) <= p["end_ms"] and np.isfinite(valence[j])]
-        if wv and float(np.mean(wv)) < VAL_EMIT_FLOOR:
+        # 정합성 방출 — 창이 어느 타겟 축에서든 양성 증거를 내는가 (OR):
+        # joy 축 = valence ≥ floor, thrill/energy 축 = arousal ≥ τ. valence 단독
+        # veto는 극단 포즈의 웃음(em_* 오판, arousal은 발화)을 지웠다. 동역학만
+        # 튀고 어느 축도 안 울리는 창(글리치·가림)은 여전히 차단 = anomaly 가드.
+        in_w = [j for j in range(len(fx))
+                if p["start_ms"] <= int(ts[int(fx[j])]) <= p["end_ms"]]
+        wv = [valence[j] for j in in_w if np.isfinite(valence[j])]
+        wa = [arousal[j] for j in in_w if np.isfinite(arousal[j])]
+        joy = not (wv and float(np.mean(wv)) < VAL_EMIT_FLOOR)
+        energy = bool(wa) and float(np.mean(wa)) >= AROUSAL_EMIT_TAU
+        if not joy and not energy:
             continue
         if any(np.sqrt(((p["kind"] - phrases[q]["kind"]) ** 2).sum()) < tau
                for q in picked):
@@ -519,7 +533,7 @@ def _joint_scores(track_scores: dict[int, dict]) -> dict:
     pos = {tid: {int(f): i for i, f in enumerate(s["fx"])}
            for tid, s in track_scores.items()}
     n = len(all_fx)
-    keys = ("when", "rank_sig", "which", "highlight", "valence", "impact", "rarity", "scene")
+    keys = ("when", "rank_sig", "which", "highlight", "valence", "arousal", "impact", "rarity", "scene")
     out: dict = {k: np.full(n, np.nan) for k in keys}
     d = next(iter(track_scores.values()))["statevec"].shape[1]
     sv_sum, sv_n = np.zeros((n, d)), np.zeros(n)
