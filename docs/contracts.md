@@ -85,6 +85,16 @@ stitch는 구성 정책이라 subjects/ 소속, 2026-07-02 이동.)
 "누구인가"도 기준-매칭이다: 기준의 **출처가 공간을 결정** ([`criterion-source.md`](criterion-source.md)의 선정판).
 바인딩 분리 — **규칙은 profile에(도메인당), 쿼리는 Job에(요청당)**.
 
+**앵커≠불변 원칙 (user 정식화, 2026-07-03)**: 전략들은 **앵커(초기 지시)**의 종류일 뿐,
+**유지 근거는 항상 정체성**이다 — 위치/사진/좌석은 "그 순간 누구"를 가리키는 손가락이고,
+닿는 즉시 임베딩으로 변환돼 소멸한다. 불변의 위계: **위치=순간 정보 → face=방문-불변
+(절대-불변 없음** — likeness의 방문-스코프 그대로; 교차-일 참조는 더 약함**)**.
+정체성이 일하는 층 3: 쿼리 해석(Job당 1회, 앵커→subject) · 튜브 유지(트래커+stitch 임베딩) ·
+튜브 수리(끊긴 조각 임베딩 재연결 — s13/s18 자동병합 후보). 배치에선 point→기존 튜브 직행;
+**streaming(LBE)에서 이 순서가 문자 그대로 실행됨**(위치 부트스트랩→임베딩 유지). 이 원칙이
+positional 좌석-금기와 정합: sway/가려짐은 유지-단계 문제인데 위치는 유지에 안 쓰임 — 위치의
+위험은 지시 순간의 bbox 겹침뿐(margin으로 정직).
+
 ```
 SubjectQuery { strategy, params }          진입: momentscan run --subject … → job.json(C1 첫 실체화)
   strategy = seat_rule        위치 규칙 · 정책+depth 증거 · 구현됨(subjects/attribute.py, 기본값)

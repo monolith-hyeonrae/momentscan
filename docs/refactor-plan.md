@@ -86,15 +86,22 @@ pkg ③plugin+bus)=레거시 vpx-plugins 의도를 기계 없이 유지. **지�
 이어서 6D 3축 좌표 정합(ca01590)·3축 불일치 가드도 측정-반증(4c188c3)·인스펙터 정합 가시화(6cce2f2).
 상세=session-resume-point 메모리 (4)~(8).
 
-### ▶ 다음 재개 (2026-07-03~)
+### ~~▶ 다음 재개 (2026-07-03~)~~ → 진행됨 (07-03: C3 정합·채택 3종·SubjectQuery)
 
-**추천 첫 수 = 두 번째 도메인 테스트**: `reference_face` 선정 전략 배선(기계는 있음: ArcFace·stitch)
-+ 직캠/키즈 샘플 영상 1개로 "preset만 갈아 돌아가는가" 실증 → C9 domain profile 빈 슬롯이 실측으로
-채워짐. 계약 기반=docs/contracts.md(C2 SubjectQuery·두-기계 읽기).
-대안 트랙: portrait ② query-synthesis(Blender 렌더·시즌 preset) · highlight.json deliverable 분리.
-watch 소항목: dual_3 s0 mask_frac 0.511 육안 · pitch 사람-의미 부호 시각 고정(coordinate-conventions
-OPEN 항목) · 손-가림 우발 게이트 TODO(피해 미미 측정됨) · data-contract.md stale 수리.
-기회주의 refactor 잔여: rank 4(frame_scores 폐기 스코어러)·8(crop_ref)·9(dead-code)·10(술어 공유)·11(infra).
+07-03 실행분: C3 정합(subjectlet 소비, parse 실버그 수리 8c251ee) · 7단 체인(14b5610) ·
+채택 3종 doctor/원커맨드/report+quiet(44b8f21·a10beef) · **C2 reference_face 구현**(815dfbd,
+τ=0.30 측정) · positional 설계 동결+코퍼스 앵커(751f28b·611ed3d). 상세=session-resume-point (11)~(17).
+
+### ▶ 다음 재개 (2026-07-04~)
+
+**추천 첫 수 = `--subject` 전체 파이프 통합 검증**: face-쿼리 구성 위에서 제품 3종까지 완주
+(attribute+tubelets만 검증됨; scratch에서 `run test_0 --subject face:s18 --force` 유사 경로 →
+그 사람만의 likeness/portrait/highlight 확인 = C2 검증의 마지막 조각, ~10분).
+다음 로직 후보: **미스티치 조각 자동병합**(reference_face가 발굴한 cos 증거 — s13=s18 조각 0.40;
+C2.5 스왑 전 가장 값싼 트래커 개선) · **우발적-가림 게이트**(dual_1=자연 테스트 클립 확정) ·
+highlight.json deliverable 분리 · portrait ② query-synthesis · C9 preset(소비자 대기).
+watch: dual_3 s0 mask 0.511 육안 · pitch 사람-의미 부호 시각 고정 · data-contract.md stale ·
+기회주의 refactor 잔여(rank 4·8·9·10·11).
 
 **운영 제약**: `.venv/bin/python`·`.venv/bin/momentscan` · out=`output/l2`(replay-check 기본이 `output`이라
 필수) · features 재추출 `--fps 6` · pkill 금지(셸 죽음) · 소스 `/home/hyeonrae/Videos/reaction_test/`.
