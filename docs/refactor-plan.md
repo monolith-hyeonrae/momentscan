@@ -101,12 +101,23 @@ job.json·report. 선등록 델타(단독 vs 상대귀속 id경로)=0. **부산�
 가려온 것 → **face-쿼리 팬캠이 보류된 highlight-desirability 이슈가 가장 아픈 유즈케이스**
 ([[emotion-first-class-reading]] 사례 등록; 수정은 기존 결정대로 전용 세션에).
 
+### ~~highlight-desirability 슬라이스 1 (방출)~~ → DONE (2026-07-03, f5e34b0)
+
+user 프레임 정식화(하이라이트=**맥락적 정합성**≠anomaly≠얼굴-baseline; 감정=**궤적 likelihood**)
+위에서 방출 게이트 교체: valence-단독 floor → **타겟-축 양성 증거 OR**(joy=valence≥−0.1 /
+thrill·energy=arousal≥0.30, 코퍼스 302창 스윕 앵커). person-relative 방출은 측정으로 기각
+(test_2 시종-미소 탑승자의 자연-미소 피크 5/5 전멸). 판정: s2-솔로 팬캠 0→3(웃음 f487 복구)·
+test_2 3→3·test_3 1→1(찡그림 wa≤0.086)·12/15 클립 불변·rescore_pairs 클린.
+viz=output/l2/lane_emit_congruence.png. 남은 조각: 파묻힌-입 spurious arousal 방어
+(mouth_vis 판독-가능성 조건화, dual_1 parse 재런 필요) · WHEN/WHICH energy 재편(06-29 설계) ·
+창 형태(onset/release) 방출 · 궤적 표상(장기, substrate 연구 레인).
+
 ### ▶ 다음 재개 (2026-07-04~)
 
-후보(우선순위 없음, 당일 선택): **highlight-desirability 세션**(energy 방출·person-relative —
-위 발견으로 근거 강화; 06-29 설계 자료 있음) · **미스티치 조각 자동병합**(s13=s18 cos 0.40 증거;
+후보(우선순위 없음, 당일 선택): **미스티치 조각 자동병합**(s13=s18 cos 0.40 증거;
 C2.5 스왑 전 가장 값싼 트래커 개선) · **우발적-가림 게이트**(dual_1=자연 테스트 클립) ·
-highlight.json deliverable 분리 · portrait ② query-synthesis · C9 preset(소비자 대기).
+highlight desirability 후속(위 남은 조각) · highlight.json deliverable 분리 ·
+portrait ② query-synthesis · C9 preset(소비자 대기 — 방출 τ·CLIP_LEN이 preset 후보 파라미터).
 watch: dual_3 s0 mask 0.511 육안 · pitch 부호 시각 고정 · data-contract.md stale ·
 기회주의 refactor 잔여(rank 4·8·9·10·11).
 
