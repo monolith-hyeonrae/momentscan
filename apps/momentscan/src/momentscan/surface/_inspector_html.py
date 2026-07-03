@@ -411,19 +411,23 @@ function draw(){
    if(pR&&pR.rep){const t=pR.rep.terms||{};
      html+=sbar(`rep f${pR.rep.frame_idx} · obj ${nf(pR.rep.objective)} = front ${nf(t.front)} · sharp ${nf(t.sharp)} · `
        +chip('warm '+nf(t.warm),'#d6a04b')+`(qd ${t.query_dist==null?'—':nf(t.query_dist)}) · admit ${pR.n_admit}/${pR.n_total}`,'#d6a04b');}
-   const yaw=val('yaw'),pit=val('pitch'),rol=val('roll'),bl=val('blink'),y6=val('yaw6d');
+   const yaw=val('yaw'),pit=val('pitch'),rol=val('roll'),bl=val('blink'),y6=val('yaw6d'),p6=val('pit6d'),r6=val('rol6d');
    const bad=(t,b)=>`<span style="color:${b?'#f66':'#bbb'}">${t}</span>`;
    const view=(s.setviews||{})[f];
    // the verdict above is now authoritative (no drift), so the set view just names
    // which bin served this frame — no contradiction to flag.
    if(view)html+='<br>set view: '+chip('◆ '+view,view==='side'?'#22ddee':'#d6a04b');
    if(yaw==null && y6!=null){
-     // MediaPipe blank (profile) — the 6DRepNet yaw is the evidence that admitted
+     // MediaPipe blank (profile) — the 6DRepNet triplet is the evidence that admitted
      // this side view; show it where the mp pose triplet would otherwise be empty.
-     html+='<br>'+chip('yaw6d '+nf(y6,0)+'° · profile (MediaPipe NaN)','#d6a04b')+' · blur '+nf(val('blur'),0);
+     html+='<br>'+chip(`6d y${nf(y6,0)} p${nf(p6,0)} r${nf(r6,0)}° · profile (MediaPipe NaN)`,'#d6a04b')+' · blur '+nf(val('blur'),0);
    }else{
+     // both backends live → per-axis Δ = the ALIGNMENT check at the playhead (all
+     // three axes adapter-aligned 2026-07-02; a persistently large signed Δ would
+     // mean convention drift, not noise).
+     const d6=(y6!=null&&p6!=null&&r6!=null)?` <span style="color:#888">·6dΔ y${nf(y6-yaw,0)} p${nf(p6-pit,0)} r${nf(r6-rol,0)}</span>`:'';
      html+='<br>'+bad('yaw'+nf(yaw,0),Math.abs(yaw)>=20)+' '+bad('pit'+nf(pit,0),Math.abs(pit)>=20)+' '+bad('rol'+nf(rol,0),Math.abs(rol)>=20)
-        +(y6!=null?' <span style="color:#888">·6d '+nf(y6,0)+'</span>':'')
+        +d6
         +' · '+bad('blink '+nf(bl),bl>=0.45)+' · blur '+nf(val('blur'),0);
    }
  }

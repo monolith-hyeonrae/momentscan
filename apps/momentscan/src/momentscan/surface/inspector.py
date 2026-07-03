@@ -149,7 +149,11 @@ def render_tubelet_inspect(out_root: str | Path, clip_id: str, *,
     _hq = read_headpose(out_root, clip_id)
     if _hq is not None:
         for r in _hq.iter_rows(named=True):
-            hp_map[(r["track_id"], r["frame_idx"])] = r["yaw"]
+            hp_map[(r["track_id"], r["frame_idx"])] = (r["yaw"], r["pitch"], r["roll"])
+
+    def _hp6(sid, f, axis):
+        v = hp_map.get((int(sid), int(f)))
+        return v[axis] if v is not None else np.nan
     # gate verdict per frame — read from the portrait engine's gate_trace (the REAL
     # decision). The inspector MEASURES (the channels below) but must NOT re-decide:
     # the old inline re-gate here drifted from portrait.py (said "REJECT blur" on a
@@ -329,12 +333,15 @@ def render_tubelet_inspect(out_root: str | Path, clip_id: str, *,
             ch("self_dev", "identity", iddev, [90, 220, 220]), ch("det", "identity", detsc, [150, 150, 150], 0, 1),
             ch("yaw", "pose", yaw, [90, 200, 90], -60, 60), ch("pitch", "pose", pit, [80, 170, 255], -45, 45),
             ch("roll", "pose", rol, [220, 160, 80], -45, 45),
-            # 6DRepNet yaw (full range) — overlays the same axis as `yaw`: where
-            # both exist they should track (adapter aligned); where MediaPipe blanks
-            # on a profile, this continues to ±90, the visible evidence behind a side
-            # portrait. (6d pitch/roll convention unvalidated → yaw only, honest.)
-            ch("yaw6d", "pose", [hp_map.get((int(sid), int(f)), np.nan) for f in fx],
-               [210, 130, 230], -90, 90),
+            # 6DRepNet channels (magenta family) — overlay the pose lane: where both
+            # backends exist the curve PAIRS should track with the SAME SIGN = the
+            # visible proof of the 3-axis adapter alignment (2026-07-02: raw 6D was a
+            # full mirror of MP euler; before, only yaw was flipped). Where MediaPipe
+            # blanks on a profile, yaw6d continues to ±90 — the evidence behind a
+            # side portrait. pit6d/rol6d share pitch/roll's scale for direct overlay.
+            ch("yaw6d", "pose", [_hp6(sid, f, 0) for f in fx], [210, 130, 230], -90, 90),
+            ch("pit6d", "pose", [_hp6(sid, f, 1) for f in fx], [160, 120, 255], -45, 45),
+            ch("rol6d", "pose", [_hp6(sid, f, 2) for f in fx], [255, 120, 180], -45, 45),
             ch("blink", "expression", blink, [255, 140, 70], 0, 1), ch("smile", "expression", smile, [110, 230, 130], 0, 1),
             ch("jaw", "expression", jaw, [200, 130, 90], 0, 1), ch("expr_mag", "expression", exprm, [200, 130, 230]),
             ch("bright", "lighting", bright, [120, 220, 220], 0, 255), ch("harsh", "lighting", harsh, [90, 150, 240]),
