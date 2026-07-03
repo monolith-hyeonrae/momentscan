@@ -42,6 +42,25 @@ Result {
 }
 ```
 
+## 데이터흐름 체인 (가로축) — 7단, `ls`와 1:1 (2026-07-02, user 정식화)
+
+```
+Video ─▶ tubelet ─▶ subjectlet ─▶ 복합 신호 ─▶ 해석 ─▶ 판정 ─▶ 3 제품화
+(Media)                           (specialist)  (domain)  (gates)
+media.py  subjects/   subjects/    extraction/   domains/  gates.py  products/
+ingest    tubelets    +crops(픽셀)  +plugins/     pose·emotion  사다리→   likeness
+          (튜브 행)    +attribute    specialist45d geometry·    gate_trace portrait
+                      (role·증거)                 signals                highlight
+```
+
+- **부트스트랩 예외**: detect·landmarks(관측)는 tubelet **앞**에서 돈다 — 구성 자체가 값싼
+  관측(임베딩·depth)을 소비. 체인의 "복합 신호"는 subjectlet **위**에서 도는 풍부한 신호
+  (전부 크롭트랙 소비; C3 정합 8c251ee로 선언이 아니라 사실이 됨).
+- **scene 예외**: DINO scene은 클립-레벨·subject-무관 — subjectlet을 우회하는 유일한
+  흐름 (highlight의 맥락 측 입력).
+- 렌즈 직교: 이 체인=데이터가 **어떻게 흐르나**(가로) · criterion-source=제품별
+  **무엇을 묻나**(세로) · 두-기계 읽기=이 체인의 subjectlet 지점에 그은 가장 굵은 절단선.
+
 ## 두-기계 읽기 — 이 경계가 momentscan의 정체성을 가른다 (2026-07-02)
 
 ```
