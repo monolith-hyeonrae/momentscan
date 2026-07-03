@@ -65,7 +65,7 @@ ANALYZERS: tuple[Analyzer, ...] = (
              "selection", ("crop track s{sid}.mp4", "manifest.json"), "crops/", ("tubelets",),
              "data-retention: source expires; crops persist", needs_source=True),
     Analyzer("parse", "stage", "landmark soft-Gaussian quality + SegFormer occlusion",
-             ("crops", "landmarks", "detect"),
+             ("crops", "landmarks", "tubelets"),
              "region", ("skin_entropy", "skin_lum", "face_micro", "eye_lum_rel",
                         "mouth_vis", "glasses_frac", "hat_frac", "cloth_frac"),
              "parse.parquet", ("crops", "landmarks", "detect"),
@@ -179,11 +179,10 @@ PRODUCTS: tuple[Product, ...] = (
     Product(
         "likeness", "visit-invariant ID (오늘 이 사람) — distribution + exemplar picks", "integrate",
         (("landmarks", ("blendshapes", "transform")),
-         ("detect", ("embedding",)),
+         ("tubelets", ("embedding",)),   # C3: the subjectlet carries the embeddings (was raw detections)
          ("features", ("em_happy", "au12_lip_corner", "au25_lips_part", "head_yaw_dev", "head_pitch", "face_blur")),
          ("parse", ("glasses_frac", "hat_frac", "cloth_frac")),
-         ("fashion", ("eyewear", "headwear", "covering")),
-         ("tubelets", ())),
+         ("fashion", ("eyewear", "headwear", "covering"))),
         ("likeness", "select"),
         ("likeness.json", "candidates.jsonl[likeness]"),
         "molten", "two homes: appearance.py=distribution reading, select.py=exemplar picks (distinct readings, rename pending — NOT a split to consolidate yet)",

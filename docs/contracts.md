@@ -45,11 +45,13 @@ Result {
 ## 두-기계 읽기 — 이 경계가 momentscan의 정체성을 가른다 (2026-07-02)
 
 ```
-① Subject Constitutor            subjectlet             ② Subject Analyzer
-   비디오 → 대상을 세운다      ──  경계 묶음  ──▶        그 사람을 읽는다
-   detect·stitch·attribute·      tube + pixels(crops)     extraction → gates →
-   crops (subjects/)             + role + 증거{conf,valid} 3 readings (products/)
+관측(입력)          ① Subject Constitutor        subjectlet            ② Subject Analyzer
+detect·landmarks →    대상을 세운다 (subjects/)  ── 경계 묶음 ──▶       그 사람을 읽는다
+(extraction/,         stitch·attribute·          tube + pixels(crops)   extraction 신호 → gates
+ 관측 전문분야)        tubelets·crops              + role + 증거          → 3 readings (products/)
 ```
+(detect는 ①의 멤버가 아니라 **관측 입력** — 멤버십은 extraction의 "신호 전문분야" 테스트가 우선.
+stitch는 구성 정책이라 subjects/ 소속, 2026-07-02 이동.)
 
 - **subjectlet** = 경계를 건너는 묶음의 이름 (tubelet=튜브 행만; 실제 계약물은
   튜브+크롭트랙+role+증거). ②는 subjectlet의 순수 소비자 — WHO를 재론하지 않는다.

@@ -33,7 +33,7 @@ import cv2
 import numpy as np
 
 from momentscan.subjects.crops import portrait_box
-from momentscan.stash import clip_dir, read_detections, read_landmarks, write_parse
+from momentscan.stash import clip_dir, read_landmarks, read_tubelets, write_parse
 
 log = logging.getLogger("momentscan.parse")
 
@@ -144,10 +144,15 @@ def extract_parse(out_root, clip_id: str, *, fps: int = 6) -> dict:
 
     oval_idx = _oval_idx()
     lm = read_landmarks(out_root, clip_id)
-    det = read_detections(out_root, clip_id)
+    # bbox from TUBELETS (the subjectlet, subject-keyed) — NOT raw detections.
+    # detections.track_id is the raw pre-stitch tracker id; keying on it silently
+    # lost every stitched-fragment frame (test_0 s2: 522/933 frames = 100% null
+    # quality — the exact fault class the C3 boundary contract names). tubelets
+    # carries the same bbox values (verified identical) under the subject id.
+    tub = read_tubelets(out_root, clip_id)
     LM = {(r["track_id"], r["frame_idx"]): r for r in lm.iter_rows(named=True)} if lm is not None else {}
     DB = {(r["track_id"], r["frame_idx"]): r["bbox"]
-          for r in det.iter_rows(named=True)} if det is not None else {}
+          for r in tub.iter_rows(named=True)} if tub is not None else {}
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
     model = SegformerForSemanticSegmentation.from_pretrained(MODEL).to(device).eval()

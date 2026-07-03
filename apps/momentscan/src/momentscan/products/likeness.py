@@ -29,7 +29,7 @@ import numpy as np
 import polars as pl
 
 from momentscan.stash import (
-    read_detections, read_features, read_gate_trace, read_landmarks, read_parse,
+    read_features, read_gate_trace, read_landmarks, read_parse, read_tubelets,
     read_fashion, write_appearance,
 )
 from momentscan.domains.pose import CAMERA_FRONTAL_DEG
@@ -290,9 +290,13 @@ def _face_ids(out_root, clip_id: str,
     (test_0 coherence 0.747→0.900). Per subject: frontal if ≥ FACE_ID_MIN_FRONTAL frames,
     else the broader `valid` set (don't starve a mostly-profile track). No gate_trace →
     all embeddings. (The misdetect/occlusion exclusion of the old valid-filter is kept:
-    frontal ⊂ valid, and the valid fallback still drops invalid frames.)"""
+    frontal ⊂ valid, and the valid fallback still drops invalid frames.)
+
+    Embeddings come from TUBELETS (the subjectlet, C3) — not raw detections, whose
+    raw-vs-subject id split forces re-litigating WHO here and whose bystander/ghost
+    tracks were centroided for nothing (rider frame sets verified identical)."""
     try:
-        df = read_detections(out_root, clip_id)
+        df = read_tubelets(out_root, clip_id)
     except Exception:
         return {}
     keep: dict[int, set[int]] | None = None
@@ -303,13 +307,13 @@ def _face_ids(out_root, clip_id: str,
     for r in df.iter_rows(named=True):
         if r["embedding"] is None:
             continue
-        sid = int(r["subject_id"])
+        sid = int(r["track_id"])
         if keep is not None and sid in keep and int(r["frame_idx"]) not in keep[sid]:
             continue                                   # not a frontal-core (or valid-fallback) frame → skip
         v = np.asarray(r["embedding"], dtype=np.float32)
         n = float(np.linalg.norm(v))
         if n > 0:
-            by_sid.setdefault(r["subject_id"], []).append(v / n)
+            by_sid.setdefault(sid, []).append(v / n)
     out: dict[int, dict] = {}
     for sid, vecs in by_sid.items():
         mat = np.stack(vecs)
