@@ -42,6 +42,23 @@ Result {
 }
 ```
 
+## 두-기계 읽기 — 이 경계가 momentscan의 정체성을 가른다 (2026-07-02)
+
+```
+① Subject Constitutor            subjectlet             ② Subject Analyzer
+   비디오 → 대상을 세운다      ──  경계 묶음  ──▶        그 사람을 읽는다
+   detect·stitch·attribute·      tube + pixels(crops)     extraction → gates →
+   crops (subjects/)             + role + 증거{conf,valid} 3 readings (products/)
+```
+
+- **subjectlet** = 경계를 건너는 묶음의 이름 (tubelet=튜브 행만; 실제 계약물은
+  튜브+크롭트랙+role+증거). ②는 subjectlet의 순수 소비자 — WHO를 재론하지 않는다.
+- **고장 이분법**: 출력 이상 → 첫 질문 = "subjectlet이 옳은가(딴 사람·트랙 깨짐·크롭 불량)=①"
+  vs "읽기가 옳은가(게이트·랭킹·기준)=②". 인스펙터의 FRAG/stitch/attribution 증거가 ① 담당.
+- 유즈케이스 정합: 직캠=①만으로 제품(팬캠) · race981=①+② · LBE=①의 streaming 판.
+  향후 서비스 워커 분리 경계 후보도 이 절단면.
+- 정체성 문장: *momentscan은 영상에서 사람을 구성하고(constitute), 그 사람을 읽는다(read).*
+
 ## C2 — SubjectQuery (0번째 쿼리)
 
 "누구인가"도 기준-매칭이다: 기준의 **출처가 공간을 결정** ([`criterion-source.md`](criterion-source.md)의 선정판).
