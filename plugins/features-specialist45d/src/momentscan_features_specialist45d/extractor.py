@@ -163,6 +163,7 @@ def extract_clip(video_path: str | Path, out_root: str | Path, *, fps: int | Non
                     })
         finally:
             src.close()
+            pose_est.close()   # explicit mediapipe teardown (silences the exit-time __del__ TypeError)
 
         path = write_features(out_root, clip_id, "A", rows) if rows else None
         lm_path = write_landmarks(out_root, clip_id, lm_rows) if lm_rows else None

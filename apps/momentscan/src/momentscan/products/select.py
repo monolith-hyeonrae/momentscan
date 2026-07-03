@@ -97,7 +97,9 @@ def rolling_median(x: np.ndarray, win: int) -> np.ndarray:
     out = np.empty_like(x)
     h = win // 2
     for i in range(len(x)):
-        out[i] = np.nanmedian(x[max(0, i - h): i + h + 1])
+        w = x[max(0, i - h): i + h + 1]
+        # all-NaN window → NaN, without numpy's RuntimeWarning (burn-in edges hit this)
+        out[i] = np.nan if np.isnan(w).all() else np.nanmedian(w)
     return out
 
 

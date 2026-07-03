@@ -194,7 +194,26 @@ def _cmd_tubelets(args: argparse.Namespace) -> int:
 
 
 def _cmd_run(args: argparse.Namespace) -> int:
+    import contextlib
+    import io
     import logging
+    import os
+    import time as _time
+    import warnings
+
+    # QUIET BY DEFAULT — the first-15-minutes log is the product's face. Everything
+    # useful still lands in run.json / the structured logs; this only silences the
+    # third-party chatter on the happy path (model-load progress bars, provider
+    # dumps, mediapipe init spew, deprecation warnings from vendored call sites).
+    os.environ.setdefault("HF_HUB_DISABLE_PROGRESS_BARS", "1")
+    os.environ.setdefault("TRANSFORMERS_VERBOSITY", "error")
+    os.environ.setdefault("TQDM_DISABLE", "1")          # transformers weight-load bars
+    os.environ.setdefault("GLOG_minloglevel", "2")      # mediapipe/absl I/W lines
+    os.environ.setdefault("TF_CPP_MIN_LOG_LEVEL", "3")  # TFLite XNNPACK info line
+    warnings.filterwarnings("ignore", category=FutureWarning)   # skimage via insightface
+    # accepted residue: ~8 absl C++ init lines from mediapipe (pre-InitializeLog);
+    # suppressing those needs fd-level stderr redirection — more invasive than the noise.
+
     from momentscan.pipeline import run_pipeline
     from momentscan.stash import detections_path
 
@@ -202,17 +221,24 @@ def _cmd_run(args: argparse.Namespace) -> int:
     # source=itself; when detections are missing and a source is known, run detect
     # INLINE (one-shot warm_init, no daemon needed) before the stage runner. The
     # daemon stays the operator path (warm, many clips); this is the first-15-minutes path.
+    logging.disable(logging.INFO)   # cascade banners + stage lines ARE the digestible log
     p = Path(args.clip_id).expanduser()
     if p.suffix.lower() in (".mp4", ".mov", ".mkv", ".avi") and p.exists():
         args.source, args.clip_id = str(p), p.stem
     if args.source and not detections_path(args.out, args.clip_id).exists():
-        print(f"── detect (inline warm, {args.clip_id}) — no daemon needed for a one-shot ──")
         from momentscan.extraction.detect import process_clip, warm_init
-        process_clip(warm_init(), args.source, args.out, fps=args.fps)
-
-    # the cascade banners + per-stage health lines (run_pipeline watch) ARE the digestible
-    # run-log; silence the verbose per-stage JSON (it persists to run.json regardless).
-    logging.disable(logging.INFO)
+        try:
+            import onnxruntime as _ort
+            _ort.set_default_logger_severity(3)
+        except Exception:
+            pass
+        _t0 = _time.perf_counter()
+        with contextlib.redirect_stdout(io.StringIO()):   # insightface provider dumps
+            warm = warm_init()
+        r = process_clip(warm, args.source, args.out, fps=args.fps)
+        print(f"═══ ⓪ DETECT (inline warm — no daemon for a one-shot) ═══\n"
+              f"  detect      ✓ {int((_time.perf_counter() - _t0) * 1000):>6d}ms  "
+              f"n_frames={r.get('frames_written', '?')} · subjects={r.get('n_subjects', '?')}")
     result = run_pipeline(args.out, args.clip_id, source=args.source, fps=args.fps,
                           force=args.force, only=args.only)
     ran = sorted(result["ran"], key=lambda x: x.get("ms") or 0, reverse=True)

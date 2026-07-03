@@ -69,6 +69,15 @@ class PoseEstimator:
     def blendshape_names(self) -> tuple[str, ...] | None:
         return self._bs_names
 
+    def close(self) -> None:
+        """Release the mediapipe task graph explicitly — relying on __del__ at
+        interpreter teardown raises a noisy (harmless) TypeError from mediapipe's
+        dispatcher once its module globals are already torn down."""
+        try:
+            self._lm.close()
+        except Exception:
+            pass
+
     def __call__(self, crop_bgr: np.ndarray) -> dict | None:
         """→ {pose: (yaw,pitch,roll) deg, landmarks: (478,3) crop-normalized,
         transform: (4,4) canonical→camera} or None (side face → caller's NaN).
