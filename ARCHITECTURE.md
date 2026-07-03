@@ -1,9 +1,10 @@
 # momentscan 아키텍처 — 구조 계약의 단일 진실
 
 > 도메인/제품 정의는 [`docs/products.md`](docs/products.md), 기준-출처 렌즈는
-> [`docs/criterion-source.md`](docs/criterion-source.md). 이 문서는 **코드가 왜
-> 이렇게 배치되어 있고, 새 코드가 어디에 앉아야 하는가**의 단일 진실이다.
-> 각 패키지 `__init__.py`는 여기를 가리키는 한두 줄만 갖는다.
+> [`docs/criterion-source.md`](docs/criterion-source.md), **경계 계약의 한눈 지도는
+> [`docs/contracts.md`](docs/contracts.md)** (Job/Result·SubjectQuery·tubelets 경계 등).
+> 이 문서는 **코드가 왜 이렇게 배치되어 있고, 새 코드가 어디에 앉아야 하는가**의
+> 단일 진실이다. 각 패키지 `__init__.py`는 여기를 가리키는 한두 줄만 갖는다.
 
 ## 지배 원칙 — /dev 원칙 (구조 투명성)
 
