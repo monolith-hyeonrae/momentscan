@@ -32,15 +32,23 @@ Job {
   fps                                분석 fps (detect와 일치 필수, 현행 6)
   subject_query: SubjectQuery        C2 — 누구를 대상으로 (생략 = profile의 규칙)
   domain_profile: str                C9 — preset 이름 (현행 암묵값 = "race981")
+  products: [str]                    단계 배포 스위치 (생략 = 열린 것 전부) — 아래 참조
 }
 Result {
   clip_id · ok · failure(스테이지·사유)
   likeness.json                      방문-스코프 외형 ID (riders[].{분포·face_id·fashion})
   portraits/*.png + portrait.json    쿼리-추출 대표컷 + 뷰 세트
-  highlights/*.mp4 (+ candidates)    세그먼트 클립  ⚠highlight.json 분리 예정
+  highlight.json + highlights/*.mp4  세그먼트 기록 + 클립 (7d96185 졸업 — 제품별 산출물)
   provenance.json                    source 지문·처리시각 (audit·멱등성)
 }
 ```
+
+**단계 배포 (user 결정 2026-07-03)**: 세 제품 동시 오픈하지 않는다 — **likeness 확신
+→ 1차 배포·알파테스트 → portrait → highlight 순차 오픈**. Result는 *열린* 제품의
+산출물만 노출(egress = analyzers.PRODUCTS.egress의 부분집합); 내부 스테이지는 노출과
+별개로 돈다(likeness가 portrait 스테이지의 gate_trace `valid`를 소비하듯,
+**스테이지 의존 ≠ 제품 노출**). 제품마다 자기 산출물(likeness.json / portrait.json /
+highlight.json)을 가진 구조가 이 스위치의 전제.
 
 ## 데이터흐름 체인 (가로축) — 7단, `ls`와 1:1 (2026-07-02, user 정식화)
 

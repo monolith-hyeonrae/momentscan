@@ -112,9 +112,34 @@ viz=output/l2/lane_emit_congruence.png. 남은 조각: 파묻힌-입 spurious ar
 (mouth_vis 판독-가능성 조건화, dual_1 parse 재런 필요) · WHEN/WHICH energy 재편(06-29 설계) ·
 창 형태(onset/release) 방출 · 궤적 표상(장기, substrate 연구 레인).
 
-### ▶ 다음 재개 (2026-07-04~)
+### ▶ 다음 재개 (2026-07-04~) — 척추 = 단계 배포 (user 결정 2026-07-03)
 
-**VMR 레인 (user 확정 2026-07-03: "VMR 관점에서의 시도도 해봐야겠다")** — highlight의 메인
+**"세 제품 출력에 아직 확신이 없다 → likeness 먼저 확실히 해서 1차 배포·알파테스트,
+portrait/highlight는 추가 연구 후 순차 오픈."** 이 결정이 아래 모든 후보의 우선순위를
+정렬한다 (contracts.md C1에 products 스위치 등재; 스테이지 의존 ≠ 제품 노출).
+
+**Phase 1 — likeness 확신 + 1차 배포 (지금의 주전선):**
+1. **미스티치 조각 자동병합** (s13=s18 cos 0.40) — likeness 품질에 직결(조각나면 n_obs
+   쪼개지고 face_id 오염). 기존 후보에서 Phase 1로 승격.
+2. **코퍼스 전수 육안 감사**: 15클립 전 riders의 face_id coherence·n_obs·fashion 리딩 —
+   mask_1/2·cap_1·international_1·dual_*이 자연 에지 케이스. 판정 카드로 남김.
+3. **likeness.json 스키마 동결 → C-계약 승격** (data-contract.md stale 해소 겸;
+   "인터페이스 정의 빠른 공유 의무"의 실체).
+4. **실패 모드의 정직한 표면화**: n_obs 부족·가림-지배·스티치 잔여 의심 시 확신 대신
+   불확실성 필드 — 알파에서 신뢰를 깎는 건 틀린 답이 아니라 *자신만만한* 틀린 답.
+5. **배포 이음매**: Job.products 스위치 구현(run_pipeline only-클로저 재활용) + egress 필터
+   + 알파 형태 결정(서비스 연동 vs CLI+report 배포판 — user 결정 대기).
+6. **알파 피드백 계기**: 무엇을 물을지 설계 (pairwise 원칙 — "이 요약이 그 사람 같나").
+
+**Phase 2 — portrait 오픈 (알파 진행과 병행 연구):** portrait ② query-synthesis ·
+계절/사용자 쿼리 preset · 우발적-가림 게이트(dual_1) — 굴욕샷 방어가 곧 제품 신뢰.
+
+**Phase 3 — highlight 오픈 (연구 밀도 최대):** VMR 레인(아래) · desirability 후속
+(mouth_vis 조건화·WHEN/WHICH energy 재편·창 형태 방출) · C9 preset(방출 τ·CLIP_LEN).
+
+---
+
+**VMR 레인 (user 확정 2026-07-03: "VMR 관점에서의 시도도 해봐야겠다" — Phase 3 연구 본체)** — highlight의 메인
 방법론 = Zero-Shot Video Moment Retrieval (memory core-criterion-source에 정식화; 언어 쿼리로
 순간 검색, CLIP이 못 하는 표정/감정/포즈는 frozen 신호→구조화 문장으로 = 두-레인 서술 분할).
 우리 필터: E011로 경계 회귀는 불필요 — 수입 대상 = 관련도 채점·장면 인코더·오케스트레이션 패턴.
@@ -133,10 +158,8 @@ viz=output/l2/lane_emit_congruence.png. 남은 조각: 파묻힌-입 spurious ar
 연결: highlight-lang 파이프(구축됨, select 미통합)가 이 레인의 본체 — VMR 시도의 판정자는
 동결 세그 쌍 + 육안, 성공 기준 = generic WHEN이 놓친 맥락-순간을 언어 쿼리가 회수하는가.
 
-기타 후보(우선순위 없음, 당일 선택): **미스티치 조각 자동병합**(s13=s18 cos 0.40 증거;
-C2.5 스왑 전 가장 값싼 트래커 개선) · **우발적-가림 게이트**(dual_1=자연 테스트 클립) ·
-highlight desirability 후속(위 남은 조각) ·
-portrait ② query-synthesis · C9 preset(소비자 대기 — 방출 τ·CLIP_LEN이 preset 후보 파라미터).
+(기존 "기타 후보"는 위 Phase 1~3으로 재배열됨 — 자동병합→P1 · 우발적-가림→P2 ·
+desirability 후속·C9→P3.)
 ~~highlight.json deliverable 분리~~ → DONE 7d96185 (2026-07-03 **highlight 졸업**, 파일+산출물
 한 묶음: products/highlight.py·highlight.json·candidates=likeness 전용·소비자 5곳 이주·
 15/15 세그 스냅샷 동일·rescore 불변; user 지적 "products/ ls에서 highlight만 select.py"가 트리거).
