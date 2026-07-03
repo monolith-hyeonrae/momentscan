@@ -73,6 +73,22 @@
   molten인 동안은 통합 유지 (select = likeness picks + highlight, 본질 결합).
 - 격리 승급: 위 사다리 ①→②→③.
 
+## 좌표계 지도 — 공간마다 홈과 정합 규칙이 선언되어 있다
+
+> 서술 스펙(투영표·측정 근거·invariant·변경 절차) = [`docs/coordinate-conventions.md`](docs/coordinate-conventions.md)
+
+| 공간 | 규약 | 선언 홈 |
+|---|---|---|
+| 이미지/픽셀 | y-down · bbox=xyxy 절대픽셀 · 크롭=portrait_box(4:5) 레터박스 | `subjects/crops.py`(ROI 기하) · `media.py`(자르기/인코딩) |
+| MP 오일러 (yaw·pitch·roll) | **정의적 홈 = `pose.euler_from_transform`** — 모든 백엔드가 여기에 정합 · 의미 축이름=registry:POSE_FIELDS | `domains/pose.py` |
+| 6DRepNet 원좌표 | MP 오일러의 **3축 전부 거울** → 어댑터가 (−y,−p,−r) 정렬 (축별 부호-corr로 검증: raw −0.97/−0.70/−0.63 → flip 후 전부 양) | `extraction/headpose.py` |
+| 랜드마크 정준 프레임 | origin=centroid · axis_flip **(1,−1,−1)**=image↔camera(π about x, det=+1 가드) · scale=rms 무차원 · basis 478/468 | `domains/geometry.py` CANONICAL_FRAME (+`momentscan frame`) |
+| ARKit blendshape | 52축 활성도(무차원) — 좌표 아님, 인덱스 계약=signals.BS_* · 생성리그와 공유(render-query) | `domains/signals.py` |
+
+**규칙**: 새 포즈/기하 백엔드 추가 = 어댑터에서 정합 + **측정 검증(축별 부호-corr, 커버 교집합 프레임)** 필수 —
+"yaw만 맞추고 나머지는 통과"가 2026-07-02까지의 잠복 지뢰였다(융합 스트림이 프레임 소스별 좌표 혼합;
+abs() 소비자만 있어 무사했지만 signed 소비 시작 순간 오염).
+
 ## 검증 척추 (모든 구조 변경의 게이트)
 
 | 도구 | 증명하는 것 |

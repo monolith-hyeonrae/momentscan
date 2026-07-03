@@ -9,14 +9,16 @@ This is a SECOND pose backend, not a replacement. The canonical pose stays
 registry-owned with an adapter + provenance (headpose-backend decision):
   - MediaPipe is kept where it fits (frontal, precise).
   - 6DRepNet is consumed where MediaPipe is NaN (profiles).
-  - adapter: 6DRepNet yaw is sign-flipped to MediaPipe's convention (validated
-    corr ≈ −0.97 over MediaPipe-covered frames), so left/right agree.
+  - adapter: 6DRepNet euler is a full MIRROR of MediaPipe's frame — ALL THREE
+    axes sign-flipped to the MediaPipe convention (validated per-axis sign-corr
+    over MediaPipe-covered frames: yaw −0.97, pitch −0.695, roll −0.629 raw →
+    all positive after the flip, 6/6 clips consistent).
 
 substrate "extract once": runs on the clean crop track (source expires; crops
 persist) like parse/fashion. Needs crops first.
 
 Layout: <out>/<clip>/headpose.parquet  (track_id, frame_idx, yaw, pitch, roll)
-        yaw sign-aligned to MediaPipe; full-range (no NaN on profiles).
+        all axes sign-aligned to MediaPipe; full-range (no NaN on profiles).
 """
 from __future__ import annotations
 
@@ -67,14 +69,23 @@ def extract_headpose(out_root, clip_id: str, *, fps: int = 6,
     inp = sess.get_inputs()[0].name
 
     def pose_batch(imgs: list[np.ndarray]) -> list[tuple[float, float, float]]:
-        """RGB crops → list of (yaw, pitch, roll), yaw sign-aligned to MediaPipe."""
+        """RGB crops → list of (yaw, pitch, roll), ALL THREE axes sign-aligned to the
+        MediaPipe euler convention (pose.euler_from_transform = the definitional home).
+
+        6DRepNet's raw euler frame is a full MIRROR of MediaPipe's — the same
+        image↔camera axis relation geometry.CANONICAL_FRAME declares as (1,-1,-1).
+        Measured over MP-covered frames (6 clips, n=6558): raw-vs-MP corr yaw −0.97 ·
+        pitch −0.695 · roll −0.629, sign-consistent 6/6 clips per axis; flipping all
+        three turns every corr positive with ~0 median offset. Until 2026-07-02 only
+        yaw was flipped — the fused pit_f/rol_f mixed conventions per frame source
+        (harmless to the |·| cone gates, a landmine for any SIGNED consumer)."""
         x = np.stack([(cv2.resize(im, (224, 224)).astype(np.float32) / 255.0 - _MEAN) / _STD
                       for im in imgs]).transpose(0, 3, 1, 2)        # (B,3,224,224) RGB
         Rs = sess.run(None, {inp: x})[0]                            # (B,3,3)
         out = []
         for R in Rs:
             pit, yaw, rol = _euler_deg(R)
-            out.append((-yaw, pit, rol))   # adapter: flip yaw → MediaPipe convention
+            out.append((-yaw, -pit, -rol))   # adapter: full mirror → MediaPipe convention
         return out
 
     rows: list[dict] = []

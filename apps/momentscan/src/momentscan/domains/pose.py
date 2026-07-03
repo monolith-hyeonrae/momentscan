@@ -40,7 +40,14 @@ CAMERA_FRONTAL_DEG = 12.0   # E002: this camera's EMPIRICAL frontal (off-axis mo
 
 def euler_from_transform(M) -> tuple[float, float, float]:
     """MediaPipe facial-transformation matrix (4x4) → (yaw, pitch, roll) degrees;
-    0 = frontal (registry pose convention)."""
+    0 = frontal (registry pose convention).
+
+    THE euler convention's definitional home: every pose backend must be adapted
+    to agree with THIS function's output (semantic axis names stay owned by
+    registry:POSE_FIELDS). Adapter validation = per-axis sign-correlation on
+    frames both backends cover (headpose.py: 6DRepNet raw euler is a full MIRROR
+    — all three axes flip; the same image↔camera axis relation as
+    geometry.CANONICAL_FRAME's (1,-1,-1))."""
     R = np.asarray(M, float).reshape(4, 4)[:3, :3]
     return (float(np.degrees(np.arctan2(-R[2, 0], np.hypot(R[0, 0], R[1, 0])))),
             float(np.degrees(np.arctan2(R[2, 1], R[2, 2]))),
