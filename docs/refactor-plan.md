@@ -116,8 +116,11 @@ viz=output/l2/lane_emit_congruence.png. 남은 조각: 파묻힌-입 spurious ar
 
 후보(우선순위 없음, 당일 선택): **미스티치 조각 자동병합**(s13=s18 cos 0.40 증거;
 C2.5 스왑 전 가장 값싼 트래커 개선) · **우발적-가림 게이트**(dual_1=자연 테스트 클립) ·
-highlight desirability 후속(위 남은 조각) · highlight.json deliverable 분리 ·
+highlight desirability 후속(위 남은 조각) ·
 portrait ② query-synthesis · C9 preset(소비자 대기 — 방출 τ·CLIP_LEN이 preset 후보 파라미터).
+~~highlight.json deliverable 분리~~ → DONE 7d96185 (2026-07-03 **highlight 졸업**, 파일+산출물
+한 묶음: products/highlight.py·highlight.json·candidates=likeness 전용·소비자 5곳 이주·
+15/15 세그 스냅샷 동일·rescore 불변; user 지적 "products/ ls에서 highlight만 select.py"가 트리거).
 watch: dual_3 s0 mask 0.511 육안 · pitch 부호 시각 고정 · data-contract.md stale ·
 기회주의 refactor 잔여(rank 4·8·9·10·11).
 
