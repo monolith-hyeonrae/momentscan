@@ -103,12 +103,14 @@ SubjectQuery { strategy, params }          진입: momentscan run --subject … 
 `point:t,x,y`(Job, 순간 조회=오퍼레이터 클릭·인스펙터 클릭이 자연 UI) · `zone:rect@t0-t1`
 (존=profile 장소보정·시간창=Job, subject별 점유율) · 기하 규칙(nearest/largest, profile).
 증거 균일 {confidence, margin, valid} → 같은 attribution.json.
-**경계(운영 지식, user 2026-07-03)**: race981 좌석 판정에 위치 신호 **금지** — 코퍼스 4/4
-x-분리는 생존 표본의 우연이고, 예외 모드=**키 큰 보조탑승자의 head sway**가 main의 x-대역을
-프레임 단위로 교차(크기/높이 휴리스틱도 동시 붕괴) → 좌석=depth vote 유지(크기≠좌석·깊이=좌석
-원리 그대로). zone은 **고정 설비가 분리를 보장하는 장소**(포토부스 레인·스테이션)로 제한;
-point는 순간 조회라 무관(겹치면 margin 낮음=정직). 부산물: x-교차는 flip_segments와 동종의
-트랙-스왑 센서 증거 후보.
+**경계(운영 지식 → 코퍼스 정량 확인, 2026-07-03)**: race981 좌석 판정에 위치 신호 **금지**.
+코퍼스 앵커 2건 — ①**dual_2=키 큰 보조탑승자**: aux 머리가 main보다 위(cy 0.21 vs 0.49),
+공존 프레임 **63%에서 bbox x-구간 겹침**(중심점 중앙값 통계는 이를 숨김 — 측정 함정) ②**dual_1=
+키 큰 주탑승자**: aux가 main-존재 프레임의 **63%에서 미검출**(가려짐) + 보일 때만=몸을 내민
+순간이라 **가려진 대상의 위치 통계는 비전형 자세에서 표집됨**(위치 사전지식이 가장 필요한 대상
+일수록 위치 증거가 가장 왜곡). → 좌석=depth vote 유지. zone은 **고정 설비가 분리를 보장하는
+장소**(포토부스 레인·스테이션)로 제한; point는 순간 조회라 무관(겹침=정직한 저마진). 부산물:
+x-교차=flip_segments 동종 트랙-스왑 증거 후보 · dual_1=우발적-가림 TODO의 자연 테스트 클립.
 
 - **증거 계약 (전략 무관 균일)**: per-subject `{ confidence, valid, role }` —
   seat_rule은 이미 방출(margin·flip·valid); `valid=False` → likeness 축적 skip
