@@ -240,7 +240,7 @@ def _cmd_run(args: argparse.Namespace) -> int:
               f"  detect      ✓ {int((_time.perf_counter() - _t0) * 1000):>6d}ms  "
               f"n_frames={r.get('frames_written', '?')} · subjects={r.get('n_subjects', '?')}")
     result = run_pipeline(args.out, args.clip_id, source=args.source, fps=args.fps,
-                          force=args.force, only=args.only)
+                          force=args.force, only=args.only, subject_query=args.subject)
     ran = sorted(result["ran"], key=lambda x: x.get("ms") or 0, reverse=True)
     total_s = sum((x.get("ms") or 0) for x in result["ran"]) / 1000.0
     print(f"\n── {args.clip_id}: {len(result['ran'])} ran · {len(result['skipped'])} skipped · "
@@ -650,6 +650,10 @@ def main(argv: list[str] | None = None) -> int:
     prun.add_argument("--fps", type=int, default=6, help="fps the pipeline ran with")
     prun.add_argument("--force", action="store_true", help="re-run even if artifacts exist")
     prun.add_argument("--only", nargs="*", default=None, help="run only these stages")
+    prun.add_argument("--subject", default=None,
+                      help="subject query (C2): 'seat' (default rule) or 'face:<photo>' — "
+                           "constitute the run around THIS person. Re-querying a processed "
+                           "clip needs --force (or a fresh --out)")
     prun.set_defaults(func=_cmd_run)
 
     pdoc = sub.add_parser("doctor", parents=[common],

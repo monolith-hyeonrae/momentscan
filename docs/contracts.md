@@ -86,12 +86,18 @@ stitch는 구성 정책이라 subjects/ 소속, 2026-07-02 이동.)
 바인딩 분리 — **규칙은 profile에(도메인당), 쿼리는 Job에(요청당)**.
 
 ```
-SubjectQuery { strategy, params }
-  strategy = seat_rule        위치 규칙 · 정책+depth 증거 · 구현됨(subjects/attribute.py)
-           | reference_face   참조 얼굴 · 생체 임베딩 · 기계 있음(ArcFace·stitch) 미배선
+SubjectQuery { strategy, params }          진입: momentscan run --subject … → job.json(C1 첫 실체화)
+  strategy = seat_rule        위치 규칙 · 정책+depth 증거 · 구현됨(subjects/attribute.py, 기본값)
+           | reference_face   참조 얼굴 · 생체 임베딩 · **구현됨(subjects/query.py, 2026-07-03)**
+           |                    "face:<photo>" → ArcFace cos vs subject 센트로이드 · TAU_REF=0.30
+           |                    (측정: 동일인 0.48–0.80[min=마스크 착용자] vs 교차 max 0.166;
+           |                     동클립 참조=상한, 교차-일 일반화 미측정) · roles={target: main}만
+           |                    · 저마진 노트=미스티치 조각 신호 · 미달 시 valid=False+reason
+           |                    (tubelets가 reason 그대로 거부 — 엉뚱한 사람 구성 안 함)
            | positional       위치 쿼리 · 씬 기하 · 미구현
-           | all              전원 (현행 암묵 기본)
 ```
+디스패치 홈=`pipeline._attribute`(job.json 읽고 전략 분기); 재쿼리는 `--force` 또는 새 `--out`
+(freshness는 소스-변경 추적이지 요청-변경 추적이 아님 — 알려진 갭).
 
 - **증거 계약 (전략 무관 균일)**: per-subject `{ confidence, valid, role }` —
   seat_rule은 이미 방출(margin·flip·valid); `valid=False` → likeness 축적 skip

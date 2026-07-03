@@ -120,9 +120,10 @@ def synthesize_tubelets(
         df = read_detections(out_root, clip_id)
         att = read_attribution(out_root, clip_id)
         if not att or not att.get("roles"):
-            raise FileNotFoundError(
-                f"attribution.json missing/empty for {clip_id} — run `momentscan attribute` first"
-            )
+            # a subject QUERY that honestly found nobody carries its reason — surface
+            # it instead of the misleading "run attribute first" (attribution exists).
+            why = (att or {}).get("reason") or "run `momentscan attribute` first"
+            raise FileNotFoundError(f"no subjects constituted for {clip_id} — {why}")
         roles = {int(k): v for k, v in att["roles"].items()}
         depth_by_frame: dict[int, dict] = {s["frame_idx"]: s["depth"] for s in att.get("samples") or []}
 

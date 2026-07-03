@@ -22,6 +22,15 @@ log = logging.getLogger("momentscan.pipeline")
 
 
 def _attribute(out, clip, src, fps):
+    # SubjectQuery dispatch (contracts C2): the Job's query picks WHO this run is
+    # about. seat_rule = the depth-vote default; reference_face = a photo. Every
+    # strategy emits the SAME attribution.json shape → downstream unchanged (C3).
+    from momentscan.stash import read_job
+    from momentscan.subjects.query import parse_subject_query
+    q = parse_subject_query(((read_job(out, clip) or {}).get("subject_query")))
+    if q["strategy"] == "reference_face":
+        from momentscan.subjects.query import resolve_reference_face
+        return resolve_reference_face(out, clip, q["params"]["ref"])
     from momentscan.subjects.attribute import attribute_clip
     return attribute_clip(src, out, fps=fps)
 
@@ -133,9 +142,14 @@ def _stage_health(name: str, r) -> str:
 
 
 def run_pipeline(out_root, clip_id: str, *, source=None, fps: int = 6,
-                 force: bool = False, only=None, watch: bool = True) -> dict:
+                 force: bool = False, only=None, watch: bool = True,
+                 subject_query: str | None = None) -> dict:
     """Run post-detect stages in registry DAG order; skip existing artifacts."""
     cdir = clip_dir(Path(out_root), clip_id)
+    if subject_query:   # the REQUEST record (C1 Job) — attribute dispatches on it
+        from momentscan.stash import write_job
+        write_job(out_root, clip_id, {"clip_id": clip_id, "subject_query": subject_query,
+                                      "fps": fps, "source": str(source) if source else None})
     _t_start, _started_unix = time.perf_counter(), round(time.time(), 3)
     _started_iso = datetime.datetime.now().isoformat(timespec="seconds")
     # provenance — what source produced these artifacts, when, with what fps. The

@@ -476,6 +476,26 @@ def read_emotion(stash_root: Path, clip_id: str) -> dict | None:
     return json.loads(p.read_text(encoding="utf-8")) if p.exists() else None
 
 
+def job_path(stash_root: Path, clip_id: str) -> Path:
+    return clip_dir(stash_root, clip_id) / "job.json"
+
+
+def write_job(stash_root: Path, clip_id: str, record: dict) -> Path:
+    """The REQUEST record (contracts C1 Job, first materialization): what was asked —
+    subject_query · fps · source. provenance.json = what was processed; this = what
+    was requested. Stages that dispatch on the request (attribute → subject query)
+    read it instead of threading params through every runner signature."""
+    p = job_path(stash_root, clip_id)
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_text(json.dumps(record, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
+    return p
+
+
+def read_job(stash_root: Path, clip_id: str) -> dict | None:
+    p = job_path(stash_root, clip_id)
+    return json.loads(p.read_text(encoding="utf-8")) if p.exists() else None
+
+
 def select_path(stash_root: Path, clip_id: str) -> Path:
     return clip_dir(stash_root, clip_id) / "select.json"
 
