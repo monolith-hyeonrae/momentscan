@@ -94,10 +94,21 @@ SubjectQuery { strategy, params }          진입: momentscan run --subject … 
            |                     동클립 참조=상한, 교차-일 일반화 미측정) · roles={target: main}만
            |                    · 저마진 노트=미스티치 조각 신호 · 미달 시 valid=False+reason
            |                    (tubelets가 reason 그대로 거부 — 엉뚱한 사람 구성 안 함)
-           | positional       위치 쿼리 · 씬 기하 · 미구현
+           | positional       위치 쿼리 · 씬 기하 · **설계만(2026-07-03) — 소비자 나타나면 구현**
 ```
 디스패치 홈=`pipeline._attribute`(job.json 읽고 전략 분기); 재쿼리는 `--force` 또는 새 `--out`
 (freshness는 소스-변경 추적이지 요청-변경 추적이 아님 — 알려진 갭).
+
+**positional 설계 (구현 보류)**: 위치 쿼리=튜브에 대한 공간 술어 리덕션(모델 불요) — 세 형태:
+`point:t,x,y`(Job, 순간 조회=오퍼레이터 클릭·인스펙터 클릭이 자연 UI) · `zone:rect@t0-t1`
+(존=profile 장소보정·시간창=Job, subject별 점유율) · 기하 규칙(nearest/largest, profile).
+증거 균일 {confidence, margin, valid} → 같은 attribution.json.
+**경계(운영 지식, user 2026-07-03)**: race981 좌석 판정에 위치 신호 **금지** — 코퍼스 4/4
+x-분리는 생존 표본의 우연이고, 예외 모드=**키 큰 보조탑승자의 head sway**가 main의 x-대역을
+프레임 단위로 교차(크기/높이 휴리스틱도 동시 붕괴) → 좌석=depth vote 유지(크기≠좌석·깊이=좌석
+원리 그대로). zone은 **고정 설비가 분리를 보장하는 장소**(포토부스 레인·스테이션)로 제한;
+point는 순간 조회라 무관(겹치면 margin 낮음=정직). 부산물: x-교차는 flip_segments와 동종의
+트랙-스왑 센서 증거 후보.
 
 - **증거 계약 (전략 무관 균일)**: per-subject `{ confidence, valid, role }` —
   seat_rule은 이미 방출(margin·flip·valid); `valid=False` → likeness 축적 skip
