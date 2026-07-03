@@ -127,8 +127,17 @@ portrait/highlight는 추가 연구 후 순차 오픈."** 이 결정이 아래 �
    "인터페이스 정의 빠른 공유 의무"의 실체).
 4. **실패 모드의 정직한 표면화**: n_obs 부족·가림-지배·스티치 잔여 의심 시 확신 대신
    불확실성 필드 — 알파에서 신뢰를 깎는 건 틀린 답이 아니라 *자신만만한* 틀린 답.
-5. **배포 이음매**: Job.products 스위치 구현(run_pipeline only-클로저 재활용) + egress 필터
-   + 알파 형태 결정(서비스 연동 vs CLI+report 배포판 — user 결정 대기).
+5. **배포 이음매** (형태 확정 — user 2026-07-03: 로컬+AWS 서버·HTTP+유레카·카프카 고려·
+   비디오 주소 입력·S3/로컬 저장+경로 반환):
+   a. **HTTP 최소 서버**: POST /jobs (Job JSON) → run_pipeline → Result(output_prefix+
+      outputs 경로) — daemon.py의 UDS 제어면과 별개의 외부면; 페이로드는 transport-agnostic
+      (Kafka consumer는 나중에 같은 JSON을 먹는 어댑터만).
+   b. **Storage 포트 S3 어댑터**: stash write_*/read_* 이음매의 보류돼 있던 반쪽 —
+      source_uri s3:// 읽기 + output_uri s3:// 쓰기. 로컬 경로는 현행 그대로.
+   c. **멱등 output prefix**: clip_id → 결정적 경로; 재요청 = 기존 산출물 경로 반환
+      (파이프 resumability가 이미 이 의미론).
+   d. **Eureka 등록 최소**(health/메타) — AWS 노드용. autoscale/worker-pool은 여전히 보류.
+   e. Job.products 스위치 + egress 필터 (열린 제품 경로만 Result에).
 6. **알파 피드백 계기**: 무엇을 물을지 설계 (pairwise 원칙 — "이 요약이 그 사람 같나").
 
 **Phase 2 — portrait 오픈 (알파 진행과 병행 연구):** portrait ② query-synthesis ·

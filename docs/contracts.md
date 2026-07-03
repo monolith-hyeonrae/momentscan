@@ -21,14 +21,18 @@
 | C9 | 도메인 지식 ↔ 코어 | **domain profile (preset)** — 빈 슬롯 | 미정 (두 번째 도메인이 지불) | — |
 | C10 | 저장 서술 | 스테이지 분리·stash 레이아웃 | [`data-contract.md`](data-contract.md) ⚠stale(ports.py 개명 미반영) | — |
 
-## C1 — Job/Result (초안 v0)
+## C1 — Job/Result (초안 v1 — 알파 요구 반영 2026-07-03)
 
 서비스 연동(S3 in/out · 2000 vids/day)과 재사용 설계가 공유하는 외곽 계약.
+**알파 배포 형태(user)**: 로컬 서버 + AWS 서버에 올림 · 트리거 = **HTTP + Eureka**(등록),
+**Kafka 고려**(→ 페이로드는 transport-agnostic: REST 바디 = Kafka 메시지 = 아래 Job JSON) ·
+입력 = 처리할 **비디오 주소** · 출력 = **S3 또는 로컬의 지정 위치에 저장하고 저장 경로를 반환**.
 
 ```
 Job {
-  clip_id                            멱등키 (재처리 = 같은 키)
-  source_uri                         S3/파일 (원본 ~1주 보장 → provenance에 지문)
+  clip_id                            멱등키 (재처리 = 같은 키; 결정적 output prefix의 근거)
+  source_uri                         비디오 주소 — s3://… | file://… (원본 ~1주 → provenance 지문)
+  output_uri                         결과 저장 위치 — s3://…/prefix | 로컬 dir (생략 = 서버 기본)
   fps                                분석 fps (detect와 일치 필수, 현행 6)
   subject_query: SubjectQuery        C2 — 누구를 대상으로 (생략 = profile의 규칙)
   domain_profile: str                C9 — preset 이름 (현행 암묵값 = "race981")
@@ -36,12 +40,17 @@ Job {
 }
 Result {
   clip_id · ok · failure(스테이지·사유)
-  likeness.json                      방문-스코프 외형 ID (riders[].{분포·face_id·fashion})
-  portraits/*.png + portrait.json    쿼리-추출 대표컷 + 뷰 세트
-  highlight.json + highlights/*.mp4  세그먼트 기록 + 클립 (7d96185 졸업 — 제품별 산출물)
+  output_prefix                      실제 저장 위치 (= 반환 계약의 핵심)
+  outputs: {product → uri…}          열린 제품의 산출물 경로만:
+    likeness  → likeness.json        방문-스코프 외형 ID (riders[].{분포·face_id·fashion})
+    portrait  → portrait.json·*.png  쿼리-추출 대표컷 + 뷰 세트
+    highlight → highlight.json·*.mp4 세그먼트 기록 + 클립 (7d96185 졸업 — 제품별 산출물)
   provenance.json                    source 지문·처리시각 (audit·멱등성)
 }
 ```
+
+멱등성: 같은 clip_id 재요청 = 같은 output prefix, 완료 산출물은 재계산 없이 경로 반환
+(파이프라인 resumability가 이미 이 의미론 — probe 파일 존재 = skip). Kafka 재전송 대비.
 
 **단계 배포 (user 결정 2026-07-03)**: 세 제품 동시 오픈하지 않는다 — **likeness 확신
 → 1차 배포·알파테스트 → portrait → highlight 순차 오픈**. Result는 *열린* 제품의
