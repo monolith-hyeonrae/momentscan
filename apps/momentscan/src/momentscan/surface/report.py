@@ -82,7 +82,7 @@ def render_report(out_root, clip_id: str) -> dict:
             f"<div class=card><video src='highlights/{html.escape(p.name)}' controls muted></video>"
             f"<div class=cap>{html.escape(p.name)}</div></div>" for p in hls) + "</div>")
     else:
-        B.append("<div class=warn>highlight mp4 없음 (`momentscan select`가 렌더)</div>")
+        B.append("<div class=warn>highlight mp4 없음 (`momentscan highlight`가 렌더)</div>")
 
     # ── LIKENESS ─────────────────────────────────────────────────────────────
     B.append("<h2>LIKENESS — 방문-스코프 외형 ID</h2>")

@@ -51,6 +51,7 @@ STAGE_MODULE = {
     "portrait":   "momentscan.products.portrait",
     "likeness":   "momentscan.products.likeness",
     "select":     "momentscan.products.select",
+    "highlight":  "momentscan.products.highlight",
 }
 
 

@@ -70,8 +70,9 @@
 - **L2 도메인 졸업**: 시그널 도메인은 *백엔드 ≥2 또는 융합/양자화 정책 보유* 시
   signals.py에서 자기 모듈로 (pose 2026-07-02 · geometry 동일 · **identity가 다음**,
   6D-가림 작업이 지불). 근거: drift 지도 = 홈 없는 도메인 지도.
-- **제품 졸업**: 정의가 얼면 자기 모듈로 (portrait이 E008-E009 후 그랬듯).
-  molten인 동안은 통합 유지 (select = likeness picks + highlight, 본질 결합).
+- **제품 졸업**: 정의가 얼면 자기 모듈로 (portrait이 E008-E009 후 그랬듯;
+  **highlight 2026-07-03 졸업** — highlight.py + highlight.json 한 묶음).
+  select.py는 제품이 아니라 공유 채점 기판(frame_scores) + likeness 후보 스테이지.
 - 격리 승급: 위 사다리 ①→②→③.
 
 ## 좌표계 지도 — 공간마다 홈과 정합 규칙이 선언되어 있다

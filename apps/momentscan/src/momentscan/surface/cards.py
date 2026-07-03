@@ -613,8 +613,10 @@ def render_select_timeline(out_root: str | Path, clip_id: str, *, fps: int = 6, 
                 # sqrt scale — the signal is z⁺-peaky; linear crushes the
                 # low-energy region this lane exists to show.
                 return int(np.sqrt(min(v / ymax, 1.0)) * (hl_h - 14))
-            hcand = by_tp.get((tid, "highlight"))
-            segs = ([hcand["pick"], *hcand["alternatives"]] if hcand else [])
+            # 2026-07-03 졸업: 세그먼트는 highlight.json이 authoritative (main_track 귀속)
+            from momentscan.stash import read_highlight
+            hl_rec = read_highlight(Path(out_root), clip_id) or {}
+            segs = hl_rec.get("segs") or [] if tid == hl_rec.get("main_track") else []
             iterms = s["impact_terms"]
             fpos = {int(f): i for i, f in enumerate(fx)}
             for rank, seg in enumerate(segs, start=1):    # shades under the bars
@@ -1060,12 +1062,14 @@ def render_highlight_clips(out_root: str | Path, clip_id: str, *,
     video when given (native fps), else the stash's detect.mp4 (processing
     fps, correct duration) — stash-pure fallback.
     """
+    from momentscan.stash import read_highlight
+
     out_dir = Path(out_root) / clip_id
     src = Path(video_path) if video_path else out_dir / "detect.mp4"
-    cands = [c for c in read_candidates(out_root, clip_id) if c["product"] == "highlight"]
-    if not cands or not src.exists():
+    rec = read_highlight(Path(out_root), clip_id)   # 2026-07-03 졸업: highlight.json authoritative
+    if not rec or not rec.get("segs") or not src.exists():
         return {"clip_id": clip_id, "ok": False,
-                "reason": "no highlight candidates" if cands == [] else f"no video at {src}"}
+                "reason": "no highlight segments" if not (rec or {}).get("segs") else f"no video at {src}"}
     hdir = out_dir / "highlights"
     hdir.mkdir(exist_ok=True)
     for old in hdir.glob("*.mp4"):                       # stale segments from prior policy
@@ -1089,27 +1093,26 @@ def render_highlight_clips(out_root: str | Path, clip_id: str, *,
 
     fourcc = cv2.VideoWriter_fourcc(*"mp4v")
     written: list[str] = []
-    for c in cands:
-        tid = c["track_id"]
-        segs = [c["pick"], *(c.get("alternatives") or [])]
-        for rank, seg in enumerate(segs, start=1):
-            p = hdir / f"t{tid}_rank{rank}.mp4"
-            wr = cv2.VideoWriter(str(p), fourcc, fps, (w, h))
-            n = write_span(wr, seg["start_ms"], seg["end_ms"])
-            wr.release()
-            if n:
-                written.append(p.name)
-            else:
-                p.unlink(missing_ok=True)
-        reel = hdir / f"t{tid}_reel.mp4"
-        wr = cv2.VideoWriter(str(reel), fourcc, fps, (w, h))
-        n = sum(write_span(wr, s["start_ms"], s["end_ms"])
-                for s in sorted(segs, key=lambda s: s["start_ms"]))
+    tid = rec.get("main_track")
+    segs = rec["segs"]
+    for rank, seg in enumerate(segs, start=1):
+        p = hdir / f"t{tid}_rank{rank}.mp4"
+        wr = cv2.VideoWriter(str(p), fourcc, fps, (w, h))
+        n = write_span(wr, seg["start_ms"], seg["end_ms"])
         wr.release()
         if n:
-            written.append(reel.name)
+            written.append(p.name)
         else:
-            reel.unlink(missing_ok=True)
+            p.unlink(missing_ok=True)
+    reel = hdir / f"t{tid}_reel.mp4"
+    wr = cv2.VideoWriter(str(reel), fourcc, fps, (w, h))
+    n = sum(write_span(wr, s["start_ms"], s["end_ms"])
+            for s in sorted(segs, key=lambda s: s["start_ms"]))
+    wr.release()
+    if n:
+        written.append(reel.name)
+    else:
+        reel.unlink(missing_ok=True)
     cap.release()
 
     result = {"clip_id": clip_id, "highlights_dir": str(hdir),

@@ -501,7 +501,7 @@ def select_path(stash_root: Path, clip_id: str) -> Path:
 
 
 def write_select(stash_root: Path, clip_id: str, record: dict) -> Path:
-    """Select engine summary (per-rider picks · highlight segments). ALSO the stage's
+    """Select engine summary (per-rider likeness picks). ALSO the stage's
     resumability probe: select only APPENDS to the shared candidates.jsonl (which
     portrait creates first), so probing candidates.jsonl false-skipped select on any
     fresh one-command run — the stage needs an artifact only IT writes."""
@@ -513,6 +513,26 @@ def write_select(stash_root: Path, clip_id: str, record: dict) -> Path:
 
 def read_select(stash_root: Path, clip_id: str) -> dict | None:
     p = select_path(stash_root, clip_id)
+    return json.loads(p.read_text(encoding="utf-8")) if p.exists() else None
+
+
+def highlight_path(stash_root: Path, clip_id: str) -> Path:
+    return clip_dir(stash_root, clip_id) / "highlight.json"
+
+
+def write_highlight(stash_root: Path, clip_id: str, record: dict) -> Path:
+    """Highlight product record (합동 WHEN 악구 세그먼트) — the product's authoritative
+    artifact AND the stage's resumability probe. 2026-07-03 졸업: candidates.jsonl은
+    select(likeness 로그) 소유로 남고 highlight는 여기만 쓴다 (공유 가변 파일의
+    스테이지-횡단 소유 금지 — portrait unlink 레이스·select false-skip의 교훈)."""
+    p = highlight_path(stash_root, clip_id)
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_text(json.dumps(record, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
+    return p
+
+
+def read_highlight(stash_root: Path, clip_id: str) -> dict | None:
+    p = highlight_path(stash_root, clip_id)
     return json.loads(p.read_text(encoding="utf-8")) if p.exists() else None
 
 

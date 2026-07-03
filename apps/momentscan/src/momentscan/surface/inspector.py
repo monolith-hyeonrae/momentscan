@@ -189,6 +189,10 @@ def render_tubelet_inspect(out_root: str | Path, clip_id: str, *,
     cand_by_sub: dict[int, list] = {}
     for c in read_candidates(out_root, clip_id):
         cand_by_sub.setdefault(c["track_id"], []).append(c)
+    # highlight도 portrait처럼 자기 산출물이 authoritative (2026-07-03 졸업):
+    # 합동 세그먼트는 highlight.json에서 읽고 main_track 주체에 귀속시킨다.
+    from momentscan.stash import read_highlight
+    hl_rec = read_highlight(Path(out_root), clip_id) or {}
     # portrait OUTPUTS come from portrait.json (the authoritative deliverable record),
     # NOT candidates: portrait "moved out" of select (select.py), and select truncates
     # candidates.jsonl on each run, so portrait candidates are a racy/wiped source. the
@@ -295,17 +299,16 @@ def render_tubelet_inspect(out_root: str | Path, clip_id: str, *,
             return ladder_map.get((sid, int(f)), {}).get(k)
         # highlight's REAL switch = WHEN (action impact/rarity/scene, temporal) → its output is the
         # DELIVERED phrase segments. `valid` is a ~always-true WHICH-eligibility floor, so drawing it
-        # as the switch reads inert; the segments (from candidates) ARE the WHEN discriminator.
+        # as the switch reads inert; the segments (from highlight.json) ARE the WHEN discriminator.
         hl_segs = []
-        for c in cand_by_sub.get(sid, []):
-            if c["product"] == "highlight":
-                for seg in [c["pick"]] + c.get("alternatives", []):
-                    lo = int(seg.get("start_ms", 0) * fps / 1000)
-                    hi = int(seg.get("end_ms", 0) * fps / 1000)
-                    hl_segs.append({"lo": lo, "hi": hi, "score": round(float(seg.get("score", 0.0)), 2),
-                                    "peak": int(seg.get("peak_frame", seg.get("when_frame", lo))),
-                                    "resolved": bool(seg.get("resolved", True)),
-                                    "driver": seg.get("driver"), "drivers": seg.get("drivers")})
+        if sid == hl_rec.get("main_track"):
+            for seg in hl_rec.get("segs") or []:
+                lo = int(seg.get("start_ms", 0) * fps / 1000)
+                hi = int(seg.get("end_ms", 0) * fps / 1000)
+                hl_segs.append({"lo": lo, "hi": hi, "score": round(float(seg.get("score", 0.0)), 2),
+                                "peak": int(seg.get("peak_frame", seg.get("when_frame", lo))),
+                                "resolved": bool(seg.get("resolved", True)),
+                                "driver": seg.get("driver"), "drivers": seg.get("drivers")})
         def _in_hl(f):
             return any(s["lo"] <= f <= s["hi"] for s in hl_segs)
         gate_open = ({

@@ -148,14 +148,22 @@ def _cmd_eval(args: argparse.Namespace) -> int:
 
 def _cmd_select(args: argparse.Namespace) -> int:
     from momentscan.products.select import select_clip
-    from momentscan.surface.cards import (
-        render_highlight_clips, render_portrait_card, render_select_timeline,
-    )
+    from momentscan.surface.cards import render_portrait_card, render_select_timeline
 
     result = select_clip(args.out, args.clip_id, fps=args.fps)
     if result["ok"]:
         result["select_timeline"] = render_select_timeline(args.out, args.clip_id, fps=args.fps)
         result["portrait_card"] = render_portrait_card(args.out, args.clip_id)
+    print(json.dumps(result, ensure_ascii=False, indent=2))
+    return 0 if result["ok"] else 1
+
+
+def _cmd_highlight(args: argparse.Namespace) -> int:
+    from momentscan.products.highlight import highlight_clip
+    from momentscan.surface.cards import render_highlight_clips
+
+    result = highlight_clip(args.out, args.clip_id, fps=args.fps)
+    if result["ok"]:
         result["highlight_clips"] = render_highlight_clips(args.out, args.clip_id)
     print(json.dumps(result, ensure_ascii=False, indent=2))
     return 0 if result["ok"] else 1
@@ -636,11 +644,18 @@ def main(argv: list[str] | None = None) -> int:
     pf.set_defaults(func=_cmd_features)
 
     psel = sub.add_parser("select", parents=[common],
-                          help="3c — Profile/Highlight presets over the stash → candidates.jsonl")
+                          help="3c — 공유 채점 기판 + likeness 후보 → candidates.jsonl")
     psel.add_argument("clip_id", help="clip id (stash dir name)")
     psel.add_argument("--out", default="output", help="stash root")
     psel.add_argument("--fps", type=int, default=6, help="fps the pipeline ran with")
     psel.set_defaults(func=_cmd_select)
+
+    phl = sub.add_parser("highlight", parents=[common],
+                         help="3d — 합동 WHEN 악구 → highlight.json + highlights/*.mp4")
+    phl.add_argument("clip_id", help="clip id (stash dir name)")
+    phl.add_argument("--out", default="output", help="stash root")
+    phl.add_argument("--fps", type=int, default=6, help="fps the pipeline ran with")
+    phl.set_defaults(func=_cmd_highlight)
 
     prun = sub.add_parser("run", parents=[common],
                           help="video/clip → full pipeline → report (one-command; inline detect when needed)")

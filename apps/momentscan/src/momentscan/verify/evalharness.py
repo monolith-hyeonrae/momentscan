@@ -58,12 +58,28 @@ def _cand_frames(c: dict) -> list[int]:
     return [p["frame_idx"] if "frame_idx" in p else p["peak_frame"] for p in picks]
 
 
+def _highlight_as_candidates(out_root, clip_id: str) -> list[dict]:
+    """highlight.json → candidate-shaped rows (2026-07-03 졸업: highlight는 더는
+    candidates.jsonl에 없다). 라벨/쌍 기계는 pick/alternatives 모양을 소비하므로
+    여기서 한 번만 어댑트한다 — 동결 라벨의 product:"highlight" 문자열은 그대로."""
+    from momentscan.stash import read_highlight
+
+    rec = read_highlight(Path(out_root), clip_id)
+    if not rec or not rec.get("segs"):
+        return []
+    segs = rec["segs"]
+    return [{"clip_id": clip_id, "track_id": rec.get("main_track"),
+             "rider_role": "main", "product": "highlight",
+             "pick": segs[0], "alternatives": segs[1:]}]
+
+
 def score(out_root, clip_ids: list[str], *, tol: int = TOL_FRAMES) -> dict:
     labels = load_labels(out_root)
     if not labels:
         return {"ok": False, "error": f"no labels at {_labels_path(out_root)}"}
     by_key: dict[tuple, list[dict]] = {}
-    for c in (c for cid in clip_ids for c in read_candidates(Path(out_root), cid)):
+    for c in (c for cid in clip_ids
+              for c in (*read_candidates(Path(out_root), cid), *_highlight_as_candidates(out_root, cid))):
         by_key.setdefault((c["clip_id"], c["track_id"], c["product"]), []).append(c)
 
     out: dict = {"ok": True, "n_labels": len(labels), "products": {}}
@@ -107,7 +123,7 @@ def score(out_root, clip_ids: list[str], *, tol: int = TOL_FRAMES) -> dict:
 
 def make_template(out_root, clip_id: str, *, tile_w: int = 480) -> dict:
     """Review sheet + empty-verdict label rows for one clip's candidates."""
-    cands = read_candidates(Path(out_root), clip_id)
+    cands = [*read_candidates(Path(out_root), clip_id), *_highlight_as_candidates(out_root, clip_id)]
     if not cands:
         return {"ok": False, "error": "no candidates — run `momentscan select` first"}
     eval_dir = Path(out_root) / "eval"
@@ -178,7 +194,7 @@ def make_pairs(out_root, *, n_random: int = 2, seed: int = 7,
     for cdir in sorted(Path(out_root).glob("*/candidates.jsonl")):
         clip_id = cdir.parent.name
         tubes = _pl.read_parquet(cdir.parent / "tubelets.parquet")
-        cands = read_candidates(Path(out_root), clip_id)
+        cands = [*read_candidates(Path(out_root), clip_id), *_highlight_as_candidates(out_root, clip_id)]
         tops = {(c["track_id"], c["product"]): _cand_frames(c)[0] for c in cands}
         for c in cands:
             if c["product"] not in products:
@@ -230,11 +246,11 @@ def make_segment_pairs(out_root, *, seed: int = 11, fps: int = 6,
     pairs = []
     shift = 2 * fps                                       # boundary perturbation
 
-    for cdir in sorted(Path(out_root).glob("*/candidates.jsonl")):
+    for cdir in sorted(Path(out_root).glob("*/highlight.json")):
         clip_id = cdir.parent.name
         tubes = _pl.read_parquet(cdir.parent / "tubelets.parquet")
-        for c in read_candidates(Path(out_root), clip_id):
-            if c["product"] != "highlight" or c["rider_role"] != "main":
+        for c in _highlight_as_candidates(out_root, clip_id):
+            if c["rider_role"] != "main":
                 continue
             tt = tubes.filter((_pl.col("track_id") == c["track_id"])
                               & (_pl.col("scene_phase") == "ride"))

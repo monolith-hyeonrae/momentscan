@@ -90,6 +90,11 @@ def _select(out, clip, src, fps):
     return select_clip(out, clip, fps=fps)
 
 
+def _highlight(out, clip, src, fps):
+    from momentscan.products.highlight import highlight_clip
+    return highlight_clip(out, clip, fps=fps)
+
+
 # detect/landmarks run UPSTREAM of this runner (warm-daemon / step0), so they are
 # intentionally NOT in STEPS. Declared here (not left implicit in the `a.name in
 # STEPS` filter) so `momentscan check` can tell an intentional exclusion from an
@@ -115,6 +120,7 @@ RUNNERS = {
     "portrait":  ("portraits/portrait.json", _portrait),
     "likeness":  ("likeness.json", _likeness),
     "select":    ("select.json", _select),   # own artifact — candidates.jsonl is SHARED (portrait creates it first → false skip)
+    "highlight": ("highlight.json", _highlight),   # 2026-07-03 졸업 — 제품 파일 + 자기 산출물
 }
 
 # every runner must declare its source module, so freshness can detect a stale

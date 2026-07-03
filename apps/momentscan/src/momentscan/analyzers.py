@@ -109,8 +109,13 @@ ANALYZERS: tuple[Analyzer, ...] = (
              "gates.py change re-runs portrait but NOT likeness — close via lift-assembly (call "
              "evaluate_validity) or an artifact-dep freshness rule; for now re-run engines together"),
     Analyzer("select", "engine", "frame_scores → candidates", ("features", "tubelets"),
-             "selection", ("candidates(likeness, highlight)",), "candidates.jsonl", ("features", "portrait"),
-             "depends portrait = highlight WHICH gated on the shared ① `valid` (same freshness caveat as likeness)"),
+             "selection", ("candidates(likeness)",), "candidates.jsonl", ("features", "portrait"),
+             "공유 채점 기판(frame_scores) + likeness 후보 로그; highlight는 2026-07-03 "
+             "highlight.py로 졸업. depends portrait = WHICH가 공유 ① `valid` 소비 (freshness caveat 동일)"),
+    Analyzer("highlight", "engine", "joint WHEN phrases → segments", ("features", "tubelets", "scene"),
+             "selection", ("highlight.json (segs)",), "highlight.json", ("features", "select", "portrait"),
+             "합동 OR(max) WHEN 악구 + 정합성 방출(joy OR energy 축); frame_scores는 select의 "
+             "기판을 소비 — depends select = 코드 의존(채점 정의 변경 시 함께 재실행)"),
 )
 
 _BY_NAME = {a.name: a for a in ANALYZERS}
@@ -144,8 +149,9 @@ def topo_order() -> list[Analyzer]:
 # ANALYZERS above is the PRODUCER catalog (horizontal: one entry per pipeline
 # stage). The three deliverables are VERTICAL reads cutting across 4–9 stages,
 # and a flat module bag has no place to make that smear visible — so a product's
-# logic ends up scattered (likeness lives in BOTH appearance.py and select.py)
-# or fused with a sibling (select.py emits likeness AND highlight). This map
+# logic ends up scattered (likeness: distribution은 likeness.py, exemplar 픽은
+# select.py) or fused with a sibling (highlight는 select.py에 융합돼 있다가
+# 2026-07-03 highlight.py로 졸업). This map
 # DECLARES each product's full read-chain WITHOUT moving any code: it names the
 # stages/units a product reads and the keys it consumes, so `momentscan products`
 # can draw the vertical the pipeline hides. Artifacts are NOT restated here — a
@@ -207,10 +213,10 @@ PRODUCTS: tuple[Product, ...] = (
         (("features", ("em_* (→ fused_valence)", "head_yaw_dev", "face_blur")),
          ("scene", ("scene_change",)),
          ("tubelets", ("Δpose / motion",))),
-        ("select",),
-        ("candidates.jsonl[highlight]", "highlights/*.mp4"),
-        "molten", "valence = emotion.fused_valence, a shared READING over features' em_* (NOT the emotion.json baseline — that is inspector-only / future portrait query); scene optional; shares select.py frame_scores with likeness picks (essential — leave fused); 3rd WHEN + gate STEP4+ pending",
-        egress=("highlights/*.mp4",)),
+        ("highlight",),
+        ("highlight.json", "highlights/*.mp4"),
+        "molten", "valence/arousal = emotion.fused_valence, a shared READING over features' em_* (NOT the emotion.json baseline — that is inspector-only / future portrait query); scene optional; frame_scores는 select.py 공유 기판을 소비(제품 정책만 highlight.py 소유 — 2026-07-03 졸업); 3rd WHEN + 궤적 방출 pending",
+        egress=("highlight.json", "highlights/*.mp4")),
 )
 
 _BY_PRODUCT = {p.name: p for p in PRODUCTS}
