@@ -5,6 +5,21 @@ The domain intent (what momentscan analyzes and why) lives in
 how to run things*. Both files matter; read this one when you want
 to run code, the other when you want to understand the analysis.
 
+## Quickstart (first 15 minutes)
+
+```bash
+uv sync                                  # workspace + plugins (editable)
+uv run momentscan doctor                 # external deps check — models·binaries·stacks
+                                         #   (checker, not fetcher: gated weights say how to obtain)
+uv run momentscan run /path/video.mp4    # ONE command: inline detect → full pipeline → report
+# → output/<clip>/index.html             deliverables (portraits · highlights · likeness)
+# → output/<clip>/inspect/clip.html      the inspector — WHY each pick was made
+```
+
+Operators processing many clips keep a warm daemon instead of inline detect:
+`momentscan serve` + `momentscan process <clip>`. Architecture / boundary
+contracts: [`ARCHITECTURE.md`](ARCHITECTURE.md) · [`docs/contracts.md`](docs/contracts.md).
+
 ## Reoriented (2026-06-08)
 
 This repo is now the JEPA-PoC Track A/B **selection + eval** site

@@ -454,26 +454,46 @@ def write_fashion(stash_root: Path, clip_id: str, record: dict) -> Path:
     producer: ensure_ascii=False, separators=(",", ":"))."""
     p = fashion_path(stash_root, clip_id)
     p.parent.mkdir(parents=True, exist_ok=True)
-    p.write_text(json.dumps(record, ensure_ascii=False, separators=(",", ":")))
+    p.write_text(json.dumps(record, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
     return p
 
 
 def read_fashion(stash_root: Path, clip_id: str) -> dict | None:
     p = fashion_path(stash_root, clip_id)
-    return json.loads(p.read_text()) if p.exists() else None
+    return json.loads(p.read_text(encoding="utf-8")) if p.exists() else None
 
 
 def write_emotion(stash_root: Path, clip_id: str, record: dict) -> Path:
     """Per-person RIDE-conditioned valence baseline. Compact JSON (mirrors producer)."""
     p = emotion_path(stash_root, clip_id)
     p.parent.mkdir(parents=True, exist_ok=True)
-    p.write_text(json.dumps(record, ensure_ascii=False, separators=(",", ":")))
+    p.write_text(json.dumps(record, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
     return p
 
 
 def read_emotion(stash_root: Path, clip_id: str) -> dict | None:
     p = emotion_path(stash_root, clip_id)
-    return json.loads(p.read_text()) if p.exists() else None
+    return json.loads(p.read_text(encoding="utf-8")) if p.exists() else None
+
+
+def select_path(stash_root: Path, clip_id: str) -> Path:
+    return clip_dir(stash_root, clip_id) / "select.json"
+
+
+def write_select(stash_root: Path, clip_id: str, record: dict) -> Path:
+    """Select engine summary (per-rider picks · highlight segments). ALSO the stage's
+    resumability probe: select only APPENDS to the shared candidates.jsonl (which
+    portrait creates first), so probing candidates.jsonl false-skipped select on any
+    fresh one-command run — the stage needs an artifact only IT writes."""
+    p = select_path(stash_root, clip_id)
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_text(json.dumps(record, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
+    return p
+
+
+def read_select(stash_root: Path, clip_id: str) -> dict | None:
+    p = select_path(stash_root, clip_id)
+    return json.loads(p.read_text(encoding="utf-8")) if p.exists() else None
 
 
 def write_portrait(stash_root: Path, clip_id: str, record: dict) -> Path:
@@ -481,13 +501,13 @@ def write_portrait(stash_root: Path, clip_id: str, record: dict) -> Path:
     (mirrors producer); lives under portraits/ beside the *.png extractions."""
     p = portrait_path(stash_root, clip_id)
     p.parent.mkdir(parents=True, exist_ok=True)
-    p.write_text(json.dumps(record, ensure_ascii=False, separators=(",", ":")))
+    p.write_text(json.dumps(record, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
     return p
 
 
 def read_portrait(stash_root: Path, clip_id: str) -> dict | None:
     p = portrait_path(stash_root, clip_id)
-    return json.loads(p.read_text()) if p.exists() else None
+    return json.loads(p.read_text(encoding="utf-8")) if p.exists() else None
 
 
 def write_provenance(stash_root: Path, clip_id: str, record: dict) -> Path:

@@ -91,7 +91,7 @@ def template() -> np.ndarray:
     global _TEMPLATE
     if _TEMPLATE is None:
         verts = [[float(x) for x in ln.split()[1:4]]
-                 for ln in CANONICAL_OBJ.read_text().splitlines() if ln.startswith("v ")]
+                 for ln in CANONICAL_OBJ.read_text(encoding="utf-8").splitlines() if ln.startswith("v ")]
         _TEMPLATE = norm468(np.array(verts, dtype=np.float64))
     return _TEMPLATE
 

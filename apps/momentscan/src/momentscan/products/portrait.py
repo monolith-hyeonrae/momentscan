@@ -103,7 +103,7 @@ def select_portrait(out_root, clip_id: str, *, fps: int = 6) -> dict:
     crops_dir = cdir / "crops"
     manifest = None
     if (crops_dir / "manifest.json").exists():
-        manifest = json.loads((crops_dir / "manifest.json").read_text())
+        manifest = json.loads((crops_dir / "manifest.json").read_text(encoding="utf-8"))
     crop_index = {s["subject_id"]: {f: i for i, f in enumerate(s["frames"])}
                   for s in (manifest["subjects"] if manifest else [])}
 

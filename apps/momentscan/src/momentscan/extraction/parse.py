@@ -140,7 +140,7 @@ def extract_parse(out_root, clip_id: str, *, fps: int = 6) -> dict:
     man_path = crops_dir / "manifest.json"
     if not man_path.exists():
         return {"clip_id": clip_id, "ok": False, "reason": "no crop track (run `crops` first)"}
-    manifest = json.loads(man_path.read_text())
+    manifest = json.loads(man_path.read_text(encoding="utf-8"))
 
     oval_idx = _oval_idx()
     lm = read_landmarks(out_root, clip_id)

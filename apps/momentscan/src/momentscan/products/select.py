@@ -52,7 +52,7 @@ import polars as pl
 from momentscan.domains.emotion import fused_valence
 from momentscan.domains.pose import CAMERA_FRONTAL_DEG
 from momentscan.stash import (
-    append_candidate, candidates_path, read_features, read_gate_trace, read_tubelets,
+    append_candidate, candidates_path, read_features, read_gate_trace, read_tubelets, write_select,
 )
 from momentscan.telemetry import CandidateLog
 
@@ -604,5 +604,6 @@ def select_clip(out_root, clip_id: str, *, feature_track: str = "A", fps: int = 
     summary["candidates_path"] = str(cpath)
     summary["elapsed_s"] = round(time.perf_counter() - t0, 3)
     summary["ok"] = cpath.is_file()
+    write_select(Path(out_root), clip_id, summary)   # the stage's own record + resume probe
     log.info("select.done", extra=summary)
     return summary

@@ -112,7 +112,7 @@ def replay_check(out_root, clip_id: str, *, fps: int = 6) -> tuple[bool, dict]:
             ref, new = src / art, tmp_root / clip_id / art
             if not ref.exists() or not new.exists():
                 continue
-            d = _json_diff(json.loads(ref.read_text()), json.loads(new.read_text()))
+            d = _json_diff(json.loads(ref.read_text(encoding="utf-8")), json.loads(new.read_text(encoding="utf-8")))
             if d:
                 report[art] = d
         for art in PARQUET_ARTIFACTS:

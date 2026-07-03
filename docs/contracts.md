@@ -99,6 +99,22 @@ SubjectQuery { strategy, params }
 - **수렴 불변식**: 모든 전략은 tubelets.parquet(C3)로 수렴 → 하류(추출기·게이트·제품) 무변경.
 - 이중 신분: race981에선 첫 수, 직캠에선 선정+크롭트랙 자체가 배달물(팬캠).
 
+## C2.5 — 트래커 교체 이음매 (2026-07-02, TPN 검토의 결론)
+
+**결정: 지금 트래커 작업 없음** — 얼굴검출 기반 tubelet이 현 시나리오에서 문제없이 동작
+(fragments는 stitch가 봉합; C3 정합으로 하류 민감성 제거됨). 계약의 요지는 **언제든
+상위 트래커로 갈아탈 수 있는 상태의 유지**:
+
+- **스왑 표면**: visualpath 트래커 플러그인(격리 ③단) + `subjects/stitch.py`(상위 트래커가
+  자체 identity를 하면 우회 가능). 후보는 **detections 스키마**(per-frame bbox·embedding·
+  track/subject id)로 수렴하면 그만 — tubelets(C3) 하류는 무변경.
+- **심사 하니스**(주장 말고 측정): fragment/seam 센서스 · stitch 순도/coherence ·
+  admit/제품 replay 델타.
+- **심사 렌즈** (TPN에서 가져간 유일한 것): *시간 일관성은 사후 연계가 아니라 제안/연계
+  시점의 속성* — 후보가 저신뢰/드랍 프레임을 통과해 튜브를 유지하는가 (현대의 값싼 구현
+  =ByteTrack식 저신뢰 연계; 무거운 후보=SAM2 전파·쿼리-전파 계열). 튜브 단위 시간 판정
+  개념은 이미 사다리에 존재(sustain·rolling_median·persistence).
+
 ## C9 — domain profile (빈 슬롯)
 
 두 번째 도메인이 지불할 때 채운다. 예약 필드(현행 값의 홈):

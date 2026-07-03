@@ -63,7 +63,7 @@ def extract_headpose(out_root, clip_id: str, *, fps: int = 6,
         return {"clip_id": clip_id, "ok": False, "reason": "no crop track (run `crops` first)"}
     if not Path(onnx).exists():
         return {"clip_id": clip_id, "ok": False, "reason": f"6DRepNet onnx missing: {onnx}"}
-    manifest = json.loads(man_path.read_text())
+    manifest = json.loads(man_path.read_text(encoding="utf-8"))
 
     sess = ort.InferenceSession(str(onnx), providers=["CUDAExecutionProvider", "CPUExecutionProvider"])
     inp = sess.get_inputs()[0].name

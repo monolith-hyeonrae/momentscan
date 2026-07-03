@@ -195,7 +195,7 @@ def score_highlight_lang(out_root, clip_id: str, *, expectation: str = "default"
     ej = cdir / "emotion.json"
     p90 = 1.0
     if ej.exists():
-        base = json.loads(ej.read_text()).get("riders", {}).get(str(tid), {}).get("baseline", {})
+        base = json.loads(ej.read_text(encoding="utf-8")).get("riders", {}).get(str(tid), {}).get("baseline", {})
         p90 = base.get("p90", 1.0) or 1.0
 
     # wide crops of the candidates from the source window (for the CLIP scene read).
@@ -251,6 +251,6 @@ def score_highlight_lang(out_root, clip_id: str, *, expectation: str = "default"
     record = {"clip_id": clip_id, "track_id": tid, "expectation": expectation,
               "expectation_text": exp_text, "n_candidates": len(cands), "candidates": cands,
               "ok": bool(cands)}
-    (cdir / "highlight_lang.json").write_text(json.dumps(record, ensure_ascii=False, indent=2))
+    (cdir / "highlight_lang.json").write_text(json.dumps(record, ensure_ascii=False, indent=2), encoding="utf-8")
     record["ms"] = int((time.perf_counter() - t0) * 1000)
     return record

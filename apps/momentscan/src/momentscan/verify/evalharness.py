@@ -50,7 +50,7 @@ def load_labels(out_root) -> list[dict]:
     p = _labels_path(out_root)
     if not p.exists():
         return []
-    return [json.loads(ln) for ln in p.read_text().splitlines() if ln.strip()]
+    return [json.loads(ln) for ln in p.read_text(encoding="utf-8").splitlines() if ln.strip()]
 
 
 def _cand_frames(c: dict) -> list[int]:
@@ -138,7 +138,7 @@ def make_template(out_root, clip_id: str, *, tile_w: int = 480) -> dict:
     rows_img = [cv2.hconcat(tiles[i:i + 3]) for i in range(0, n3, 3)] or tiles[:1]
     cv2.imwrite(str(sheet), cv2.vconcat(rows_img))
     tmpl = eval_dir / f"{clip_id}_labels_template.jsonl"
-    tmpl.write_text("\n".join(json.dumps(r, ensure_ascii=False) for r in rows) + "\n")
+    tmpl.write_text("\n".join(json.dumps(r, ensure_ascii=False) for r in rows) + "\n", encoding="utf-8")
     result = {"ok": True, "clip_id": clip_id, "n_items": len(rows),
               "review_sheet": str(sheet), "template": str(tmpl),
               "labels_path": str(_labels_path(out_root))}
@@ -205,7 +205,7 @@ def make_pairs(out_root, *, n_random: int = 2, seed: int = 7,
                               "a_frame": int(A), "b_frame": int(B),
                               "system_pref": "b" if flip else "a"})
     ev.mkdir(parents=True, exist_ok=True)
-    (ev / out_name).write_text("\n".join(json.dumps(p, ensure_ascii=False) for p in pairs) + "\n")
+    (ev / out_name).write_text("\n".join(json.dumps(p, ensure_ascii=False) for p in pairs) + "\n", encoding="utf-8")
     out = {"ok": True, "n_pairs": len(pairs), "pairs_path": str(ev / out_name)}
     log.info("eval.pairs", extra=out)
     return out
@@ -279,7 +279,7 @@ def make_segment_pairs(out_root, *, seed: int = 11, fps: int = 6,
                     "system_pref": "b" if flip else "a"})
 
     ev.mkdir(parents=True, exist_ok=True)
-    (ev / out_name).write_text("\n".join(json.dumps(p, ensure_ascii=False) for p in pairs) + "\n")
+    (ev / out_name).write_text("\n".join(json.dumps(p, ensure_ascii=False) for p in pairs) + "\n", encoding="utf-8")
     out = {"ok": True, "n_pairs": len(pairs), "pairs_path": str(ev / out_name)}
     log.info("eval.segment_pairs", extra=out)
     return out
@@ -290,7 +290,7 @@ def score_pairs(out_root, *, verdicts_name: str = "pair_verdicts.jsonl") -> dict
     vp = Path(out_root) / "eval" / verdicts_name
     if not vp.exists():
         return {"ok": False, "error": f"no verdicts at {vp}"}
-    rows = [json.loads(ln) for ln in vp.read_text().splitlines() if ln.strip()]
+    rows = [json.loads(ln) for ln in vp.read_text(encoding="utf-8").splitlines() if ln.strip()]
     out: dict = {"ok": True, "n_verdicts": len(rows), "products": {}}
     for r in rows:
         r["product"] = PRODUCT_ALIAS.get(r["product"], r["product"])   # display name only
@@ -319,10 +319,10 @@ def rescore_pairs(out_root) -> dict:
     vp = Path(out_root) / "eval" / "pair_verdicts.jsonl"
     if not vp.exists():
         return {"ok": False, "error": f"no verdicts at {vp}"}
-    verdicts = [json.loads(ln) for ln in vp.read_text().splitlines() if ln.strip()]
+    verdicts = [json.loads(ln) for ln in vp.read_text(encoding="utf-8").splitlines() if ln.strip()]
     pvp = Path(out_root) / "eval" / "pair_verdicts_portrait.jsonl"   # portrait lane (E008)
     if pvp.exists():
-        verdicts += [json.loads(ln) for ln in pvp.read_text().splitlines() if ln.strip()]
+        verdicts += [json.loads(ln) for ln in pvp.read_text(encoding="utf-8").splitlines() if ln.strip()]
 
     cache: dict = {}
 

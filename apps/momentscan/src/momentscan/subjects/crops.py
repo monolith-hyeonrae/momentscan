@@ -115,7 +115,7 @@ def extract_crops(video_path: str | Path, out_root: str | Path, clip_id: str,
                           "n_frames": len(order[sid]), "frames": order[sid],
                           "file": f"s{sid}.mp4"} for sid in subs],
         }
-        (crops_dir / "manifest.json").write_text(json.dumps(manifest, separators=(",", ":")))
+        (crops_dir / "manifest.json").write_text(json.dumps(manifest, separators=(",", ":")), encoding="utf-8")
 
         result = {"clip_id": clip_id, "ok": True, "crops_dir": str(crops_dir),
                   "n_subjects": len(subs),

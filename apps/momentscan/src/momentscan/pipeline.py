@@ -105,7 +105,7 @@ RUNNERS = {
     "emotion":   ("emotion.json", _emotion),
     "portrait":  ("portraits/portrait.json", _portrait),
     "likeness":  ("likeness.json", _likeness),
-    "select":    ("candidates.jsonl", _select),
+    "select":    ("select.json", _select),   # own artifact — candidates.jsonl is SHARED (portrait creates it first → false skip)
 }
 
 # every runner must declare its source module, so freshness can detect a stale

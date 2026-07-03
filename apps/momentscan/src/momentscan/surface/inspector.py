@@ -202,7 +202,7 @@ def render_tubelet_inspect(out_root: str | Path, clip_id: str, *,
     import json as _json
     from momentscan.stash import clip_dir as _clip_dir
     _hlp = _clip_dir(Path(out_root), clip_id) / "highlight_lang.json"
-    hl_lang = _json.loads(_hlp.read_text()) if _hlp.exists() else None
+    hl_lang = _json.loads(_hlp.read_text(encoding="utf-8")) if _hlp.exists() else None
     # the QUERY CRITERION each product was selected AGAINST (what we were looking for) —
     # portrait's authored expression query (gates preset), highlight's attraction expectation.
     from momentscan.gates import PORTRAIT_QUERY as _PQ, QUERY_DIST_MAX as _PTAU
@@ -505,7 +505,7 @@ def render_tubelet_inspect(out_root: str | Path, clip_id: str, *,
     # fashion summary per subject (from likeness.json) — shown in the LIKENESS region.
     lk_path = out_dir / "likeness.json"
     if lk_path.exists():
-        lk = json.loads(lk_path.read_text()).get("riders", {})
+        lk = json.loads(lk_path.read_text(encoding="utf-8")).get("riders", {})
         for s in subjects:
             fa = (lk.get(str(s["sid"])) or {}).get("fashion")
             if fa:
@@ -524,7 +524,7 @@ def render_tubelet_inspect(out_root: str | Path, clip_id: str, *,
     crop_provenance = None
     cm = inspect.parent / "crops" / "manifest.json"
     if cm.exists():
-        man = json.loads(cm.read_text())
+        man = json.loads(cm.read_text(encoding="utf-8"))
         crops = {s["subject_id"]: f"../crops/{s['file']}" for s in man.get("subjects", [])}
         crop_provenance = {"processed_at": man.get("processed_at"),
                            "source": (man.get("source") or {}).get("path")}
@@ -574,7 +574,7 @@ def render_tubelet_inspect(out_root: str | Path, clip_id: str, *,
 
     html = _TUBELET_INSPECT_HTML.replace("__DATA__", json.dumps(data, separators=(",", ":")))
     path = inspect / "clip.html"
-    path.write_text(html)
+    path.write_text(html, encoding="utf-8")
     result = {"clip_id": clip_id, "ok": True, "inspect": str(path),
               "n_subjects": len(subjects), "main": main_name,
               "clean_source": bool(clean)}

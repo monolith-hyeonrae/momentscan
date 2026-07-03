@@ -81,7 +81,7 @@ def extract_fashion(out_root, clip_id: str, *, fps: int = 6) -> dict:
     man_path = cdir / "crops" / "manifest.json"
     if not man_path.exists():
         return {"clip_id": clip_id, "ok": False, "reason": "no crop track (run `crops` first)"}
-    manifest = json.loads(man_path.read_text())
+    manifest = json.loads(man_path.read_text(encoding="utf-8"))
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
     model = CLIPModel.from_pretrained(MODEL).to(device).eval()

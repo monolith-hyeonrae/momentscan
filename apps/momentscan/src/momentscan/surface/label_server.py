@@ -122,11 +122,11 @@ class _Handler(BaseHTTPRequestHandler):
                 else:
                     from momentscan.verify.evalharness import make_pairs
                     make_pairs(self.out_root, **_LANES[self.lane])
-            pairs = [json.loads(ln) for ln in pp.read_text().splitlines() if ln.strip()]
+            pairs = [json.loads(ln) for ln in pp.read_text(encoding="utf-8").splitlines() if ln.strip()]
             vp = ev / f"pair_verdicts{self._suffix}.jsonl"
             done = {}
             if vp.exists():
-                for ln in vp.read_text().splitlines():
+                for ln in vp.read_text(encoding="utf-8").splitlines():
                     if ln.strip():
                         r = json.loads(ln)
                         done[(r["clip_id"], r["track_id"], r["product"], r["a_frame"], r["b_frame"])] = r["winner"]
@@ -152,12 +152,12 @@ class _Handler(BaseHTTPRequestHandler):
             self.send_response(404); self.end_headers(); return
         item = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
         vp = self.out_root / "eval" / f"pair_verdicts{self._suffix}.jsonl"
-        rows = [json.loads(ln) for ln in vp.read_text().splitlines() if ln.strip()] if vp.exists() else []
+        rows = [json.loads(ln) for ln in vp.read_text(encoding="utf-8").splitlines() if ln.strip()] if vp.exists() else []
         key = (item["clip_id"], item["track_id"], item["product"], item["a_frame"], item["b_frame"])
         rows = [r for r in rows
                 if (r["clip_id"], r["track_id"], r["product"], r["a_frame"], r["b_frame"]) != key]
         rows.append(item)
-        vp.write_text("\n".join(json.dumps(r, ensure_ascii=False) for r in rows) + "\n")
+        vp.write_text("\n".join(json.dumps(r, ensure_ascii=False) for r in rows) + "\n", encoding="utf-8")
         self._send(b"{}")
 
 

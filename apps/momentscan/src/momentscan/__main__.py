@@ -196,6 +196,19 @@ def _cmd_tubelets(args: argparse.Namespace) -> int:
 def _cmd_run(args: argparse.Namespace) -> int:
     import logging
     from momentscan.pipeline import run_pipeline
+    from momentscan.stash import detections_path
+
+    # ONE-COMMAND happy path: `run <video-or-clip>` — a video PATH as clip_id means
+    # source=itself; when detections are missing and a source is known, run detect
+    # INLINE (one-shot warm_init, no daemon needed) before the stage runner. The
+    # daemon stays the operator path (warm, many clips); this is the first-15-minutes path.
+    p = Path(args.clip_id).expanduser()
+    if p.suffix.lower() in (".mp4", ".mov", ".mkv", ".avi") and p.exists():
+        args.source, args.clip_id = str(p), p.stem
+    if args.source and not detections_path(args.out, args.clip_id).exists():
+        print(f"── detect (inline warm, {args.clip_id}) — no daemon needed for a one-shot ──")
+        from momentscan.extraction.detect import process_clip, warm_init
+        process_clip(warm_init(), args.source, args.out, fps=args.fps)
 
     # the cascade banners + per-stage health lines (run_pipeline watch) ARE the digestible
     # run-log; silence the verbose per-stage JSON (it persists to run.json regardless).
@@ -210,7 +223,24 @@ def _cmd_run(args: argparse.Namespace) -> int:
         print("  slowest: " + " · ".join(f"{x['name']} {(x.get('ms') or 0)/1000:.1f}s" for x in ran[:3]))
     for f in result["failed"]:
         print(f"  ✗ {f['name']}: {f.get('error') or f.get('reason')}")
+    # RESULT-first exit: one file to open (deliverables + inspector link).
+    if not result["failed"]:
+        from momentscan.surface.report import render_report
+        rep = render_report(args.out, args.clip_id)
+        print(f"  ▶ report: {rep['report']}")
     return 0 if not result["failed"] else 1
+
+
+def _cmd_doctor(args: argparse.Namespace) -> int:
+    from momentscan.verify.doctor import render_text
+    return render_text()
+
+
+def _cmd_report(args: argparse.Namespace) -> int:
+    from momentscan.surface.report import render_report
+    result = render_report(args.out, args.clip_id)
+    print(json.dumps(result, ensure_ascii=False, indent=2))
+    return 0 if result["ok"] else 1
 
 
 def _cmd_analyzers(args: argparse.Namespace) -> int:
@@ -587,14 +617,24 @@ def main(argv: list[str] | None = None) -> int:
     psel.set_defaults(func=_cmd_select)
 
     prun = sub.add_parser("run", parents=[common],
-                          help="run the post-detect pipeline in registry DAG order (resumable)")
-    prun.add_argument("clip_id", help="clip id (stash dir name; detect + landmarks must exist)")
+                          help="video/clip → full pipeline → report (one-command; inline detect when needed)")
+    prun.add_argument("clip_id", help="clip id in the stash, OR a video path (runs detect inline)")
     prun.add_argument("--source", default=None, help="original video (needed for source-based stages)")
     prun.add_argument("--out", default="output", help="stash root")
     prun.add_argument("--fps", type=int, default=6, help="fps the pipeline ran with")
     prun.add_argument("--force", action="store_true", help="re-run even if artifacts exist")
     prun.add_argument("--only", nargs="*", default=None, help="run only these stages")
     prun.set_defaults(func=_cmd_run)
+
+    pdoc = sub.add_parser("doctor", parents=[common],
+                          help="check external deps (models·binaries·stacks) — checker, not fetcher")
+    pdoc.set_defaults(func=_cmd_doctor)
+
+    prep = sub.add_parser("report", parents=[common],
+                          help="render <clip>/index.html — the result-consumer front door")
+    prep.add_argument("clip_id", help="clip id (stash dir name)")
+    prep.add_argument("--out", default="output", help="stash root")
+    prep.set_defaults(func=_cmd_report)
 
     pan = sub.add_parser("analyzers", parents=[common],
                          help="introspect the analyzer registry (producers · output-kinds · DAG order)")

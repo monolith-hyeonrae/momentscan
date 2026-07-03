@@ -99,7 +99,7 @@ def _direct_imports(py_path: str) -> frozenset[str]:
     """First-party module names imported by a source file (absolute imports)."""
     out: set[str] = set()
     try:
-        tree = ast.parse(Path(py_path).read_text())
+        tree = ast.parse(Path(py_path).read_text(encoding="utf-8"))
     except (OSError, SyntaxError):
         return frozenset()
     for node in ast.walk(tree):
