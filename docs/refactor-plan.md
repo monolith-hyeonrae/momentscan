@@ -114,7 +114,26 @@ viz=output/l2/lane_emit_congruence.png. 남은 조각: 파묻힌-입 spurious ar
 
 ### ▶ 다음 재개 (2026-07-04~)
 
-후보(우선순위 없음, 당일 선택): **미스티치 조각 자동병합**(s13=s18 cos 0.40 증거;
+**VMR 레인 (user 확정 2026-07-03: "VMR 관점에서의 시도도 해봐야겠다")** — highlight의 메인
+방법론 = Zero-Shot Video Moment Retrieval (memory core-criterion-source에 정식화; 언어 쿼리로
+순간 검색, CLIP이 못 하는 표정/감정/포즈는 frozen 신호→구조화 문장으로 = 두-레인 서술 분할).
+우리 필터: E011로 경계 회귀는 불필요 — 수입 대상 = 관련도 채점·장면 인코더·오케스트레이션 패턴.
+사다리 (순서 = 값싼 것부터):
+1. **Qwen2.5-VL 네이티브 temporal grounding 스모크** — 이미 캐시된 3B의 미사용 기능
+   (MRoPE 절대시간, 초 단위 타임스탬프 출력). 선행 = env: torchvision·qwen-vl-utils 설치
+   (Q2 LoRA 메모에도 기록된 그 작업). 실험 = 서브샘플 프레임 + EXPECTATION 쿼리 → 타임스탬프
+   vs 우리 WHEN 피크/highlight.json 세그 대조 = 독립 2차 의견. 판정 = 코퍼스 15클립에서
+   일치/불일치 분해 + 불일치 육안.
+2. **장면 레인 승격**: 이미지-CLIP → 비디오-레벨 임베딩 (InternVideo2/LanguageBind/ViCLIP 중
+   7.6GB에 맞는 것) — "코너링의 긴박함" 같은 모션 맥락은 이미지 단위로 안 보임.
+   SCENE_PROMPTS 매칭 교체 A/B. (SigLIP 차단은 sentencepiece 미설치였음 — 설치로 해소 가능.)
+3. **Moment-GPT 쿼리-재서술 규율** (arXiv 2501.07972): EXPECTATION 저작 시 언어 편향 제거
+   단계 도입 — 코드 수입 아닌 프롬프트 규율.
+4. (라벨 축적 후) QVHighlights 가족 saliency 헤드 fine-tune — pairwise 세그 라벨 재활용. 보류.
+연결: highlight-lang 파이프(구축됨, select 미통합)가 이 레인의 본체 — VMR 시도의 판정자는
+동결 세그 쌍 + 육안, 성공 기준 = generic WHEN이 놓친 맥락-순간을 언어 쿼리가 회수하는가.
+
+기타 후보(우선순위 없음, 당일 선택): **미스티치 조각 자동병합**(s13=s18 cos 0.40 증거;
 C2.5 스왑 전 가장 값싼 트래커 개선) · **우발적-가림 게이트**(dual_1=자연 테스트 클립) ·
 highlight desirability 후속(위 남은 조각) ·
 portrait ② query-synthesis · C9 preset(소비자 대기 — 방출 τ·CLIP_LEN이 preset 후보 파라미터).
