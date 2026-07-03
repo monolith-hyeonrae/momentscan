@@ -80,11 +80,21 @@ geometry.canonicalize + **inspect 실렌더로 증명**. 교훈: 전역 rename s
 pkg ③plugin+bus)=레거시 vpx-plugins 의도를 기계 없이 유지. **지배 원칙 확정(user)**: /dev 원칙 —
 실행 없이 트리가 "무엇이 돌고 있나"를 답한다(ls extraction/=신호 분석 리스트).
 
-### 다음: 로직 재개 — 6D-가림 신뢰도
+### ~~다음: 로직 재개 — 6D-가림 신뢰도~~ → 완료 (2026-07-02 저녁)
 
-이음매 = `pose.fuse_pose`(docstring에 blind spot 명시해둠) + `id_valid`. 절차: **영향 측정**
-(가림-구제 49프레임 델타: likeness/portrait/highlight) → **eval-gate** → iddev 가드.
-기회주의 잔여: rank 4(frame_scores 폐기 스코어러)·8(crop_ref)·9(dead-code)·10(술어 공유)·11(infra).
+측정이 iddev 가드를 **반증**(구제=정당), 진짜 오염=parse 프로필-맹 → 판정가능성 가드로 수리(1afb8c7).
+이어서 6D 3축 좌표 정합(ca01590)·3축 불일치 가드도 측정-반증(4c188c3)·인스펙터 정합 가시화(6cce2f2).
+상세=session-resume-point 메모리 (4)~(8).
+
+### ▶ 다음 재개 (2026-07-03~)
+
+**추천 첫 수 = 두 번째 도메인 테스트**: `reference_face` 선정 전략 배선(기계는 있음: ArcFace·stitch)
++ 직캠/키즈 샘플 영상 1개로 "preset만 갈아 돌아가는가" 실증 → C9 domain profile 빈 슬롯이 실측으로
+채워짐. 계약 기반=docs/contracts.md(C2 SubjectQuery·두-기계 읽기).
+대안 트랙: portrait ② query-synthesis(Blender 렌더·시즌 preset) · highlight.json deliverable 분리.
+watch 소항목: dual_3 s0 mask_frac 0.511 육안 · pitch 사람-의미 부호 시각 고정(coordinate-conventions
+OPEN 항목) · 손-가림 우발 게이트 TODO(피해 미미 측정됨) · data-contract.md stale 수리.
+기회주의 refactor 잔여: rank 4(frame_scores 폐기 스코어러)·8(crop_ref)·9(dead-code)·10(술어 공유)·11(infra).
 
 **운영 제약**: `.venv/bin/python`·`.venv/bin/momentscan` · out=`output/l2`(replay-check 기본이 `output`이라
 필수) · features 재추출 `--fps 6` · pkill 금지(셸 죽음) · 소스 `/home/hyeonrae/Videos/reaction_test/`.
