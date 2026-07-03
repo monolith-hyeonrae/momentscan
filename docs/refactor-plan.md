@@ -92,15 +92,22 @@ pkg ③plugin+bus)=레거시 vpx-plugins 의도를 기계 없이 유지. **지�
 채택 3종 doctor/원커맨드/report+quiet(44b8f21·a10beef) · **C2 reference_face 구현**(815dfbd,
 τ=0.30 측정) · positional 설계 동결+코퍼스 앵커(751f28b·611ed3d). 상세=session-resume-point (11)~(17).
 
+### ~~`--subject` 전체 파이프 통합 검증~~ → PASS (2026-07-03, 선등록 6항목)
+
+face:s2로 12스테이지 완주(320s): 구성축 전부 단일-subject·portrait/likeness=코퍼스와 동일값·
+job.json·report. 선등록 델타(단독 vs 상대귀속 id경로)=0. **부산물 발견**: 단독-highlight 0세그
+= s2 전클립 valence 음수(양수 1%)×절대 VAL_EMIT_FLOOR — **육안확인 웃음도 valence 음수**
+(head-back laugh를 em_*가 부정 분류; energetic-neg 가족). 코퍼스 3세그=동승자 valence가
+가려온 것 → **face-쿼리 팬캠이 보류된 highlight-desirability 이슈가 가장 아픈 유즈케이스**
+([[emotion-first-class-reading]] 사례 등록; 수정은 기존 결정대로 전용 세션에).
+
 ### ▶ 다음 재개 (2026-07-04~)
 
-**추천 첫 수 = `--subject` 전체 파이프 통합 검증**: face-쿼리 구성 위에서 제품 3종까지 완주
-(attribute+tubelets만 검증됨; scratch에서 `run test_0 --subject face:s18 --force` 유사 경로 →
-그 사람만의 likeness/portrait/highlight 확인 = C2 검증의 마지막 조각, ~10분).
-다음 로직 후보: **미스티치 조각 자동병합**(reference_face가 발굴한 cos 증거 — s13=s18 조각 0.40;
-C2.5 스왑 전 가장 값싼 트래커 개선) · **우발적-가림 게이트**(dual_1=자연 테스트 클립 확정) ·
+후보(우선순위 없음, 당일 선택): **highlight-desirability 세션**(energy 방출·person-relative —
+위 발견으로 근거 강화; 06-29 설계 자료 있음) · **미스티치 조각 자동병합**(s13=s18 cos 0.40 증거;
+C2.5 스왑 전 가장 값싼 트래커 개선) · **우발적-가림 게이트**(dual_1=자연 테스트 클립) ·
 highlight.json deliverable 분리 · portrait ② query-synthesis · C9 preset(소비자 대기).
-watch: dual_3 s0 mask 0.511 육안 · pitch 사람-의미 부호 시각 고정 · data-contract.md stale ·
+watch: dual_3 s0 mask 0.511 육안 · pitch 부호 시각 고정 · data-contract.md stale ·
 기회주의 refactor 잔여(rank 4·8·9·10·11).
 
 **운영 제약**: `.venv/bin/python`·`.venv/bin/momentscan` · out=`output/l2`(replay-check 기본이 `output`이라
