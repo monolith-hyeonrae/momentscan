@@ -59,9 +59,19 @@ def fuse_pose(yaw, pit, rol, yaw6, pit6, rol6):
     didn't (profiles). Returns (yaw_f, pit_f, rol_f, pose_6d); pose_6d marks the
     frames the profile backend rescued.
 
-    ⚠ Known blind spot (next logic work lands HERE): fusion trusts finiteness
-    only — a 6D reading on an occluded face can be confidently wrong (test_0
-    early frames: hand-on-head profile, 175/185 6D-fallback with iddev>0.4)."""
+    Reliability note (measured 2026-07-02, guard REFUTED twice): fusion trusts
+    finiteness only, and that is — so far — enough. (1) The occlusion fear
+    (test_0 early 6D-fallback frames) dissolved: the rescued frames are genuine
+    profiles and the ladder (two-signal side consent · sustain · id_valid ·
+    face gates) already neutralizes every known hallucination archetype (hood /
+    glare / hand). (2) A 3-axis disagreement veto (|Δpitch|+|Δroll| vs MP on
+    corroborated-side frames) does NOT discriminate: hood-hallucination d3
+    39–83 fully overlaps genuine head-back-laugh profiles d3 47–74 (euler
+    crosstalk grows with genuine extreme pose — the veto would kill the most
+    valuable frames), and the one leak it could catch (dual_2 f487–490) never
+    reaches a deliverable. Do not rebuild these guards without a NEW failure
+    case; candidate if one appears: track-level MP↔6D calibration trust, not
+    per-frame thresholds."""
     mp_ok = np.isfinite(yaw)
     yaw_f = np.where(mp_ok, yaw, yaw6)
     pit_f = np.where(mp_ok, pit, pit6)
