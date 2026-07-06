@@ -119,8 +119,12 @@ portrait/highlight는 추가 연구 후 순차 오픈."** 이 결정이 아래 �
 정렬한다 (contracts.md C1에 products 스위치 등재; 스테이지 의존 ≠ 제품 노출).
 
 **Phase 1 — likeness 확신 + 1차 배포 (지금의 주전선):**
-1. **미스티치 조각 자동병합** (s13=s18 cos 0.40) — likeness 품질에 직결(조각나면 n_obs
-   쪼개지고 face_id 오염). 기존 후보에서 Phase 1로 승격.
+1. ~~**미스티치 조각 자동병합**~~ → **DONE (2026-07-06, 7aa5470)** — stitch tier-2
+   상대귀속(중첩0 · cos≥0.40 · 마진≥0.15, 코퍼스 99쌍 측정 앵커; 호스트가 id 유지).
+   15/15 판정·replay 0드리프트. 정직 델타: s18 +1 유효관측(조각 프레임 대부분
+   게이트-거부 — 실가치는 구성 정확성)·dual_2 +2. viz=lane_fragment_stitch.png.
+   부산물: artifact-dep freshness 갭 3번째 실증(detections 재기록이 mtime-fresh
+   소비자를 못 stale — --force 필요).
 2. **코퍼스 전수 육안 감사**: 15클립 전 riders의 face_id coherence·n_obs·fashion 리딩 —
    mask_1/2·cap_1·international_1·dual_*이 자연 에지 케이스. 판정 카드로 남김.
 3. **likeness.json 스키마 동결 → C-계약 승격** (data-contract.md stale 해소 겸;
