@@ -15,10 +15,10 @@ stages are wired in their phase.
 Daemon operation — server and client share ``DEFAULT_SOCKET``
 (``~/.cache/momentscan/daemon.sock``), so they rendezvous with zero flags:
 
-    momentscan serve                  # warm daemon (loads the model once)
-    momentscan process <clip>         # trigger one clip through the warm daemon
-    momentscan status                 # is it up? what has it published?
-    momentscan shutdown
+    momentscan serve                  # 외부 HTTP 면 (C1 실행기 — 배포 단위)
+    momentscan serve --daemon         # UDS 웜 데몬 (연구/운영자)
+    momentscan status                 # 두 면 다 점검
+    momentscan shutdown [--port|--daemon]
 
 momentscan owns this vocabulary; visualbus only lends the wire mechanism
 (``visualbus.control.call``). Cross-app fleet view stays generic:
@@ -43,65 +43,24 @@ def _cmd_ingest(args: argparse.Namespace) -> int:
 
 
 def _cmd_serve(args: argparse.Namespace) -> int:
-    from momentscan.daemon import DEFAULT_SOCKET, serve
-    from momentscan.extraction.detect import DEFAULT_MODEL_ROOT
+    """한 동사, 두 면: 기본 = 외부 HTTP 면(C1 실행기 — 배포·관측 단위),
+    --daemon = UDS 웜 detect 제어면(연구/운영자 도구)."""
+    if args.daemon:
+        from momentscan.daemon import DEFAULT_SOCKET, serve
+        from momentscan.extraction.detect import DEFAULT_MODEL_ROOT
 
-    return serve(
-        socket_path=args.socket or DEFAULT_SOCKET,
-        out_root=args.out,
-        fps=args.fps,
-        model_root=args.model_root or DEFAULT_MODEL_ROOT,
-    )
+        return serve(
+            socket_path=args.socket or DEFAULT_SOCKET,
+            out_root=args.out,
+            fps=args.fps or None,
+            model_root=args.model_root or DEFAULT_MODEL_ROOT,
+        )
 
-
-def _cmd_api_check(args: argparse.Namespace) -> int:
-    from momentscan.verify.apicheck import run_apicheck
-
-    return run_apicheck()
-
-
-def _cmd_shutdown_http(args: argparse.Namespace) -> int:
-    """로컬 serve-http 우아한 종료 — 런타임 레코드로 pid를 찾아 SIGTERM
-    (finally 정리: 유레카 즉시 해지 + 레코드 삭제). 원격 shutdown 엔드포인트는
-    일부러 없다 — 네트워크에서 끌 수 있는 서비스는 footgun."""
-    import os
-    import signal
-    import time as _time
-
-    recs = sorted((Path.home() / ".cache" / "momentscan").glob("http-*.json"))
-    if args.port:
-        recs = [r for r in recs if r.name == f"http-{args.port}.json"]
-    if not recs:
-        print("serve-http 런타임 레코드 없음 — 이미 꺼져 있거나 kill -9 잔재는 status로 확인")
-        return 2
-    if len(recs) > 1 and not args.port:
-        print("여러 인스턴스가 떠 있음 — --port로 지정:")
-        for r in recs:
-            print(f"  {json.loads(r.read_text(encoding='utf-8')).get('node')}")
-        return 2
-    rec = json.loads(recs[0].read_text(encoding="utf-8"))
-    pid = rec.get("pid")
-    try:
-        os.kill(pid, signal.SIGTERM)
-    except ProcessLookupError:
-        recs[0].unlink(missing_ok=True)
-        print(f"프로세스 {pid} 이미 없음 — 죽은 레코드 정리함")
-        return 0
-    for _ in range(50):                                  # 우아한 종료 대기 (최대 ~10s)
-        if not recs[0].exists():
-            print(f"✓ {rec.get('node')} 종료 (유레카 해지·레코드 삭제 완료)")
-            return 0
-        _time.sleep(0.2)
-    print(f"⚠ {rec.get('node')} 종료 신호는 보냈으나 레코드가 남아 있음 — 잡 처리 중이면 대기, 아니면 status 확인")
-    return 1
-
-
-def _cmd_serve_http(args: argparse.Namespace) -> int:
     from momentscan.service import node_identity, serve_http
 
     # 서버의 로그는 기본으로 파일(~/logs/momentscan-{port}.log, JSON)에 떨어진다 —
     # 관측 레인(promtail→Loki)의 수집 지점이 파일이라, 셸 리다이렉트를 잊으면
-    # 노드가 조용히 관측 불능이 되는 함정을 제거. `--log-file -` = 기존 stderr.
+    # 노드가 조용히 관측 불능이 되는 함정을 제거. `--log-file -` = stderr.
     stream = None
     log_path = args.log_file
     if log_path != "-":
@@ -118,13 +77,19 @@ def _cmd_serve_http(args: argparse.Namespace) -> int:
     serve_http(
         args.out,
         port=args.port,
-        fps=args.fps,
+        fps=args.fps or 6,
         open_products=tuple(args.products.split(",")) if args.products else ("likeness",),
         eureka_url=args.eureka,
         advertise_host=args.advertise_host,
         app_name=args.app_name,
     )
     return 0
+
+
+def _cmd_api_check(args: argparse.Namespace) -> int:
+    from momentscan.verify.apicheck import run_apicheck
+
+    return run_apicheck()
 
 
 # ── daemon client verbs — momentscan's own operator surface ──────────────────
@@ -164,7 +129,7 @@ def _cmd_process(args: argparse.Namespace) -> int:
 
 def _cmd_status(args: argparse.Namespace) -> int:
     """운영자 표면: 이 머신에서 momentscan의 두 서버 면이 무엇이 돌고 있나 —
-    UDS 웜 데몬(연구/운영자) + serve-http(C1 실행기, 배포·관측 단위)."""
+    serve(HTTP, 배포·관측 단위) + serve --daemon(UDS 웜, 연구/운영자)."""
     import urllib.request
 
     from visualbus.control import call
@@ -183,10 +148,10 @@ def _cmd_status(args: argparse.Namespace) -> int:
     except (FileNotFoundError, ConnectionRefusedError):
         print(f"  ✗ 없음 ({sock}) — `momentscan serve`로 기동")
 
-    print("── serve-http (외부 HTTP 면 · C1 실행기 · 관측 단위) ──")
+    print("── serve (외부 HTTP 면 · C1 실행기 · 관측 단위) ──")
     recs = sorted((Path.home() / ".cache" / "momentscan").glob("http-*.json"))
     if not recs:
-        print("  ✗ 없음 — `momentscan serve-http`로 기동")
+        print("  ✗ 없음 — `momentscan serve`로 기동")
     for rp in recs:
         rec = json.loads(rp.read_text(encoding="utf-8"))
         try:
@@ -207,20 +172,59 @@ def _cmd_status(args: argparse.Namespace) -> int:
 
 
 def _cmd_shutdown(args: argparse.Namespace) -> int:
-    result = _call_daemon(args, "shutdown")
-    print(json.dumps(result, ensure_ascii=False))
-    return 0
+    """한 동사, 두 면: --daemon = UDS 데몬 종료 · --port N = 그 HTTP 노드 종료 ·
+    무인자 = 살아있는 것이 하나뿐이면 그것을 (모호하면 목록만)."""
+    if args.daemon:
+        result = _call_daemon(args, "shutdown")
+        print(json.dumps(result, ensure_ascii=False))
+        return 0
+    if not args.port:
+        # 모호성 검사: HTTP 레코드 수 + 데몬 sock 존재
+        from momentscan.daemon import DEFAULT_SOCKET
+        recs = sorted((Path.home() / ".cache" / "momentscan").glob("http-*.json"))
+        sock = Path(args.socket).expanduser() if args.socket else DEFAULT_SOCKET
+        alive = [f"--port {json.loads(r.read_text(encoding='utf-8'))['port']}" for r in recs] \
+            + (["--daemon"] if sock.exists() else [])
+        if len(alive) != 1:
+            print("무엇을 종료할지 지정 필요:" if alive else "종료할 서버 없음 (status로 확인)")
+            for a in alive:
+                print(f"  momentscan shutdown {a}")
+            return 2
+        if alive[0] == "--daemon":
+            result = _call_daemon(args, "shutdown")
+            print(json.dumps(result, ensure_ascii=False))
+            return 0
+        args.port = int(alive[0].split()[-1])
+    return _shutdown_http(args.port)
 
 
-def _cmd_appearance(args: argparse.Namespace) -> int:
-    from momentscan.products.likeness import appearance_clip
-    from momentscan.surface.cards import render_appearance_card
+def _shutdown_http(port: int) -> int:
+    """serve의 HTTP 면 우아한 종료 — 런타임 레코드로 pid를 찾아 SIGTERM
+    (finally 정리: 유레카 즉시 해지 + 레코드 삭제). 원격 shutdown 엔드포인트는
+    일부러 없다 — 네트워크에서 끌 수 있는 서비스는 footgun."""
+    import os
+    import signal
+    import time as _time
 
-    result = appearance_clip(args.out, args.clip_id)
-    if result["ok"]:
-        result["card"] = render_appearance_card(args.out, args.clip_id)
-    print(json.dumps(result, ensure_ascii=False, indent=2))
-    return 0 if result["ok"] else 1
+    rp = Path.home() / ".cache" / "momentscan" / f"http-{port}.json"
+    if not rp.exists():
+        print(f"포트 {port}의 런타임 레코드 없음 — 이미 꺼져 있거나 kill -9 잔재는 status로 확인")
+        return 2
+    rec = json.loads(rp.read_text(encoding="utf-8"))
+    pid = rec.get("pid")
+    try:
+        os.kill(pid, signal.SIGTERM)
+    except ProcessLookupError:
+        rp.unlink(missing_ok=True)
+        print(f"프로세스 {pid} 이미 없음 — 죽은 레코드 정리함")
+        return 0
+    for _ in range(50):                                  # 우아한 종료 대기 (최대 ~10s)
+        if not rp.exists():
+            print(f"✓ {rec.get('node')} 종료 (유레카 해지·레코드 삭제 완료)")
+            return 0
+        _time.sleep(0.2)
+    print(f"⚠ {rec.get('node')} 종료 신호는 보냈으나 레코드가 남아 있음 — 잡 처리 중이면 대기, 아니면 status 확인")
+    return 1
 
 
 def _cmd_label(args: argparse.Namespace) -> int:
@@ -254,61 +258,6 @@ def _cmd_eval(args: argparse.Namespace) -> int:
         result = score(args.out, clips)
     print(json.dumps(result, ensure_ascii=False, indent=2))
     return 0 if result.get("ok") else 1
-
-
-def _cmd_select(args: argparse.Namespace) -> int:
-    from momentscan.products.select import select_clip
-    from momentscan.surface.cards import render_portrait_card, render_select_timeline
-
-    result = select_clip(args.out, args.clip_id, fps=args.fps)
-    if result["ok"]:
-        result["select_timeline"] = render_select_timeline(args.out, args.clip_id, fps=args.fps)
-        result["portrait_card"] = render_portrait_card(args.out, args.clip_id)
-    print(json.dumps(result, ensure_ascii=False, indent=2))
-    return 0 if result["ok"] else 1
-
-
-def _cmd_highlight(args: argparse.Namespace) -> int:
-    from momentscan.products.highlight import highlight_clip
-    from momentscan.surface.cards import render_highlight_clips
-
-    result = highlight_clip(args.out, args.clip_id, fps=args.fps)
-    if result["ok"]:
-        result["highlight_clips"] = render_highlight_clips(args.out, args.clip_id)
-    print(json.dumps(result, ensure_ascii=False, indent=2))
-    return 0 if result["ok"] else 1
-
-
-def _cmd_features(args: argparse.Namespace) -> int:
-    from momentscan.extraction.features import extract_features
-
-    try:
-        result = extract_features(args.path, args.out, fps=args.fps)
-    except ImportError as exc:
-        print(f"momentscan: features stage needs the specialist45d package: {exc}", file=sys.stderr)
-        return 2
-    print(json.dumps(result, ensure_ascii=False, indent=2))
-    return 0 if result["ok"] else 1
-
-
-def _cmd_scene(args: argparse.Namespace) -> int:
-    from momentscan.extraction.scene import extract_scene
-
-    try:
-        result = extract_scene(args.path, args.out, fps=args.fps)
-    except ImportError as exc:
-        print(f"momentscan: scene stage needs the specialist45d package: {exc}", file=sys.stderr)
-        return 2
-    print(json.dumps(result, ensure_ascii=False, indent=2))
-    return 0 if result["ok"] else 1
-
-
-def _cmd_tubelets(args: argparse.Namespace) -> int:
-    from momentscan.subjects.tubelets import synthesize_tubelets
-
-    result = synthesize_tubelets(args.path, args.out, fps=args.fps)
-    print(json.dumps(result, ensure_ascii=False, indent=2))
-    return 0 if result["ok"] else 1
 
 
 def _cmd_run(args: argparse.Namespace) -> int:
@@ -558,54 +507,6 @@ def _cmd_check(args: argparse.Namespace) -> int:
     return 1 if errs else 0
 
 
-def _cmd_fashion(args: argparse.Namespace) -> int:
-    try:
-        from momentscan.extraction.fashion import extract_fashion
-    except ImportError as exc:
-        print(f"momentscan: fashion stage needs torch/transformers: {exc}", file=sys.stderr)
-        return 2
-    result = extract_fashion(args.out, args.clip_id, fps=args.fps)
-    print(json.dumps(result, ensure_ascii=False, indent=2))
-    return 0 if result["ok"] else 1
-
-
-def _cmd_headpose(args: argparse.Namespace) -> int:
-    try:
-        from momentscan.extraction.headpose import extract_headpose
-    except ImportError as exc:
-        print(f"momentscan: headpose stage needs onnxruntime: {exc}", file=sys.stderr)
-        return 2
-    result = extract_headpose(args.out, args.clip_id, fps=args.fps)
-    print(json.dumps(result, ensure_ascii=False, indent=2))
-    return 0 if result["ok"] else 1
-
-
-def _cmd_emotion(args: argparse.Namespace) -> int:
-    from momentscan.domains.emotion import extract_emotion
-    result = extract_emotion(args.out, args.clip_id, fps=args.fps)
-    print(json.dumps(result, ensure_ascii=False, indent=2))
-    return 0 if result["ok"] else 1
-
-
-def _cmd_parse(args: argparse.Namespace) -> int:
-    try:
-        from momentscan.extraction.parse import extract_parse
-    except ImportError as exc:
-        print(f"momentscan: parse stage needs torch/transformers: {exc}", file=sys.stderr)
-        return 2
-    result = extract_parse(args.out, args.clip_id, fps=args.fps)
-    print(json.dumps(result, ensure_ascii=False, indent=2))
-    return 0 if result["ok"] else 1
-
-
-def _cmd_portrait(args: argparse.Namespace) -> int:
-    from momentscan.products.portrait import select_portrait
-
-    result = select_portrait(args.out, args.clip_id, fps=args.fps)
-    print(json.dumps(result, ensure_ascii=False, indent=2))
-    return 0 if result["ok"] else 1
-
-
 def _cmd_highlight_lang(args: argparse.Namespace) -> int:
     try:
         from momentscan.products.highlight_lang import score_highlight_lang
@@ -613,14 +514,6 @@ def _cmd_highlight_lang(args: argparse.Namespace) -> int:
         print(f"momentscan: highlight-lang needs torch/transformers/opencv: {exc}", file=sys.stderr)
         return 2
     result = score_highlight_lang(args.out, args.clip_id, expectation=args.expectation, fps=args.fps)
-    print(json.dumps(result, ensure_ascii=False, indent=2))
-    return 0 if result["ok"] else 1
-
-
-def _cmd_crops(args: argparse.Namespace) -> int:
-    from momentscan.subjects.crops import extract_crops
-
-    result = extract_crops(args.source, args.out, args.clip_id, fps=args.fps)
     print(json.dumps(result, ensure_ascii=False, indent=2))
     return 0 if result["ok"] else 1
 
@@ -635,41 +528,35 @@ def _cmd_inspect(args: argparse.Namespace) -> int:
 
 
 def _cmd_viz(args: argparse.Namespace) -> int:
+    """렌더 애그리게이터 — 제품/스테이지별 렌더 커맨드를 하나로 흡수 (CLI 정리 2026-07-06).
+    인자 = 비디오 경로(소스-기반 렌더 포함) 또는 clip_id(stash-순수 렌더만:
+    타임라인·카드·highlight mp4[detect.mp4 폴백])."""
     from momentscan.stash import candidates_path, process_trace_path
     from momentscan.surface.cards import (
-        render_attribution, render_highlight_clips, render_identity_strip,
-        render_portrait_card, render_process_timeline, render_select_timeline,
+        render_appearance_card, render_attribution, render_highlight_clips,
+        render_identity_strip, render_portrait_card, render_process_timeline,
+        render_select_timeline,
     )
 
-    result = render_attribution(args.path, args.out, fps=args.fps)
-    clip_id = Path(args.path).stem
-    if process_trace_path(Path(args.out), clip_id).exists():
-        result["process_timeline"] = render_process_timeline(args.out, clip_id)
-    result["identity_strip"] = render_identity_strip(args.path, args.out, fps=args.fps)
+    p = Path(args.path).expanduser()
+    result: dict = {}
+    if p.is_file():                                     # 비디오 경로 — 소스-기반 렌더 포함
+        clip_id = p.stem
+        result = render_attribution(str(p), args.out, fps=args.fps)
+        if process_trace_path(Path(args.out), clip_id).exists():
+            result["process_timeline"] = render_process_timeline(args.out, clip_id)
+        result["identity_strip"] = render_identity_strip(str(p), args.out, fps=args.fps)
+        video = str(p)
+    else:                                               # clip_id — stash-순수 렌더
+        clip_id, video = args.path, None
+        result["clip_id"] = clip_id
     if candidates_path(Path(args.out), clip_id).exists():
-        result["select_timeline"] = render_select_timeline(args.out, clip_id, fps=args.fps)
+        result["select_timeline"] = render_select_timeline(args.out, clip_id, fps=args.fps or 6)
         result["portrait_card"] = render_portrait_card(args.out, clip_id)
-        result["highlight_clips"] = render_highlight_clips(
-            args.out, clip_id, video_path=args.path)
+        result["appearance_card"] = render_appearance_card(args.out, clip_id)
+        result["highlight_clips"] = render_highlight_clips(args.out, clip_id, video_path=video)
     print(json.dumps(result, ensure_ascii=False, indent=2))
     return 0
-
-
-def _cmd_attribute(args: argparse.Namespace) -> int:
-    try:
-        from momentscan.subjects.attribute import attribute_clip
-    except ImportError as exc:
-        print(
-            f"momentscan: attribute stage needs the step0b extra (torch/depth): {exc}\n"
-            "install with: uv sync --extra step0b",
-            file=sys.stderr,
-        )
-        return 2
-    result = attribute_clip(args.path, args.out, fps=args.fps, stride=args.stride)
-    shown = {k: v for k, v in result.items() if k != "samples"}
-    shown["n_samples"] = len(result.get("samples") or [])
-    print(json.dumps(shown, ensure_ascii=False, indent=2))
-    return 0 if result["valid"] else 1
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -696,37 +583,27 @@ def main(argv: list[str] | None = None) -> int:
     pi.add_argument("--no-trace", action="store_true", help="skip the trace.mp4, log only")
     pi.set_defaults(func=_cmd_ingest)
 
-    ps = sub.add_parser("serve", parents=[common], help="daemon — warm detect + control plane (UDS)")
-    ps.add_argument("--socket", default=None, help="control socket path (default ~/.cache/momentscan/daemon.sock)")
-    ps.add_argument("--out", default="output", help="output root (default ./output)")
-    ps.add_argument("--fps", type=int, default=None, help="default target fps for jobs (overridable per request)")
-    ps.add_argument("--model-root", default=None, help="insightface model root (default ~/.insightface)")
+    ps = sub.add_parser("serve", parents=[common],
+                        help="서버 — 기본: 외부 HTTP 면(C1 실행기) · --daemon: UDS 웜 detect 제어면")
+    ps.add_argument("--daemon", action="store_true", help="UDS 웜 데몬 모드 (연구/운영자)")
+    ps.add_argument("--port", type=int, default=8080, help="HTTP 포트")
+    ps.add_argument("--out", default="output", help="stash root")
+    ps.add_argument("--fps", type=int, default=None, help="분석 fps (HTTP 기본 6)")
+    ps.add_argument("--products", default="likeness",
+                    help="열린 제품 (단계 배포 스위치, 쉼표구분)")
+    ps.add_argument("--eureka", default=None,
+                    help="Eureka 서버 URL (예: http://eureka:8761/eureka) — 주면 등록")
+    ps.add_argument("--advertise-host", default=None, help="광고할 host/IP (기본 자동 감지)")
+    ps.add_argument("--app-name", default="momentscan", help="Eureka 앱 이름")
+    ps.add_argument("--log-file", default=None,
+                    help="로그 파일 (기본 ~/logs/momentscan-{port}.log · '-'=stderr)")
+    ps.add_argument("--socket", default=None, help="[--daemon] control socket path")
+    ps.add_argument("--model-root", default=None, help="[--daemon] insightface model root")
     ps.set_defaults(func=_cmd_serve)
-
-    psh = sub.add_parser("serve-http", parents=[common],
-                         help="외부 HTTP 면 — C1 Job/Result 서버 (알파 배포; POST /jobs)")
-    psh.add_argument("--port", type=int, default=8080)
-    psh.add_argument("--out", default="output", help="stash root")
-    psh.add_argument("--fps", type=int, default=6, help="Job.fps 생략 시 기본값")
-    psh.add_argument("--products", default="likeness",
-                     help="열린 제품 (단계 배포 스위치, 쉼표구분; 기본 likeness)")
-    psh.add_argument("--eureka", default=None,
-                     help="Eureka 서버 URL (예: http://eureka.corp:8761/eureka) — 주면 등록")
-    psh.add_argument("--advertise-host", default=None,
-                     help="Eureka에 광고할 host/IP (기본: 자동 감지)")
-    psh.add_argument("--app-name", default="momentscan", help="Eureka 앱 이름")
-    psh.add_argument("--log-file", default=None,
-                     help="로그 파일 (기본 ~/logs/momentscan-{port}.log · '-'=stderr)")
-    psh.set_defaults(func=_cmd_serve_http)
 
     pac = sub.add_parser("api-check", parents=[common],
                          help="REST API 계약 테스트 — 인프로세스 서버 vs docs/api/openapi.yaml")
     pac.set_defaults(func=_cmd_api_check)
-
-    psx = sub.add_parser("shutdown-http", parents=[common],
-                         help="로컬 serve-http 우아한 종료 (SIGTERM — 유레카 해지·레코드 정리)")
-    psx.add_argument("--port", type=int, default=None, help="여러 인스턴스 중 대상 포트")
-    psx.set_defaults(func=_cmd_shutdown_http)
 
     pp = sub.add_parser("process", parents=[common], help="trigger one clip through the running warm daemon")
     pp.add_argument("path", help="video file to analyze")
@@ -738,24 +615,12 @@ def main(argv: list[str] | None = None) -> int:
     pst.add_argument("--socket", default=None, help="daemon socket (default ~/.cache/momentscan/daemon.sock)")
     pst.set_defaults(func=_cmd_status)
 
-    psh = sub.add_parser("shutdown", parents=[common], help="stop the running daemon")
+    psh = sub.add_parser("shutdown", parents=[common],
+                         help="종료 — --port N: HTTP 노드 · --daemon: UDS 데몬 · 무인자: 하나뿐이면 그것")
+    psh.add_argument("--port", type=int, default=None, help="종료할 HTTP 노드 포트")
+    psh.add_argument("--daemon", action="store_true", help="UDS 데몬 종료")
     psh.add_argument("--socket", default=None, help="daemon socket (default ~/.cache/momentscan/daemon.sock)")
     psh.set_defaults(func=_cmd_shutdown)
-
-    pa = sub.add_parser("attribute", parents=[common],
-                        help="step0b — rider roles by depth vote (needs `uv sync --extra step0b`)")
-    pa.add_argument("path", help="video file (must already be processed → detections.parquet)")
-    pa.add_argument("--out", default="output", help="stash root used by the detect stage")
-    pa.add_argument("--fps", type=int, default=None, help="MUST match the fps the detect stage used")
-    pa.add_argument("--stride", type=int, default=5, help="sample every Nth co-occurrence frame")
-    pa.set_defaults(func=_cmd_attribute)
-
-    pt = sub.add_parser("tubelets", parents=[common],
-                        help="Step 0 synthesis — detections+attribution+scene-phase → tubelets.parquet")
-    pt.add_argument("path", help="video file (already processed + attributed)")
-    pt.add_argument("--out", default="output", help="stash root")
-    pt.add_argument("--fps", type=int, default=None, help="MUST match the fps the detect stage used")
-    pt.set_defaults(func=_cmd_tubelets)
 
     pv = sub.add_parser("viz", parents=[common],
                         help="render attribution_trace.mp4 + contact_sheet.jpg from the stash")
@@ -763,34 +628,6 @@ def main(argv: list[str] | None = None) -> int:
     pv.add_argument("--out", default="output", help="stash root")
     pv.add_argument("--fps", type=int, default=None, help="MUST match the fps the detect stage used")
     pv.set_defaults(func=_cmd_viz)
-
-    psc = sub.add_parser("scene", parents=[common],
-                         help="E012 — frame-grain scene embeddings (DINOv2 CLS) -> scene.parquet")
-    psc.add_argument("path", help="video file")
-    psc.add_argument("--out", default="output", help="stash root")
-    psc.add_argument("--fps", type=int, default=None, help="MUST match the fps the detect stage used")
-    psc.set_defaults(func=_cmd_scene)
-
-    pf = sub.add_parser("features", parents=[common],
-                        help="Track A extractor — tubelets → features/A.parquet (specialist45d)")
-    pf.add_argument("path", help="video file (tubelets must exist)")
-    pf.add_argument("--out", default="output", help="stash root")
-    pf.add_argument("--fps", type=int, default=None, help="MUST match the fps the detect stage used")
-    pf.set_defaults(func=_cmd_features)
-
-    psel = sub.add_parser("select", parents=[common],
-                          help="3c — 공유 채점 기판 + likeness 후보 → candidates.jsonl")
-    psel.add_argument("clip_id", help="clip id (stash dir name)")
-    psel.add_argument("--out", default="output", help="stash root")
-    psel.add_argument("--fps", type=int, default=6, help="fps the pipeline ran with")
-    psel.set_defaults(func=_cmd_select)
-
-    phl = sub.add_parser("highlight", parents=[common],
-                         help="3d — 합동 WHEN 악구 → highlight.json + highlights/*.mp4")
-    phl.add_argument("clip_id", help="clip id (stash dir name)")
-    phl.add_argument("--out", default="output", help="stash root")
-    phl.add_argument("--fps", type=int, default=6, help="fps the pipeline ran with")
-    phl.set_defaults(func=_cmd_highlight)
 
     prun = sub.add_parser("run", parents=[common],
                           help="video/clip → full pipeline → report (one-command; inline detect when needed)")
@@ -852,41 +689,6 @@ def main(argv: list[str] | None = None) -> int:
     prp.add_argument("--fps", type=int, default=6, help="fps the pipeline ran with")
     prp.set_defaults(func=_cmd_replay_check)
 
-    pfa = sub.add_parser("fashion", parents=[common],
-                         help="FashionCLIP enrichment on crop track → fashion.json (typed accessory attrs)")
-    pfa.add_argument("clip_id", help="clip id (stash dir name; crop track must exist)")
-    pfa.add_argument("--out", default="output", help="stash root")
-    pfa.add_argument("--fps", type=int, default=6, help="fps the pipeline ran with")
-    pfa.set_defaults(func=_cmd_fashion)
-
-    php = sub.add_parser("headpose", parents=[common],
-                         help="6DRepNet full-range head pose on crop track → headpose.parquet (profile-capable)")
-    php.add_argument("clip_id", help="clip id (stash dir name; crop track must exist)")
-    php.add_argument("--out", default="output", help="stash root")
-    php.add_argument("--fps", type=int, default=6, help="fps the pipeline ran with")
-    php.set_defaults(func=_cmd_headpose)
-
-    pem = sub.add_parser("emotion", parents=[common],
-                         help="HSEmotion+LibreFace fusion → emotion.json (per-person RIDE valence baseline)")
-    pem.add_argument("clip_id", help="clip id (stash dir name; features + tubelets must exist)")
-    pem.add_argument("--out", default="output", help="stash root")
-    pem.add_argument("--fps", type=int, default=6, help="fps the pipeline ran with")
-    pem.set_defaults(func=_cmd_emotion)
-
-    ppr = sub.add_parser("parse", parents=[common],
-                         help="face parsing on crop track → parse.parquet (occlusion signal for portrait gate)")
-    ppr.add_argument("clip_id", help="clip id (stash dir name; crop track must exist)")
-    ppr.add_argument("--out", default="output", help="stash root")
-    ppr.add_argument("--fps", type=int, default=6, help="fps the pipeline ran with")
-    ppr.set_defaults(func=_cmd_parse)
-
-    ppt = sub.add_parser("portrait", parents=[common],
-                         help="portrait selection — synthetic-criterion gate → projection → crop-track extraction")
-    ppt.add_argument("clip_id", help="clip id (stash dir name; landmarks.parquet must exist)")
-    ppt.add_argument("--out", default="output", help="stash root")
-    ppt.add_argument("--fps", type=int, default=6, help="fps the pipeline ran with (MUST match)")
-    ppt.set_defaults(func=_cmd_portrait)
-
     phl = sub.add_parser("highlight-lang", parents=[common],
                          help="context-conditioned highlight WHEN — signal+scene→sentence→LLM-judge vs attraction expectation")
     phl.add_argument("clip_id", help="clip id (stash dir name; detections/gate_trace + source window must exist)")
@@ -894,14 +696,6 @@ def main(argv: list[str] | None = None) -> int:
     phl.add_argument("--fps", type=int, default=6, help="fps the pipeline ran with")
     phl.add_argument("--expectation", default="default", help="named attraction expectation (highlight_lang.EXPECTATIONS)")
     phl.set_defaults(func=_cmd_highlight_lang)
-
-    pcr = sub.add_parser("crops", parents=[common],
-                         help="persist clean per-subject crop tracks while source is live (data-retention)")
-    pcr.add_argument("clip_id", help="clip id (stash dir name; tubelets.parquet must exist)")
-    pcr.add_argument("--source", required=True, help="live original video (NOT retained after extraction)")
-    pcr.add_argument("--out", default="output", help="stash root")
-    pcr.add_argument("--fps", type=int, default=6, help="fps the pipeline ran with (MUST match)")
-    pcr.set_defaults(func=_cmd_crops)
 
     pins = sub.add_parser("inspect", parents=[common],
                           help="interactive per-clip tubelet inspector → inspect/clip.html")
@@ -911,12 +705,6 @@ def main(argv: list[str] | None = None) -> int:
     pins.add_argument("--source", default=None,
                       help="original video → clean main + crop preview (else detect.mp4 fallback)")
     pins.set_defaults(func=_cmd_inspect)
-
-    pap = sub.add_parser("appearance", parents=[common],
-                         help="외형 레퍼런스 — landmark distribution reading → likeness.json")
-    pap.add_argument("clip_id", help="clip id (stash dir name; landmarks.parquet must exist)")
-    pap.add_argument("--out", default="output", help="stash root")
-    pap.set_defaults(func=_cmd_appearance)
 
     pl_ = sub.add_parser("label", parents=[common],
                          help="labeling dashboard — sequential verdict UI over eval templates")

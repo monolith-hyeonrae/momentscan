@@ -52,7 +52,7 @@ Result {
 멱등성: 같은 clip_id 재요청 = 같은 output prefix, 완료 산출물은 재계산 없이 경로 반환
 (파이프라인 resumability가 이미 이 의미론 — probe 파일 존재 = skip). Kafka 재전송 대비.
 
-**실행기 (2026-07-03 구현)**: `momentscan serve-http` = `service.py`(HTTP 어댑터 +
+**실행기 (2026-07-03 구현 · CLI 통합 07-06: `serve-http`→`serve`)**: `momentscan serve` = `service.py`(HTTP 어댑터 +
 transport-agnostic `JobRunner`) + `eureka.py`(레지스트리 등록/갱신/해지, stdlib) +
 stash `result.json`(응답 기록 = 멱등 근거). 운영 = [deploy-alpha.md](deploy-alpha.md).
 e2e 검증: 접수 202→완료 245s→재요청 200/6ms 무재계산·outputs=열린 제품만·

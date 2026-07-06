@@ -99,7 +99,7 @@ def render_report(out_root, clip_id: str) -> dict:
             f"<div class=card><video src='highlights/{html.escape(p.name)}' controls muted></video>"
             f"<div class=cap>{html.escape(p.name)}</div></div>" for p in hls) + "</div>")
     else:
-        sec.append("<div class=warn>highlight mp4 없음 (`momentscan highlight`가 렌더)</div>")
+        sec.append("<div class=warn>highlight mp4 없음 (`momentscan viz <clip>`이 렌더)</div>")
     B.append(_section("highlight", "HIGHLIGHT — 세그먼트 클립", sec))
 
     # ── LIKENESS ─────────────────────────────────────────────────────────────

@@ -56,7 +56,7 @@ def checks() -> list[dict]:
         dict(name="Qwen2.5-VL-3B", ok=any(_HF.glob("models--Qwen--Qwen2.5-VL-3B*")),
              serves="highlight-lang: LLM-judge", hint="첫 실행 시 HF 자동 다운로드"),
         dict(name="boto3", ok=importlib.util.find_spec("boto3") is not None, optional=True,
-             serves="serve-http: s3:// 소스 반입·결과 반출 (선택 — AWS 배포만, 로컬 알파 불필요)",
+             serves="serve(HTTP): s3:// 소스 반입·결과 반출 (선택 — AWS 배포만, 로컬 알파 불필요)",
              hint="uv pip install boto3 — AWS 노드에서만"),
     ]
     return rows

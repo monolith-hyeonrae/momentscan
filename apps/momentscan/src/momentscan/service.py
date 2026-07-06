@@ -475,7 +475,7 @@ def serve_http(out_root: str, *, port: int = 8080, fps: int = 6,
         "open_products": list(open_products), "started_iso": runner.started_iso,
     }, ensure_ascii=False), encoding="utf-8")
 
-    # SIGTERM도 Ctrl-C와 같은 우아한 경로로 — systemd stop·`shutdown-http`·kill 전부
+    # SIGTERM도 Ctrl-C와 같은 우아한 경로로 — systemd stop·`momentscan shutdown`·kill 전부
     # finally 정리(유레카 즉시 해지·런타임 레코드 삭제)를 타야 한다. 시그널 핸들러는
     # 메인 스레드에서 실행되므로 KeyboardInterrupt를 올리면 serve_forever가 빠져나온다.
     import signal
