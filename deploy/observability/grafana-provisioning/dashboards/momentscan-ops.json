@@ -75,13 +75,61 @@
       }
     },
     {
+      "id": 8,
+      "type": "stat",
+      "title": "살아있는 노드 (health beat, 2m)",
+      "gridPos": {
+        "h": 6,
+        "w": 4,
+        "x": 8,
+        "y": 0
+      },
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "queryType": "range",
+          "expr": "count(sum by (node) (count_over_time({service=\"momentscan\"} | json | msg=`service.health` [2m])))"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "0",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
       "id": 3,
       "type": "timeseries",
       "title": "잡 이벤트 율 (5m) — accepted / done / idempotent",
       "gridPos": {
         "h": 6,
-        "w": 16,
-        "x": 8,
+        "w": 12,
+        "x": 12,
         "y": 0
       },
       "datasource": {
