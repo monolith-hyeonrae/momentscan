@@ -112,7 +112,16 @@ viz=output/l2/lane_emit_congruence.png. 남은 조각: 파묻힌-입 spurious ar
 (mouth_vis 판독-가능성 조건화, dual_1 parse 재런 필요) · WHEN/WHICH energy 재편(06-29 설계) ·
 창 형태(onset/release) 방출 · 궤적 표상(장기, substrate 연구 레인).
 
-### ▶ 다음 재개 (2026-07-04~) — 척추 = 단계 배포 (user 결정 2026-07-03)
+### ▶ 다음 재개 (2026-07-07~) — 첫 수 = P1-2b color identity 포팅
+
+**내일 첫 수**: `../appearance-engine/component2/color_identity.py` Cat W #86-89를
+momentscan으로 — 방문-집계판(프레임별 아님)·judgeable 코호트 조건·likeness.json
+`color_identity` 필드. 착지 후 → **P1-③ 스키마 동결**(face_recipe 입력 계약) →
+**P1-④ 실패 모드**(감사 발견 ⓐ~ⓔ가 입력: fashion 두-레인 융합 수리[dual_3 s0·
+test_0 s18 FP]가 1순위 — 타입 레인이 정답 보유라 싼 수리). 서버/관측 스택은
+로컬에 떠 있음(server status로 확인; 7777·Grafana localhost:3000).
+
+### (계보) 척추 = 단계 배포 (user 결정 2026-07-03)
 
 **"세 제품 출력에 아직 확신이 없다 → likeness 먼저 확실히 해서 1차 배포·알파테스트,
 portrait/highlight는 추가 연구 후 순차 오픈."** 이 결정이 아래 모든 후보의 우선순위를

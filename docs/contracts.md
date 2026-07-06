@@ -126,7 +126,7 @@ SubjectQuery { strategy, params }          진입: momentscan run --subject … 
   strategy = seat_rule        위치 규칙 · 정책+depth 증거 · 구현됨(subjects/attribute.py, 기본값)
            | reference_face   참조 얼굴 · 생체 임베딩 · **구현됨(subjects/query.py, 2026-07-03)**
            |                    "face:<photo>" → ArcFace cos vs subject 센트로이드 · TAU_REF=0.30
-           |                    (측정: 동일인 0.48–0.80[min=마스크 착용자] vs 교차 max 0.166;
+           |                    (측정: 동일인 0.48–0.80[min=s18 — P1-② 감사 판명: 마스크 아니라 블러/저품질 트랙] vs 교차 max 0.166;
            |                     동클립 참조=상한, 교차-일 일반화 미측정) · roles={target: main}만
            |                    · 저마진 노트=미스티치 조각 신호 · 미달 시 valid=False+reason
            |                    (tubelets가 reason 그대로 거부 — 엉뚱한 사람 구성 안 함)
