@@ -1,4 +1,4 @@
-"""apicheck — REST API 계약 테스트 (`momentscan api-check`).
+"""apicheck — REST API 계약 테스트 (`momentscan verify api`).
 
 docs/api/openapi.yaml에 공유한 계약이 실제 서버 동작과 일치하는지 반복 검증한다.
 Eureka·GPU·실비디오 전부 불필요: 인프로세스 서버(임시 포트) + 가짜 파이프라인 —

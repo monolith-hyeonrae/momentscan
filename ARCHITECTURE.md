@@ -84,7 +84,7 @@
 | 이미지/픽셀 | y-down · bbox=xyxy 절대픽셀 · 크롭=portrait_box(4:5) 레터박스 | `subjects/crops.py`(ROI 기하) · `media.py`(자르기/인코딩) |
 | MP 오일러 (yaw·pitch·roll) | **정의적 홈 = `pose.euler_from_transform`** — 모든 백엔드가 여기에 정합 · 의미 축이름=registry:POSE_FIELDS | `domains/pose.py` |
 | 6DRepNet 원좌표 | MP 오일러의 **3축 전부 거울** → 어댑터가 (−y,−p,−r) 정렬 (축별 부호-corr로 검증: raw −0.97/−0.70/−0.63 → flip 후 전부 양) | `extraction/headpose.py` |
-| 랜드마크 정준 프레임 | origin=centroid · axis_flip **(1,−1,−1)**=image↔camera(π about x, det=+1 가드) · scale=rms 무차원 · basis 478/468 | `domains/geometry.py` CANONICAL_FRAME (+`momentscan frame`) |
+| 랜드마크 정준 프레임 | origin=centroid · axis_flip **(1,−1,−1)**=image↔camera(π about x, det=+1 가드) · scale=rms 무차원 · basis 478/468 | `domains/geometry.py` CANONICAL_FRAME (+`momentscan map frame`) |
 | ARKit blendshape | 52축 활성도(무차원) — 좌표 아님, 인덱스 계약=signals.BS_* · 생성리그와 공유(render-query) | `domains/signals.py` |
 
 **규칙**: 새 포즈/기하 백엔드 추가 = 어댑터에서 정합 + **측정 검증(축별 부호-corr, 커버 교집합 프레임)** 필수 —
@@ -95,9 +95,9 @@ abs() 소비자만 있어 무사했지만 signed 소비 시작 순간 오염).
 
 | 도구 | 증명하는 것 |
 |---|---|
-| `momentscan check` | 선언 drift 0 (STEPS⇄ANALYZERS⇄PRODUCTS⇄gate ladder) |
-| `momentscan replay-check` | 행동 불변 (동결 입력 재실행 = tolerance-identical) |
-| `momentscan graph` / `products` / `cascade` | 선언 그래프 렌더 (도는 선언 = 그려지는 선언) |
+| `momentscan verify registry` | 선언 drift 0 (STEPS⇄ANALYZERS⇄PRODUCTS⇄gate ladder) |
+| `momentscan verify replay` | 행동 불변 (동결 입력 재실행 = tolerance-identical) |
+| `momentscan map graph` / `products` / `cascade` | 선언 그래프 렌더 (도는 선언 = 그려지는 선언) |
 | freshness | 소스>산출물 staleness (import 클로저 + 외부 모델 mtime) |
 | frozen eval 168쌍 | 로직 변경의 제품 델타 |
 

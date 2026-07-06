@@ -12,12 +12,12 @@
 |---|---|---|---|---|
 | C1 | 서비스 ↔ momentscan | **Job/Result** (아래 초안) | 이 문서 (코드 홈 미정) | — |
 | C2 | 대상 선정 (WHO) | **SubjectQuery** (아래) | 이 문서 → 구현 시 `subjects/` | — |
-| C3 | 대상 구성 → 추출기 | tubelets 경계: *추출기는 tubelets만 읽는다, raw detections 금지* | `subjects/__init__` · `stash.TUBELET_COLUMNS` | `momentscan check` |
+| C3 | 대상 구성 → 추출기 | tubelets 경계: *추출기는 tubelets만 읽는다, raw detections 금지* | `subjects/__init__` · `stash.TUBELET_COLUMNS` | `momentscan verify registry` |
 | C4 | 스테이지 ↔ 스테이지 | stash 아티팩트 (per-artifact 컬럼맵·dtype 캐스트·`_validate`) | `stash.py` | write-시 validate |
 | C5 | 게이트 → 소비자 | gate_trace (사다리 전 verdict + REASONS 어휘) | `gates.py trace_rows/REASONS` | import-시 assert + check |
 | C6 | 특징 추출 → 제품 | registry FIELDS (46-dim 계약) + FeatureSource 포트 | specialist45d `registry.py` · `ports.py` | — |
-| C7 | 좌표계 | 공간·투영·invariant | [`coordinate-conventions.md`](coordinate-conventions.md) · `geometry.CANONICAL_FRAME` | det=+1 assert · `momentscan frame` |
-| C8 | 제품 → 배달물 | egress (Result에 실리는 산출물 부분집합) | `analyzers.Product.egress` · `momentscan cascade` | check |
+| C7 | 좌표계 | 공간·투영·invariant | [`coordinate-conventions.md`](coordinate-conventions.md) · `geometry.CANONICAL_FRAME` | det=+1 assert · `momentscan map frame` |
+| C8 | 제품 → 배달물 | egress (Result에 실리는 산출물 부분집합) | `analyzers.Product.egress` · `momentscan map cascade` | check |
 | C9 | 도메인 지식 ↔ 코어 | **domain profile (preset)** — 빈 슬롯 | 미정 (두 번째 도메인이 지불) | — |
 | C10 | 저장 서술 | 스테이지 분리·stash 레이아웃 | [`data-contract.md`](data-contract.md) ⚠stale(ports.py 개명 미반영) | — |
 
@@ -58,7 +58,7 @@ stash `result.json`(응답 기록 = 멱등 근거). 운영 = [deploy-alpha.md](d
 e2e 검증: 접수 202→완료 245s→재요청 200/6ms 무재계산·outputs=열린 제품만·
 mock-Eureka 수명주기 4단·로컬 배송 복사. 미검증 = S3 실계정(AWS 첫 배포 때 스모크).
 **HTTP 표면의 정식 명세 = [api/openapi.yaml](api/openapi.yaml)** (회사 공유 산출물;
-Eureka와 독립) · 명세⇄서버 일치의 회귀 게이트 = `momentscan api-check`(13항목,
+Eureka와 독립) · 명세⇄서버 일치의 회귀 게이트 = `momentscan verify api`(13항목,
 인프로세스+가짜 파이프라인 — run_pipeline만 패치, 접수/큐/egress/배송/멱등은 실코드).
 
 **단계 배포 (user 결정 2026-07-03)**: 세 제품 동시 오픈하지 않는다 — **likeness 확신

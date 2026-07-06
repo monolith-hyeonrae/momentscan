@@ -153,7 +153,7 @@ def topo_order() -> list[Analyzer]:
 # select.py) or fused with a sibling (highlight는 select.py에 융합돼 있다가
 # 2026-07-03 highlight.py로 졸업). This map
 # DECLARES each product's full read-chain WITHOUT moving any code: it names the
-# stages/units a product reads and the keys it consumes, so `momentscan products`
+# stages/units a product reads and the keys it consumes, so `momentscan map products`
 # can draw the vertical the pipeline hides. Artifacts are NOT restated here — a
 # read references an analyzer by NAME and the renderer resolves `.artifact` from
 # the catalog, so this map cannot drift from the producer's real output path.
@@ -277,7 +277,7 @@ def registry_drift(runner_names, upstream=()) -> list[tuple[str, str]]:
     imports analyzers, never the reverse), so the runner→catalog direction stays
     one-way. Membership + order now DERIVE from ANALYZERS, so this CHECKS that
     derivation: a runnable analyzer with no runner, or a runner for a non-analyzer,
-    fails. `momentscan check` exits nonzero on any error — the guardrail that turns
+    fails. `momentscan verify registry` exits nonzero on any error — the guardrail that turns
     "the declaration that runs is the declaration that's drawn" from aspiration into
     something enforceable. See [[visualpath-dag-split]]."""
     problems: list[tuple[str, str]] = []

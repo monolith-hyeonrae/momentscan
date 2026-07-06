@@ -65,7 +65,7 @@ def checks() -> list[dict]:
 def render_text() -> int:
     rows = checks()
     miss = [r for r in rows if not r["ok"] and not r.get("optional")]   # 선택 의존은 경고만
-    print("── momentscan doctor — 외부 의존 점검 (checker, not fetcher) ──")
+    print("── momentscan verify doctor — 외부 의존 점검 (checker, not fetcher) ──")
     for r in rows:
         mark = "✓" if r["ok"] else ("○" if r.get("optional") else "✗")
         print(f"  {mark} {r['name']:28s} {r['serves']}")

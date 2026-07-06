@@ -8,7 +8,7 @@ on-disk references with per-field IGNORE (volatile: timestamps/ms/elapsed/paths)
 TOLERANCE (abs+rel — openpilot's process_replay). NOT byte-identity: float columns drift on
 a BLAS/torch bump and byte-refs would rot, training you to ignore real failures.
 
-This is the DYNAMIC-value guard — distinct from `momentscan check` (STATIC declaration
+This is the DYNAMIC-value guard — distinct from `momentscan verify registry` (STATIC declaration
 drift) and the frozen-pair eval (product QUALITY). Three layers, distinct failure modes
 ([[openpilot-lessons]]). The model stages (detect/features/parse/headpose/fashion/scene)
 are NOT replayed: they need GPU and their outputs ARE the frozen inputs here.

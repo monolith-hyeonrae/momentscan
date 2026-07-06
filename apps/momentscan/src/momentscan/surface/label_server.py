@@ -4,7 +4,7 @@
 screen ("외형 레퍼런스로 더 좋은 한 장은?" / "더 임팩트 있는 순간은?").
 Highlight pairs ANIMATE (±1s frame cycle) — moments live in sequences, not
 stills. Keys: a / b / t(ie) / p(rev). Verdicts → eval/pair_verdicts.jsonl,
-scored by ``momentscan eval`` as system-claim agreement. Pairs are generated
+scored by ``momentscan verify eval`` as system-claim agreement. Pairs are generated
 on first run (evalharness.make_pairs).
 """
 

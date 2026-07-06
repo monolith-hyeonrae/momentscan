@@ -377,7 +377,7 @@ def _cmd_products(args: argparse.Namespace) -> int:
         print(f"  outputs    : {', '.join(p.outputs)}")
         if p.note:
             print(f"  note       : {p.note}")
-    print("\n  (producer view: `momentscan analyzers` · frozen = own module earned, molten = kept consolidated on purpose)")
+    print("\n  (producer view: `momentscan map analyzers` · frozen = own module earned, molten = kept consolidated on purpose)")
     return 0
 
 
@@ -402,7 +402,7 @@ def _cmd_cascade(args: argparse.Namespace) -> int:
     print("\n── cascade · data lineage  (INPUT → INTERMEDIATE → FINAL) ──")
     print("\nINPUT   (crosses the service boundary inward · S3-in / Job)")
     print(f"  {'source video':<13} → frames           (FileSource, decode @ fps)")
-    print(f"  {'frozen weights':<13}   per-stage models   (see `momentscan analyzers`; tracked by freshness)")
+    print(f"  {'frozen weights':<13}   per-stage models   (see `momentscan map analyzers`; tracked by freshness)")
 
     print("\n① FEATURE EXTRACTION   (intermediate — stays in the stash)")
     for a in stages:
@@ -419,13 +419,13 @@ def _cmd_cascade(args: argparse.Namespace) -> int:
         print(f"  {p.name:<12} → {fin}{flag}")
         if inter:
             print(f"  {'':<12}   (intermediate: {', '.join(inter)})")
-    print("\n  producer detail → `momentscan analyzers`   ·   vertical read-map → `momentscan products`")
+    print("\n  producer detail → `momentscan map analyzers`   ·   vertical read-map → `momentscan map products`")
     return 0
 
 
 def _cmd_frame(args: argparse.Namespace) -> int:
     """The canonical-frame contract stated plainly — origin/axes/scale/basis/reference
-    + provenance. The coordinate analogue of gates.py / `momentscan products`: ONE
+    + provenance. The coordinate analogue of gates.py / `momentscan map products`: ONE
     declared frame every consumer (appearance/portrait/select/inspector/eval) reads
     via signals.py (verified single home)."""
     from momentscan.domains.geometry import CANONICAL_FRAME as F
@@ -624,10 +624,6 @@ def main(argv: list[str] | None = None) -> int:
     pp.add_argument("--socket", default=None, help="daemon socket (default ~/.cache/momentscan/daemon.sock)")
     pp.set_defaults(func=_cmd_process)
 
-    pac = sub.add_parser("api-check", parents=[common],
-                         help="REST API 계약 테스트 — 인프로세스 서버 vs docs/api/openapi.yaml")
-    pac.set_defaults(func=_cmd_api_check)
-
     pv = sub.add_parser("viz", parents=[common],
                         help="렌더 애그리게이터 — 비디오경로(소스 렌더 포함) 또는 clip_id(타임라인·카드·highlight mp4)")
     pv.add_argument("path", help="비디오 경로 또는 clip_id (stash-순수 렌더)")
@@ -649,51 +645,78 @@ def main(argv: list[str] | None = None) -> int:
                            "clip needs --force (or a fresh --out)")
     prun.set_defaults(func=_cmd_run)
 
-    pdoc = sub.add_parser("doctor", parents=[common],
-                          help="check external deps (models·binaries·stacks) — checker, not fetcher")
-    pdoc.set_defaults(func=_cmd_doctor)
-
     prep = sub.add_parser("report", parents=[common],
                           help="render <clip>/index.html — the result-consumer front door")
     prep.add_argument("clip_id", help="clip id (stash dir name)")
     prep.add_argument("--out", default="output", help="stash root")
     prep.set_defaults(func=_cmd_report)
 
-    pan = sub.add_parser("analyzers", parents=[common],
+    # ── map 그룹 — 선언 지도 (전부 읽기-전용 introspection) ──────────────────
+    pmap = sub.add_parser("map", parents=[common],
+                          help="선언 지도 — analyzers · products · cascade · frame · graph")
+    msub = pmap.add_subparsers(dest="map_cmd", required=True,
+                               metavar="{analyzers,products,cascade,frame,graph}")
+    pan = msub.add_parser("analyzers", parents=[common],
                          help="introspect the analyzer registry (producers · output-kinds · DAG order)")
     pan.add_argument("--json", action="store_true", help="emit the full catalog as JSON")
     pan.set_defaults(func=_cmd_analyzers)
 
-    ppr = sub.add_parser("products", parents=[common],
+    ppr = msub.add_parser("products", parents=[common],
                          help="the product read-map (vertical: what each deliverable reads across stages)")
     ppr.add_argument("--json", action="store_true", help="emit the product map as JSON")
     ppr.set_defaults(func=_cmd_products)
 
-    pcas = sub.add_parser("cascade", parents=[common],
+    pcas = msub.add_parser("cascade", parents=[common],
                           help="data lineage stated plainly: INPUT → ①FEATURE/②GATE (stash) → ③PRODUCT (egress)")
     pcas.add_argument("--json", action="store_true", help="emit lineage as JSON (the Storage-port fetch/scratch/upload contract)")
     pcas.set_defaults(func=_cmd_cascade)
 
-    pfr = sub.add_parser("frame", parents=[common],
+    pfr = msub.add_parser("frame", parents=[common],
                          help="the canonical-frame contract (origin/axes/scale/basis/reference + provenance)")
     pfr.add_argument("--json", action="store_true", help="emit the frame contract + provenance as JSON")
     pfr.set_defaults(func=_cmd_frame)
 
-    pck = sub.add_parser("check", parents=[common],
-                         help="reconcile the registry (STEPS ⇄ ANALYZERS ⇄ PRODUCTS) — exits nonzero on drift")
-    pck.set_defaults(func=_cmd_check)
-
-    pgr = sub.add_parser("graph", parents=[common],
+    pgr = msub.add_parser("graph", parents=[common],
                          help="the ONE declared graph: frame ingest → stages → units → engines → gates → products")
     pgr.add_argument("--json", action="store_true", help="emit nodes + edges as JSON")
     pgr.set_defaults(func=_cmd_graph)
 
-    prp = sub.add_parser("replay-check", parents=[common],
+
+    # ── verify 그룹 — 검증 하니스 (doctor·registry[구 check]·api·replay·eval) ──
+    pvf = sub.add_parser("verify", parents=[common],
+                         help="검증 — doctor(의존) · registry(선언정합) · api(계약) · replay(수치회귀) · eval(라벨채점)")
+    vsub = pvf.add_subparsers(dest="verify_cmd", required=True,
+                              metavar="{doctor,registry,api,replay,eval}")
+    pdoc = vsub.add_parser("doctor", parents=[common],
+                          help="check external deps (models·binaries·stacks) — checker, not fetcher")
+    pdoc.set_defaults(func=_cmd_doctor)
+
+    pck = vsub.add_parser("registry", parents=[common],
+                         help="reconcile the registry (STEPS ⇄ ANALYZERS ⇄ PRODUCTS) — exits nonzero on drift")
+    pck.set_defaults(func=_cmd_check)
+
+    pac = vsub.add_parser("api", parents=[common],
+                         help="REST API 계약 테스트 — 인프로세스 서버 vs docs/api/openapi.yaml")
+    pac.set_defaults(func=_cmd_api_check)
+
+    prp = vsub.add_parser("replay", parents=[common],
                          help="re-run CPU stages on a clip's frozen inputs → diff vs on-disk refs (dynamic regression guard)")
     prp.add_argument("clip_id", nargs="?", help="clip id (default fixtures: cap_1, dual_3)")
     prp.add_argument("--out", default="output", help="stash root")
     prp.add_argument("--fps", type=int, default=6, help="fps the pipeline ran with")
     prp.set_defaults(func=_cmd_replay_check)
+
+    pe = vsub.add_parser("eval", parents=[common],
+                        help="3d — score candidates vs eval/labels.jsonl, or --template <clip> to bootstrap labeling")
+    pe.add_argument("--out", default="output", help="stash root")
+    pe.add_argument("--template", default=None, metavar="CLIP_ID",
+                    help="generate review sheet + label template for one clip")
+    pe.add_argument("--rescore", action="store_true",
+                    help="re-derive system preference from CURRENT features/policy vs frozen human winners")
+    pe.add_argument("clips", nargs="*", help="clip ids to score (default: all with candidates)")
+    pe.set_defaults(func=_cmd_eval)
+
+
 
     phl = sub.add_parser("highlight-lang", parents=[common],
                          help="context-conditioned highlight WHEN — signal+scene→sentence→LLM-judge vs attraction expectation")
@@ -721,16 +744,6 @@ def main(argv: list[str] | None = None) -> int:
                      help="labeling lane — each lane keeps its own pairs/verdicts files"
                           " (frozen default lane untouched); segment = E010 clip-vs-clip")
     pl_.set_defaults(func=_cmd_label)
-
-    pe = sub.add_parser("eval", parents=[common],
-                        help="3d — score candidates vs eval/labels.jsonl, or --template <clip> to bootstrap labeling")
-    pe.add_argument("--out", default="output", help="stash root")
-    pe.add_argument("--template", default=None, metavar="CLIP_ID",
-                    help="generate review sheet + label template for one clip")
-    pe.add_argument("--rescore", action="store_true",
-                    help="re-derive system preference from CURRENT features/policy vs frozen human winners")
-    pe.add_argument("clips", nargs="*", help="clip ids to score (default: all with candidates)")
-    pe.set_defaults(func=_cmd_eval)
 
     args = p.parse_args(argv)
     setup_logging(level=args.log_level, fmt=args.log_format, constants={"service": "momentscan"})

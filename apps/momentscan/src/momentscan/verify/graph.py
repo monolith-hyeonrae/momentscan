@@ -15,7 +15,7 @@ annotation (DETECT_INTERNALS), NOT re-declared as nodes (2 nodes do not justify 
 hand-kept mirror + a drift guard). Edges are DERIVED (depends, product reads, gate
 reads), never hand-listed — copying visualpath's introspectability into the
 clip-DAG without copying its runtime. Imports analyzers + gates ONLY (both
-import-light: stdlib + numpy), so `momentscan graph` stays torch/polars-free.
+import-light: stdlib + numpy), so `momentscan map graph` stays torch/polars-free.
 """
 from __future__ import annotations
 
@@ -106,7 +106,7 @@ def unjoined_reads() -> dict[str, list[str]]:
 def render_text() -> str:
     """The unified one-screen view: frame ingest → clip stages/units → engines →
     gates → products, with grain/backend/artifact and derived edges. Reuses the
-    same fields `momentscan analyzers`/`products` show, in ONE drawing."""
+    same fields `momentscan map analyzers`/`products` show, in ONE drawing."""
     ns = nodes()
     by = {}
     for n in ns:
@@ -157,5 +157,5 @@ def render_text() -> str:
         L.append("\n⚠ product reads not resolving to a catalog node: " + "; ".join(uj["product"]))
     if uj["gate-signal"]:
         L.append(f"\n  ({len(uj['gate-signal'])} gate reads are inline-assembled signals, "
-                 "not catalog producers — checked against gates.SIGNAL_INPUTS by `momentscan check`)")
+                 "not catalog producers — checked against gates.SIGNAL_INPUTS by `momentscan verify registry`)")
     return "\n".join(L) + "\n"

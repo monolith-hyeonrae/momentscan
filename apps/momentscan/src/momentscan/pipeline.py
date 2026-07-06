@@ -97,7 +97,7 @@ def _highlight(out, clip, src, fps):
 
 # detect/landmarks run UPSTREAM of this runner (warm-daemon / step0), so they are
 # intentionally NOT in STEPS. Declared here (not left implicit in the `a.name in
-# STEPS` filter) so `momentscan check` can tell an intentional exclusion from an
+# STEPS` filter) so `momentscan verify registry` can tell an intentional exclusion from an
 # analyzer someone forgot to wire — the latter would silently never run.
 UPSTREAM_OF_RUNNER = ("detect", "landmarks")
 
@@ -175,7 +175,7 @@ def run_pipeline(out_root, clip_id: str, *, source=None, fps: int = 6,
     # the run set DERIVES from ANALYZERS (the single authority): every stage/engine
     # analyzer except the frame-grain ingest (UPSTREAM_OF_RUNNER) runs, in DAG order.
     # No hand-kept membership list — a new analyzer with a RUNNERS entry runs
-    # automatically; one without a runner is caught by `momentscan check`, never
+    # automatically; one without a runner is caught by `momentscan verify registry`, never
     # silently dropped.
     order = [a for a in analyzers.topo_order()
              if a.kind in ("stage", "engine") and a.name not in UPSTREAM_OF_RUNNER]
@@ -195,7 +195,7 @@ def run_pipeline(out_root, clip_id: str, *, source=None, fps: int = 6,
             print("\n═══ " + ("① FEATURE EXTRACTION" if phase == "stage"
                               else "③ PRODUCT  (gate ② runs inside portrait)") + " ═══", flush=True)
         if a.name not in RUNNERS:
-            result["skipped"].append({"name": a.name, "reason": "no runner (see momentscan check)"})
+            result["skipped"].append({"name": a.name, "reason": "no runner (see momentscan verify registry)"})
             if watch: print(f"  {a.name:11} — no runner", flush=True)
             continue
         probe, fn = RUNNERS[a.name]
