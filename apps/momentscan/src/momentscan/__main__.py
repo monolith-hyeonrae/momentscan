@@ -193,10 +193,13 @@ def _cmd_status(args: argparse.Namespace) -> int:
             with urllib.request.urlopen(f"http://127.0.0.1:{rec['port']}/health", timeout=3) as r:
                 h = json.loads(r.read().decode("utf-8"))
             ok_any = True
+            g = h.get("gpu") or {}
+            gpu = (f" · gpu {g['self_mb']}/{g['used_mb']}/{g['total_mb']}MB(자기/사용/총)"
+                   if g else "")
             print(f"  ✓ {h.get('node')} · {h.get('status')} · queue {h.get('queue')}"
                   f" · running {h.get('running') or '—'} · done {h.get('done')}"
                   f" · failed {h.get('failed')} · open {h.get('open_products')}"
-                  f" · out {rec.get('out_root')}")
+                  f" · out {rec.get('out_root')}{gpu}")
         except Exception:
             print(f"  ⚠ {rec.get('node', rp.stem)} — 기록은 있으나 /health 무응답"
                   f" (죽은 프로세스면 정리: rm {rp})")

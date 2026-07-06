@@ -84,6 +84,15 @@ paths:
                 required: [status]
                 properties:
                   status: {type: string, enum: [UP]}
+                  node: {type: string}
+                  gpu:
+                    type: object
+                    nullable: true
+                    description: GPU 점유 — self_mb(이 노드 프로세스)/used_mb(장치 전체)/total_mb (GPU 없으면 null)
+                    properties:
+                      self_mb: {type: integer}
+                      used_mb: {type: integer}
+                      total_mb: {type: integer}
                   queue: {type: integer}
                   running: {type: string, nullable: true}
                   done: {type: integer}

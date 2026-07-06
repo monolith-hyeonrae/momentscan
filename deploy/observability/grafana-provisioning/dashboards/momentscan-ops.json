@@ -158,12 +158,47 @@
       ]
     },
     {
+      "id": 9,
+      "type": "timeseries",
+      "title": "GPU 점유 (MiB) — 누가 얼만큼",
+      "gridPos": {
+        "h": 6,
+        "w": 8,
+        "x": 8,
+        "y": 6
+      },
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "queryType": "range",
+          "legendFormat": "{{node}} · 자기점유",
+          "expr": "sum by (node) (max_over_time({service=\"momentscan\"} | json | msg=`service.health` | unwrap gpu_self_mb [1m]))"
+        },
+        {
+          "refId": "B",
+          "queryType": "range",
+          "legendFormat": "장치 사용(전체)",
+          "expr": "max(max_over_time({service=\"momentscan\"} | json | msg=`service.health` | unwrap gpu_used_mb [1m]))"
+        },
+        {
+          "refId": "C",
+          "queryType": "range",
+          "legendFormat": "용량",
+          "expr": "max(max_over_time({service=\"momentscan\"} | json | msg=`service.health` | unwrap gpu_total_mb [1m]))"
+        }
+      ]
+    },
+    {
       "id": 4,
       "type": "timeseries",
       "title": "처리 지연 p90 (elapsed_s, 15m 창)",
       "gridPos": {
         "h": 6,
-        "w": 12,
+        "w": 8,
         "x": 0,
         "y": 6
       },
@@ -185,8 +220,8 @@
       "title": "실패 (ERROR — clip_id로 노드 inspect/report 드릴다운)",
       "gridPos": {
         "h": 6,
-        "w": 12,
-        "x": 12,
+        "w": 8,
+        "x": 16,
         "y": 6
       },
       "datasource": {

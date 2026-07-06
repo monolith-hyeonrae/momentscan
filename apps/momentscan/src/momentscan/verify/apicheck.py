@@ -76,8 +76,9 @@ def run_apicheck(*, keep: bool = False) -> int:
         ok("GET /info → 200 + 계약 필드", c == 200 and b["contract"] == "momentscan C1 v1"
            and b["open_products"] == ["likeness"] and "endpoints" in b, str(b))
         c, b, _ = _req("GET", f"{base}/health")
-        ok("GET /health → status UP + 큐 지표 + node", c == 200 and b["status"] == "UP"
-           and isinstance(b["queue"], int) and b["node"], str(b))
+        ok("GET /health → status UP + 큐 지표 + node + gpu(nullable)", c == 200
+           and b["status"] == "UP" and isinstance(b["queue"], int) and b["node"]
+           and "gpu" in b, str(b))
 
         # ── 검증 오류 형태 (에러도 계약) ─────────────────────────────────
         c, b, _ = _req("POST", f"{base}/jobs", {})

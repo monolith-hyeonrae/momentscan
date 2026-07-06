@@ -114,6 +114,13 @@ promtail이 본문의 `node`를 라벨로 승격한다 → 노드별 promtail �
 (전 노드 동일 설정), Loki에서 `sum by (node)` 분해·Result의 `node`로 "이 결과를 만든
 서버" 추적이 된다.
 
+**GPU 점유("누가 얼만큼")**: `/health.gpu = {self_mb, used_mb, total_mb}` — self=그
+노드 프로세스의 점유(nvidia-smi pid 매칭, 5s 캐시), used=장치 전체(타 프로세스 포함),
+GPU 없는 노드=null. health beat에 실려 대시보드 "GPU 점유" 패널(노드별 자기점유 vs
+장치 사용/용량)이 그린다. Zabbix 트리거 후보: `$.gpu.used_mb / $.gpu.total_mb > 0.9`.
+`momentscan status`도 노드별 `gpu 자기/사용/총`을 표시. ⚠ 단일 GPU 머신에서 처리
+노드는 하나만 — 이 패널이 그 규율의 감시자다 (두 노드 자기점유가 동시에 오르면 OOM 임박).
+
 **잡 수명주기 가시성**: `service.job.accepted → started → done | failed` 이벤트가
 전부 `clip_id`·`source_uri`(무슨 비디오)·`output_prefix`(출력했는지)를 담는다 —
 대시보드 "잡 수명주기" 테이블이 이걸 행으로 보여주고, **clip_id 클릭 =

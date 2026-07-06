@@ -116,6 +116,36 @@ def deliver(cdir: Path, clip_id: str, files: dict[str, list[Path]],
     return str(root), outputs
 
 
+_GPU_CACHE: dict = {"t": 0.0, "snap": None}
+
+
+def _gpu_snapshot() -> dict | None:
+    """"누가 GPU를 얼만큼" — nvidia-smi 스냅샷 (5s 캐시, 첫 GPU 기준).
+    self_mb=이 노드 프로세스의 점유(pid 매칭) · used_mb=장치 전체(타 프로세스 포함)
+    · total_mb=용량. GPU/드라이버 없는 노드 → None (정직). /health(Zabbix 레인)와
+    30s health beat(Loki 레인 → 대시보드 GPU 패널)에 실린다."""
+    import subprocess
+    now = time.monotonic()
+    if now - _GPU_CACHE["t"] < 5.0:
+        return _GPU_CACHE["snap"]
+    try:
+        dev = subprocess.run(
+            ["nvidia-smi", "--query-gpu=memory.total,memory.used", "--format=csv,noheader,nounits"],
+            capture_output=True, text=True, timeout=5)
+        total, used = (int(x) for x in dev.stdout.strip().splitlines()[0].split(","))
+        procs = subprocess.run(
+            ["nvidia-smi", "--query-compute-apps=pid,used_memory", "--format=csv,noheader,nounits"],
+            capture_output=True, text=True, timeout=5)
+        me = os.getpid()
+        self_mb = sum(int(m.strip()) for ln in procs.stdout.strip().splitlines() if ln.strip()
+                      for p, m in [ln.split(",")] if int(p.strip()) == me)
+        snap = {"total_mb": total, "used_mb": used, "self_mb": self_mb}
+    except Exception:
+        snap = None
+    _GPU_CACHE.update(t=now, snap=snap)
+    return snap
+
+
 # ── Job 실행기 (transport-agnostic 본체) ─────────────────────────────────────
 class JobRunner:
     """FIFO 단일 워커: Job 수리 → (detect →) run_pipeline → egress 반출 → Result."""
@@ -270,7 +300,7 @@ class JobRunner:
     def health(self) -> dict:
         running = [c for c, s in self.jobs.items() if s["status"] == "running"]
         return {"status": "UP", "app": APP_NAME,        # "UP" = Spring health 관례
-                "node": self.node,
+                "node": self.node, "gpu": _gpu_snapshot(),
                 "queue": len(self._q), "running": running[0] if running else None,
                 "done": sum(1 for s in self.jobs.values() if s["status"] == "done"),
                 "failed": sum(1 for s in self.jobs.values() if s["status"] == "failed"),
