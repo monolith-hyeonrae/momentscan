@@ -125,13 +125,19 @@ portrait/highlight는 추가 연구 후 순차 오픈."** 이 결정이 아래 �
    게이트-거부 — 실가치는 구성 정확성)·dual_2 +2. viz=lane_fragment_stitch.png.
    부산물: artifact-dep freshness 갭 3번째 실증(detections 재기록이 mtime-fresh
    소비자를 못 stale — --force 필요).
-2. **코퍼스 전수 육안 감사** — **자(尺) = face_recipe 적합성** (user 2026-07-06:
-   likeness→face_recipe[blendshape 메타데이터]→3D 캐릭터 개성 주입이 목적;
-   memory likeness-face-recipe-purpose): ①기하 center/axes=재현(drift)+**separation**
-   (사람-간≫사람-내 = "개성 주입" 성립 조건)+ARKit 사상 가능성 ②face_id=diffusion
-   개인화 경로(별개 소비자) ③fashion=캐릭터 액세서리 입력(타입 정확도; mask/cap=에지)
-   ④**멀티뷰 샘플=hair 이음매 적합성**(hair_match Gemini recommend의 "같은 사람 1~3뷰"
-   입력 — 측면 커버리지·크롭이 헤어를 자르는가) ⑤n_obs. 판정 카드로 남김.
+2. ~~**코퍼스 전수 육안 감사**~~ → **DONE (2026-07-06)** — 15클립 21라이더 5렌즈,
+   판정 카드=output/l2/audit_likeness_p1.png. **선행 발견: 코퍼스 6클립이 crops/parse/
+   fashion 이전 시대 산출물**(fashion=null) → 백필로 전 코퍼스 현대 체인 정렬.
+   **건강**: 정체성 무결(coherence 저점 전수 육안=타인 혼입 0, 원인=역광 washout·블러·
+   손가림) · portrait_box 헤어 안 자름 · cap_1(마스크+선글라스)/mask_*(마스크)/dual_1
+   (scarf·hood 구분) fashion 정확 · separation 중앙값 ~3 (dual_2 4.6).
+   **발견(수리 대상, 아래 4에 합류)**: ⓐfashion 불리언-레인 마스크 FP 2건(dual_3 s0
+   frac0.511=**scarf 0.915**·test_0 s18 frac1.0=**none 0.852** — 타입 레인이 정답 보유
+   → 두-레인 융합 수리; **오랜 watch "dual_3 s0 mask 0.511" = scarf로 해소**) ⓑface_id
+   valid-폴백이 저품질 임베딩 흡수(p05<0.5 4명 — 품질 문제, 오염 아님) ⓒpose_bin
+   대표가 품질-무관 선발(블러가 hair 입력 대표) ⓓ크롭 타인 혼입(dual_2 right)·후드=
+   hair 관측불가 → hair 이음매에 정직한 결측/오염 신호 필요 ⓔdual_1 separation 1.4
+   (가림 클립 기하 불안정 — recipe 경계 사례).
 2b. **color identity 포팅** (user 2026-07-06: "의상 기반 컬러 팔레트도 이 작업에 포함") —
    출처 = `../appearance-engine/component2/color_identity.py` **Cat W #86-89**:
    통합 마스크(cloth+hat+glasses+earring+necklace = "외부 stylistic surface",
