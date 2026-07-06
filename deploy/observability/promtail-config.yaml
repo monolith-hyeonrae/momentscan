@@ -14,11 +14,12 @@ scrape_configs:
         labels:
           service: momentscan
           env: dev                 # 라벨 격리 — 알파/운영과 절대 안 겹치게
-          host: dev-pc
           __path__: /var/log/momentscan/*.log
     pipeline_stages:
       - json:
           expressions:
             level: level
+            node: node             # 로그 본문의 노드 정체성("host:port") — 서비스가 도장
       - labels:
           level:                   # 저카디널리티만 라벨 승격 — clip_id는 본문 필드로 유지
+          node:                    # 노드 수 = 카디널리티라 안전; 노드별 promtail 설정 불필요

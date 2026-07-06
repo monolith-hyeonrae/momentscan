@@ -120,9 +120,12 @@ class JobRunner:
     """FIFO 단일 워커: Job 수리 → (detect →) run_pipeline → egress 반출 → Result."""
 
     def __init__(self, out_root: str, *, fps_default: int = 6,
-                 open_products: tuple[str, ...] = ("likeness",)):
+                 open_products: tuple[str, ...] = ("likeness",), node: str = "local"):
         self.out_root = out_root
         self.fps_default = fps_default
+        # 노드 정체성 ("host:port") — 멀티노드 운용에서 "어느 서버가 이 잡을
+        # 처리했나"의 답. Result·/health·/info·모든 로그 라인(constants)에 도장.
+        self.node = node
         self.open_products = tuple(p for p in open_products if p in ALL_PRODUCTS)
         self.jobs: dict[str, dict] = {}                 # clip_id → {status, job, result, error}
         self._q: list[str] = []
@@ -237,6 +240,7 @@ class JobRunner:
         result = {
             "schema": RESULT_SCHEMA,
             "clip_id": clip_id, "ok": True, "failure": None,
+            "node": self.node,
             "output_prefix": prefix, "outputs": outputs,
             "products_open": list(self.open_products), "products_requested": list(requested),
             "n_ran": len(run["ran"]), "n_skipped": len(run["skipped"]),
@@ -251,6 +255,7 @@ class JobRunner:
     def health(self) -> dict:
         running = [c for c, s in self.jobs.items() if s["status"] == "running"]
         return {"status": "UP", "app": APP_NAME,        # "UP" = Spring health 관례
+                "node": self.node,
                 "queue": len(self._q), "running": running[0] if running else None,
                 "done": sum(1 for s in self.jobs.values() if s["status"] == "done"),
                 "failed": sum(1 for s in self.jobs.values() if s["status"] == "failed"),
@@ -280,7 +285,7 @@ def build_server(runner: JobRunner, *, port: int = 8080, bind: str = "0.0.0.0",
                 self._send(200, runner.health())
             elif path in ("", "/info"):
                 self._send(200, {"app": app_name, "contract": "momentscan C1 v1",
-                                 "result_schema": RESULT_SCHEMA,
+                                 "result_schema": RESULT_SCHEMA, "node": runner.node,
                                  "open_products": list(runner.open_products),
                                  "endpoints": ["POST /jobs", "GET /jobs/{clip_id}",
                                                "GET /health", "GET /info"]})
@@ -315,11 +320,19 @@ HEALTH_LOG_S = 30      # 큐 깊이 같은 게이지를 Loki에서도 읽게 하
                        # (Zabbix가 /health를 폴링하는 것과 같은 내용의 로그판)
 
 
+def node_identity(advertise_host: str | None, port: int) -> str:
+    """"host:port" — 이 프로세스의 노드 정체성 (Eureka 광고 주소와 같은 근거).
+    CLI가 로그 constants에, serve_http가 Result/health에 같은 값을 도장 찍는다."""
+    from momentscan.eureka import _local_ip
+    return f"{advertise_host or _local_ip()}:{port}"
+
+
 def serve_http(out_root: str, *, port: int = 8080, fps: int = 6,
                open_products: tuple[str, ...] = ("likeness",),
                eureka_url: str | None = None, advertise_host: str | None = None,
                app_name: str = APP_NAME) -> None:
-    runner = JobRunner(out_root, fps_default=fps, open_products=open_products)
+    node = node_identity(advertise_host, port)
+    runner = JobRunner(out_root, fps_default=fps, open_products=open_products, node=node)
     server = build_server(runner, port=port, app_name=app_name)
 
     def _health_beat() -> None:

@@ -85,8 +85,14 @@ cd deploy/observability && MOMENTSCAN_LOG_DIR=$HOME/logs docker compose up -d
 
 여기서 검증된 것이 그대로 회사로 이식된다 — **바꿀 곳만**: promtail `clients.url`
 (+`tenant_id`/`basic_auth`, 모니터링 팀 확인)·`labels.env` **dev→alpha**(라벨 격리 —
-운영 쿼리 오염 방지)·`host`. 대시보드는 `momentscan-ops.json` import.
+운영 쿼리 오염 방지). 대시보드는 `momentscan-ops.json` import.
 규율: `clip_id`는 라벨 승격 금지(카디널리티) — 본문 필드로 두고 `| json` 필터.
+
+**노드 구분(멀티노드)**: 서비스가 기동 시 노드 정체성 `node`("advertise-host:port",
+Eureka 광고 주소와 같은 근거)를 **모든 로그 라인·Result·/health·/info에 도장** 찍고,
+promtail이 본문의 `node`를 라벨로 승격한다 → 노드별 promtail 설정 차이가 불필요하고
+(전 노드 동일 설정), Loki에서 `sum by (node)` 분해·Result의 `node`로 "이 결과를 만든
+서버" 추적이 된다. 드릴다운: Result.node → `http://<node>/…`(向후 /reports 정적 서빙).
 
 회사 확인 질문 (유레카 3종에 추가): ④ Loki push 엔드포인트·인증·테넌트
 ⑤ promtail/alloy가 로그를 어디서 집나(파일 tail vs journald) ⑥ Zabbix HTTP agent

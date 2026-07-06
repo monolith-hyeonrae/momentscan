@@ -61,8 +61,13 @@ def _cmd_api_check(args: argparse.Namespace) -> int:
 
 
 def _cmd_serve_http(args: argparse.Namespace) -> int:
-    from momentscan.service import serve_http
+    from momentscan.service import node_identity, serve_http
 
+    # 모든 로그 라인 본문에 node를 도장 — promtail이 이 필드를 라벨로 승격해
+    # Loki에서 노드별 구분/집계가 된다 (멀티노드 운용의 "어느 서버?" 답).
+    setup_logging(level=args.log_level, fmt=args.log_format,
+                  constants={"service": "momentscan",
+                             "node": node_identity(args.advertise_host, args.port)})
     serve_http(
         args.out,
         port=args.port,

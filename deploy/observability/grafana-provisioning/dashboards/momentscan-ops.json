@@ -33,12 +33,12 @@
       "gridPos": { "h": 6, "w": 16, "x": 8, "y": 0 },
       "datasource": { "type": "loki", "uid": "loki" },
       "targets": [
-        { "refId": "A", "queryType": "range", "legendFormat": "accepted",
-          "expr": "sum(count_over_time({service=\"momentscan\"} | json | msg=`service.job.accepted` [5m]))" },
-        { "refId": "B", "queryType": "range", "legendFormat": "done",
-          "expr": "sum(count_over_time({service=\"momentscan\"} | json | msg=`service.job.done` [5m]))" },
-        { "refId": "C", "queryType": "range", "legendFormat": "idempotent",
-          "expr": "sum(count_over_time({service=\"momentscan\"} | json | msg=`service.job.idempotent` [5m]))" }
+        { "refId": "A", "queryType": "range", "legendFormat": "{{node}} · accepted",
+          "expr": "sum by (node) (count_over_time({service=\"momentscan\"} | json | msg=`service.job.accepted` [5m]))" },
+        { "refId": "B", "queryType": "range", "legendFormat": "{{node}} · done",
+          "expr": "sum by (node) (count_over_time({service=\"momentscan\"} | json | msg=`service.job.done` [5m]))" },
+        { "refId": "C", "queryType": "range", "legendFormat": "{{node}} · idempotent",
+          "expr": "sum by (node) (count_over_time({service=\"momentscan\"} | json | msg=`service.job.idempotent` [5m]))" }
       ]
     },
     {

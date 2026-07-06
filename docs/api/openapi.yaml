@@ -122,6 +122,7 @@ components:
         clip_id: {type: string}
         ok: {type: boolean, enum: [true]}
         failure: {nullable: true}
+        node: {type: string, description: "처리한 노드 (host:port) — 멀티노드 운용의 드릴다운 좌표"}
         output_prefix: {type: string, description: 실제 저장 위치 (s3 prefix 또는 디렉터리)}
         outputs:
           type: object

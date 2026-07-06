@@ -18,7 +18,7 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
-RESULT_KEYS = {"schema", "clip_id", "ok", "failure", "output_prefix", "outputs",
+RESULT_KEYS = {"schema", "clip_id", "ok", "failure", "node", "output_prefix", "outputs",
                "products_open", "products_requested", "n_ran", "n_skipped",
                "elapsed_s", "finished_at_iso"}
 TICKET_KEYS = {"clip_id", "status", "output_prefix", "poll", "queue_depth"}
@@ -75,8 +75,8 @@ def run_apicheck(*, keep: bool = False) -> int:
         ok("GET /info → 200 + 계약 필드", c == 200 and b["contract"] == "momentscan C1 v1"
            and b["open_products"] == ["likeness"] and "endpoints" in b, str(b))
         c, b, _ = _req("GET", f"{base}/health")
-        ok("GET /health → status UP + 큐 지표", c == 200 and b["status"] == "UP"
-           and isinstance(b["queue"], int), str(b))
+        ok("GET /health → status UP + 큐 지표 + node", c == 200 and b["status"] == "UP"
+           and isinstance(b["queue"], int) and b["node"], str(b))
 
         # ── 검증 오류 형태 (에러도 계약) ─────────────────────────────────
         c, b, _ = _req("POST", f"{base}/jobs", {})
