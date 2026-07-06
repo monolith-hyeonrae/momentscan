@@ -3,13 +3,13 @@
 > 계약 = [contracts.md C1 v1](contracts.md) · **API 명세(회사 공유용) =
 > [api/openapi.yaml](api/openapi.yaml)** · 계약 회귀 테스트 = `momentscan api-check`
 > (인프로세스, GPU/Eureka 불필요 — 명세와 서버의 일치를 13항목 검증).
-> 실행기 = `momentscan serve` (`service.py` — 외부 HTTP 면; `daemon.py`의
+> 실행기 = `momentscan server start` (`service.py` — 외부 HTTP 면; `daemon.py`의
 > UDS 제어면과 별개).
 
 ## 1. 기동 (로컬 서버 / AWS 서버 동일)
 
 ```bash
-momentscan serve --port 8080 --out /data/stash --fps 6 \
+momentscan server start --port 8080 --out /data/stash --fps 6 \
     --products likeness \                        # 단계 배포 스위치 (Phase 1 = likeness만)
     --eureka http://<회사-eureka>:8761/eureka \   # 주면 등록, 빼면 등록 없이 HTTP만
     --advertise-host <이 노드의 IP>               # 생략 = 자동 감지 (아래 §3 주의)
@@ -17,11 +17,11 @@ momentscan serve --port 8080 --out /data/stash --fps 6 \
 
 동작: FIFO 단일 워커(GPU 직렬화) · warm detect 캐시(첫 잡만 모델 로드) ·
 멱등(clip_id 재요청 = 재계산 없이 기존 경로 반환, `result.json`이 근거).
-**상태 확인 = `momentscan status`** — 두 서버 면(UDS 데몬 + HTTP)을 다 점검:
+**상태 확인 = `momentscan server status`** — 두 서버 면(UDS 데몬 + HTTP)을 다 점검:
 serve는 기동 시 `~/.cache/momentscan/http-{port}.json` 런타임 레코드를 남기고
 status가 그걸로 발견해 `/health`를 찔러본다 (무응답 기록 = ⚠ 죽은 프로세스 표시).
 
-**종료 = `momentscan shutdown [--port N]`** — 레코드의 pid로 SIGTERM.
+**종료 = `momentscan server stop [--port N]`** — 레코드의 pid로 SIGTERM.
 Ctrl-C(포그라운드)·`kill <pid>`·systemd stop 전부 같은 우아한 경로: **유레카 즉시
 해지**(90s 축출 대기 없음)·레코드 삭제·`service.stopped` 로그(대시보드에 종료 흔적).
 `kill -9`만 잔재를 남기고, 그건 status ⚠가 잡아 rm 힌트를 준다. 원격 shutdown
@@ -85,18 +85,18 @@ Eureka = **전화번호부**다. 등록은 "MOMENTSCAN이라는 이름의 인스
 (구조화 JSON 로그 — traceback도 `exception` 필드로 한-줄) / **클립 단위 "왜"**=
 노드의 inspect·report (플릿 화면에서 clip_id 보고 드릴다운).
 
-⚠ **관측 단위 = `serve`(HTTP 면) 노드**다. `momentscan serve --daemon`(UDS 웜 데몬)은
+⚠ **관측 단위 = `serve`(HTTP 면) 노드**다. `momentscan server start --daemon`(UDS 웜 데몬)은
 로컬 연구/운영자 도구라 관측 레인에 안 잡힌다 — 대시보드의 모든 것은 *방출된 로그*에서
 파생되고(Grafana는 아무것도 probe하지 않음), health beat·node 도장은 HTTP 면만
 낸다. "살아있는 노드" 패널 = 최근 2m 내 `service.health`를 낸 node 수. (데몬을
-굳이 보이게 하려면 `momentscan serve --daemon --log-format json >> ~/logs/momentscan-daemon.log`
+굳이 보이게 하려면 `momentscan server start --daemon --log-format json >> ~/logs/momentscan-daemon.log`
 — daemon.heartbeat이 이벤트 스트림에 뜨지만 노드 수에는 안 잡힌다, 의도된 경계.)
 
 **로컬 검증 스택** = [`deploy/observability/`](../deploy/observability/) —
 Grafana+Loki+promtail 3컨테이너 (~500MB램):
 
 ```bash
-momentscan serve --port 8080 …     # 로그는 기본으로 ~/logs/momentscan-{port}.log (JSON)
+momentscan server start --port 8080 …     # 로그는 기본으로 ~/logs/momentscan-{port}.log (JSON)
 cd deploy/observability && MOMENTSCAN_LOG_DIR=$HOME/logs docker compose up -d
 # → http://localhost:3000 (익명 Admin) · 대시보드 "momentscan · ops"
 ```
@@ -120,7 +120,7 @@ promtail이 본문의 `node`를 라벨로 승격한다 → 노드별 promtail �
 노드 프로세스의 점유(nvidia-smi pid 매칭, 5s 캐시), used=장치 전체(타 프로세스 포함),
 GPU 없는 노드=null. health beat에 실려 대시보드 "GPU 점유" 패널(노드별 자기점유 vs
 장치 사용/용량)이 그린다. Zabbix 트리거 후보: `$.gpu.used_mb / $.gpu.total_mb > 0.9`.
-`momentscan status`도 노드별 `gpu 자기/사용/총`을 표시. ⚠ 단일 GPU 머신에서 처리
+`momentscan server status`도 노드별 `gpu 자기/사용/총`을 표시. ⚠ 단일 GPU 머신에서 처리
 노드는 하나만 — 이 패널이 그 규율의 감시자다 (두 노드 자기점유가 동시에 오르면 OOM 임박).
 
 **잡 수명주기 가시성**: `service.job.accepted → started → done | failed` 이벤트가

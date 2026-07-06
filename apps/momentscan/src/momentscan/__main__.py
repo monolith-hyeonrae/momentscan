@@ -15,10 +15,10 @@ stages are wired in their phase.
 Daemon operation — server and client share ``DEFAULT_SOCKET``
 (``~/.cache/momentscan/daemon.sock``), so they rendezvous with zero flags:
 
-    momentscan serve                  # 외부 HTTP 면 (C1 실행기 — 배포 단위)
-    momentscan serve --daemon         # UDS 웜 데몬 (연구/운영자)
-    momentscan status                 # 두 면 다 점검
-    momentscan shutdown [--port|--daemon]
+    momentscan server start           # 외부 HTTP 면 (C1 실행기 — 배포 단위)
+    momentscan server start --daemon  # UDS 웜 데몬 (연구/운영자)
+    momentscan server status          # 두 면 다 점검
+    momentscan server stop [--port|--daemon]
 
 momentscan owns this vocabulary; visualbus only lends the wire mechanism
 (``visualbus.control.call``). Cross-app fleet view stays generic:
@@ -107,7 +107,7 @@ def _call_daemon(args: argparse.Namespace, cmd: str, *, timeout: float | None = 
         return call(sock, cmd, timeout=timeout, **kw)
     except (FileNotFoundError, ConnectionRefusedError):
         print(
-            f"momentscan: no daemon at {sock} — start one with 'momentscan serve'",
+            f"momentscan: no daemon at {sock} — start one with 'momentscan server start --daemon'",
             file=sys.stderr,
         )
         raise SystemExit(2) from None
@@ -146,12 +146,12 @@ def _cmd_status(args: argparse.Namespace) -> int:
         print(f"  ✓ {sock}")
         print(f"    {json.dumps({**pong, **stats}, ensure_ascii=False)}")
     except (FileNotFoundError, ConnectionRefusedError):
-        print(f"  ✗ 없음 ({sock}) — `momentscan serve`로 기동")
+        print(f"  ✗ 없음 ({sock}) — `momentscan server start --daemon`으로 기동")
 
     print("── serve (외부 HTTP 면 · C1 실행기 · 관측 단위) ──")
     recs = sorted((Path.home() / ".cache" / "momentscan").glob("http-*.json"))
     if not recs:
-        print("  ✗ 없음 — `momentscan serve`로 기동")
+        print("  ✗ 없음 — `momentscan server start`로 기동")
     for rp in recs:
         rec = json.loads(rp.read_text(encoding="utf-8"))
         try:
@@ -188,7 +188,7 @@ def _cmd_shutdown(args: argparse.Namespace) -> int:
         if len(alive) != 1:
             print("무엇을 종료할지 지정 필요:" if alive else "종료할 서버 없음 (status로 확인)")
             for a in alive:
-                print(f"  momentscan shutdown {a}")
+                print(f"  momentscan server stop {a}")
             return 2
         if alive[0] == "--daemon":
             result = _call_daemon(args, "shutdown")
@@ -583,8 +583,13 @@ def main(argv: list[str] | None = None) -> int:
     pi.add_argument("--no-trace", action="store_true", help="skip the trace.mp4, log only")
     pi.set_defaults(func=_cmd_ingest)
 
-    ps = sub.add_parser("serve", parents=[common],
-                        help="서버 — 기본: 외부 HTTP 면(C1 실행기) · --daemon: UDS 웜 detect 제어면")
+    # ── server 그룹 — 한 대상(서버)의 수명주기 동사는 서브커맨드로 (CLI 정리 2단) ──
+    psv = sub.add_parser("server", parents=[common],
+                         help="서버 수명주기 — start [--daemon] · stop · status · process")
+    ssub = psv.add_subparsers(dest="server_cmd", required=True, metavar="{start,stop,status,process}")
+
+    ps = ssub.add_parser("start", parents=[common],
+                         help="기동 — 기본: 외부 HTTP 면(C1 실행기) · --daemon: UDS 웜 detect 제어면")
     ps.add_argument("--daemon", action="store_true", help="UDS 웜 데몬 모드 (연구/운영자)")
     ps.add_argument("--port", type=int, default=8080, help="HTTP 포트")
     ps.add_argument("--out", default="output", help="stash root")
@@ -601,26 +606,27 @@ def main(argv: list[str] | None = None) -> int:
     ps.add_argument("--model-root", default=None, help="[--daemon] insightface model root")
     ps.set_defaults(func=_cmd_serve)
 
-    pac = sub.add_parser("api-check", parents=[common],
-                         help="REST API 계약 테스트 — 인프로세스 서버 vs docs/api/openapi.yaml")
-    pac.set_defaults(func=_cmd_api_check)
+    psh = ssub.add_parser("stop", parents=[common],
+                          help="종료 — --port N: HTTP 노드 · --daemon: UDS 데몬 · 무인자: 하나뿐이면 그것")
+    psh.add_argument("--port", type=int, default=None, help="종료할 HTTP 노드 포트")
+    psh.add_argument("--daemon", action="store_true", help="UDS 데몬 종료")
+    psh.add_argument("--socket", default=None, help="daemon socket (default ~/.cache/momentscan/daemon.sock)")
+    psh.set_defaults(func=_cmd_shutdown)
 
-    pp = sub.add_parser("process", parents=[common], help="trigger one clip through the running warm daemon")
+    pst = ssub.add_parser("status", parents=[common],
+                          help="두 서버 면 점검 — HTTP 노드(레코드→/health 프로브) + UDS 데몬")
+    pst.add_argument("--socket", default=None, help="daemon socket (default ~/.cache/momentscan/daemon.sock)")
+    pst.set_defaults(func=_cmd_status)
+
+    pp = ssub.add_parser("process", parents=[common], help="웜 데몬으로 클립 하나 처리 (데몬 클라이언트)")
     pp.add_argument("path", help="video file to analyze")
     pp.add_argument("--fps", type=int, default=None, help="target fps for this job")
     pp.add_argument("--socket", default=None, help="daemon socket (default ~/.cache/momentscan/daemon.sock)")
     pp.set_defaults(func=_cmd_process)
 
-    pst = sub.add_parser("status", parents=[common], help="두 서버 면 점검 — HTTP 노드(레코드→/health 프로브) + UDS 데몬")
-    pst.add_argument("--socket", default=None, help="daemon socket (default ~/.cache/momentscan/daemon.sock)")
-    pst.set_defaults(func=_cmd_status)
-
-    psh = sub.add_parser("shutdown", parents=[common],
-                         help="종료 — --port N: HTTP 노드 · --daemon: UDS 데몬 · 무인자: 하나뿐이면 그것")
-    psh.add_argument("--port", type=int, default=None, help="종료할 HTTP 노드 포트")
-    psh.add_argument("--daemon", action="store_true", help="UDS 데몬 종료")
-    psh.add_argument("--socket", default=None, help="daemon socket (default ~/.cache/momentscan/daemon.sock)")
-    psh.set_defaults(func=_cmd_shutdown)
+    pac = sub.add_parser("api-check", parents=[common],
+                         help="REST API 계약 테스트 — 인프로세스 서버 vs docs/api/openapi.yaml")
+    pac.set_defaults(func=_cmd_api_check)
 
     pv = sub.add_parser("viz", parents=[common],
                         help="렌더 애그리게이터 — 비디오경로(소스 렌더 포함) 또는 clip_id(타임라인·카드·highlight mp4)")
