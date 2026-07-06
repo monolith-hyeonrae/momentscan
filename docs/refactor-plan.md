@@ -125,9 +125,15 @@ portrait/highlight는 추가 연구 후 순차 오픈."** 이 결정이 아래 �
    게이트-거부 — 실가치는 구성 정확성)·dual_2 +2. viz=lane_fragment_stitch.png.
    부산물: artifact-dep freshness 갭 3번째 실증(detections 재기록이 mtime-fresh
    소비자를 못 stale — --force 필요).
-2. **코퍼스 전수 육안 감사**: 15클립 전 riders의 face_id coherence·n_obs·fashion 리딩 —
-   mask_1/2·cap_1·international_1·dual_*이 자연 에지 케이스. 판정 카드로 남김.
-3. **likeness.json 스키마 동결 → C-계약 승격** (data-contract.md stale 해소 겸;
+2. **코퍼스 전수 육안 감사** — **자(尺) = face_recipe 적합성** (user 2026-07-06:
+   likeness→face_recipe[blendshape 메타데이터]→3D 캐릭터 개성 주입이 목적;
+   memory likeness-face-recipe-purpose): ①기하 center/axes=재현(drift)+**separation**
+   (사람-간≫사람-내 = "개성 주입" 성립 조건)+ARKit 사상 가능성 ②face_id=diffusion
+   개인화 경로(별개 소비자) ③fashion=캐릭터 액세서리 입력(타입 정확도; mask/cap=에지)
+   ④**멀티뷰 샘플=hair 이음매 적합성**(hair_match Gemini recommend의 "같은 사람 1~3뷰"
+   입력 — 측면 커버리지·크롭이 헤어를 자르는가) ⑤n_obs. 판정 카드로 남김.
+3. **likeness.json 스키마 동결 → C-계약 승격** — **face_recipe 어댑터의 입력 계약**으로서
+   동결 (필수/선택 필드를 recipe 요구에서 도출; data-contract.md stale 해소 겸;
    "인터페이스 정의 빠른 공유 의무"의 실체).
 4. **실패 모드의 정직한 표면화**: n_obs 부족·가림-지배·스티치 잔여 의심 시 확신 대신
    불확실성 필드 — 알파에서 신뢰를 깎는 건 틀린 답이 아니라 *자신만만한* 틀린 답.
