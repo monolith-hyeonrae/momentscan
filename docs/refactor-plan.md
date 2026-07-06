@@ -132,9 +132,22 @@ portrait/highlight는 추가 연구 후 순차 오픈."** 이 결정이 아래 �
    개인화 경로(별개 소비자) ③fashion=캐릭터 액세서리 입력(타입 정확도; mask/cap=에지)
    ④**멀티뷰 샘플=hair 이음매 적합성**(hair_match Gemini recommend의 "같은 사람 1~3뷰"
    입력 — 측면 커버리지·크롭이 헤어를 자르는가) ⑤n_obs. 판정 카드로 남김.
+2b. **color identity 포팅** (user 2026-07-06: "의상 기반 컬러 팔레트도 이 작업에 포함") —
+   출처 = `../appearance-engine/component2/color_identity.py` **Cat W #86-89**:
+   통합 마스크(cloth+hat+glasses+earring+necklace = "외부 stylistic surface",
+   헤어/얼굴 자연색 제외) → Lab K-means k=5 → primary/secondary/highlight(최고 채도·
+   면적>5%)/palette_diversity(Shannon). momentscan판 = **방문-집계**(프레임별이 아니라
+   방문 전체 통합 팔레트, fashion 리딩과 같은 judgeable-코호트 조건) → likeness.json
+   `color_identity` 필드. **스키마 동결(3) 전에 착지** — recipe의 의상 팔레트 입력.
+   (clothing 타입 6축 Cat W #80-85는 FashionCLIP 프롬프트 세트 재활용 후보 — 별도 판단.)
 3. **likeness.json 스키마 동결 → C-계약 승격** — **face_recipe 어댑터의 입력 계약**으로서
    동결 (필수/선택 필드를 recipe 요구에서 도출; data-contract.md stale 해소 겸;
-   "인터페이스 정의 빠른 공유 의무"의 실체).
+   "인터페이스 정의 빠른 공유 의무"의 실체). **recipe 측 계약 메모(user)**: hair_match
+   결과는 face-recipe에 당연 포함 · **recipe→Blender 프리뷰 필요**(임의 3D 얼굴 모델에
+   적용한 렌더) — 이중 트랙: ①기하 검증=repo의 canonical_face_model.obj(468 토폴로지
+   = likeness center 직접 변형, 자산 0) ②캐릭터 프리뷰=VRoid/VRM(애니 헤어 에셋 정합·
+   헤어 분리 메시·Blender VRM add-on·ARKit 52 매핑) — StdGEN(../hair, 단일이미지→분해
+   캐릭터 생성)은 별도 레인.
 4. **실패 모드의 정직한 표면화**: n_obs 부족·가림-지배·스티치 잔여 의심 시 확신 대신
    불확실성 필드 — 알파에서 신뢰를 깎는 건 틀린 답이 아니라 *자신만만한* 틀린 답.
 5. ~~**배포 이음매**~~ → **구현 DONE (2026-07-03)** — `service.py`(serve-http) +
