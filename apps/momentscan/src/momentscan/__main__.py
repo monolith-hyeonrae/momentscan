@@ -611,7 +611,7 @@ def main(argv: list[str] | None = None) -> int:
     pp.add_argument("--socket", default=None, help="daemon socket (default ~/.cache/momentscan/daemon.sock)")
     pp.set_defaults(func=_cmd_process)
 
-    pst = sub.add_parser("status", parents=[common], help="ping the daemon + bus stats")
+    pst = sub.add_parser("status", parents=[common], help="두 서버 면 점검 — HTTP 노드(레코드→/health 프로브) + UDS 데몬")
     pst.add_argument("--socket", default=None, help="daemon socket (default ~/.cache/momentscan/daemon.sock)")
     pst.set_defaults(func=_cmd_status)
 
@@ -623,8 +623,8 @@ def main(argv: list[str] | None = None) -> int:
     psh.set_defaults(func=_cmd_shutdown)
 
     pv = sub.add_parser("viz", parents=[common],
-                        help="render attribution_trace.mp4 + contact_sheet.jpg from the stash")
-    pv.add_argument("path", help="video file (already processed + attributed)")
+                        help="렌더 애그리게이터 — 비디오경로(소스 렌더 포함) 또는 clip_id(타임라인·카드·highlight mp4)")
+    pv.add_argument("path", help="비디오 경로 또는 clip_id (stash-순수 렌더)")
     pv.add_argument("--out", default="output", help="stash root")
     pv.add_argument("--fps", type=int, default=None, help="MUST match the fps the detect stage used")
     pv.set_defaults(func=_cmd_viz)
