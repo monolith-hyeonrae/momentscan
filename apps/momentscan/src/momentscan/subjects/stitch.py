@@ -25,14 +25,27 @@ from __future__ import annotations
 
 import numpy as np
 
-STITCH_TAU = 0.5  # cosine ≥ tau → same person (legacy MemoryBank tau_merge)
+STITCH_TAU = 0.5    # cosine ≥ tau → same person (legacy MemoryBank tau_merge)
+# tier-2 조각 구조(2026-07-06): 절대 τ는 대비-명백 조각을 놓친다 — test_0 s13→s18이
+# cos 0.496으로 머리카락 차이 미달(차선 후보와의 마진은 0.284로 명백). identity
+# 게이트의 상대귀속 문법 재적용: 중첩 0 AND cos ≥ FRAG_TAU AND (cos − 차선) ≥
+# FRAG_MARGIN. 코퍼스 측정 앵커: 음성 대조군(중첩>0=물리적 타인) max 0.32 →
+# floor 0.40; mask_2 유령-먼지 쌍들의 마진 ≤0.031 → margin 0.15가 정확히 자름
+# (s13 0.284 · dual_2 s2→s0 0.426 통과). 방향 없음(union) — 유지 근거는 정체성.
+FRAG_TAU = 0.40
+FRAG_MARGIN = 0.15
 
 
-def stitch_tracks(rows: list[dict], *, tau: float = STITCH_TAU) -> dict:
+def stitch_tracks(rows: list[dict], *, tau: float = STITCH_TAU,
+                  frag_tau: float = FRAG_TAU, frag_margin: float = FRAG_MARGIN) -> dict:
     """Assign ``subject_id`` to every row in place; return stitch summary.
 
-    ``subject_id`` = the smallest ``track_id`` in the stitched component, so it
-    is stable, clip-scoped, and equals ``track_id`` wherever no stitch happened.
+    ``subject_id`` = the smallest ``track_id`` in the stitched component (tier-1),
+    so it is stable, clip-scoped, and equals ``track_id`` wherever no stitch
+    happened. 예외: tier-2 조각 구조는 **호스트(프레임 多)의 id를 유지** — 하류·
+    동결 eval의 키 연속성 (조각이 라이더 id를 삼키면 안 된다).
+    두 단: tier-1 = 절대 cos ≥ tau (트랙 쌍) · tier-2 = 컴포넌트 쌍의 상대귀속
+    조각 구조(위 상수 주석) — 둘 다 시간중첩 가드가 최상위 (공존 = 타인, 예외 없음).
     """
     frames: dict[int, set[int]] = {}
     embs: dict[int, list[np.ndarray]] = {}
@@ -73,6 +86,52 @@ def stitch_tracks(rows: list[dict], *, tau: float = STITCH_TAU) -> dict:
                     parent[max(ra, rb)] = min(ra, rb)
                     merges.append({"tracks": [a, b], "cos": round(cos, 3)})
 
+    # ── tier-2: 조각 구조 (컴포넌트 수준 상대귀속) — 고정점까지 반복 ──────────
+    frag_merges: list[dict] = []
+    while True:
+        comp_tracks: dict[int, list[int]] = {}
+        for t in tids:
+            comp_tracks.setdefault(find(t), []).append(t)
+        comps = sorted(comp_tracks)
+        crep: dict[int, np.ndarray] = {}
+        cframes: dict[int, set[int]] = {}
+        for c, members in comp_tracks.items():
+            vecs = [v for t in members if t in embs for v in embs[t]]
+            fr = set().union(*(frames[t] for t in members))
+            cframes[c] = fr
+            if vecs:
+                m = np.mean(vecs, axis=0)
+                n = float(np.linalg.norm(m))
+                if n > 0:
+                    crep[c] = m / n
+        cos_of = {}
+        for i, a in enumerate(comps):
+            for b in comps[i + 1:]:
+                if a in crep and b in crep:
+                    cos_of[(a, b)] = float(crep[a] @ crep[b])
+        merged = False
+        for (a, b), cos in sorted(cos_of.items(), key=lambda kv: -kv[1]):
+            if cos < frag_tau or (cframes[a] & cframes[b]):
+                continue
+            # 차선 = 쌍의 양쪽 각각이 제3 컴포넌트와 갖는 최고 cos (엄격판: 양쪽 다
+            # 대비-명백해야 병합 — 두 호스트 사이에서 애매한 허브-조각을 막는다)
+            second = max((cos_of.get((min(x, c), max(x, c)), -1.0)
+                          for x in (a, b) for c in comps if c not in (a, b)), default=-1.0)
+            if cos - second < frag_margin:
+                continue
+            # tier-2는 호스트(프레임 多)가 subject_id 유지 — "조각이 호스트에 합류".
+            # min-id면 조각(작은 id)이 라이더 id를 삼켜 동결 eval·하류 키 연속성이
+            # 깨진다 (s13이 s18을 흡수하는 사고). tier-1의 min-id 관행은 불변.
+            host, frag = (a, b) if len(cframes[a]) >= len(cframes[b]) else (b, a)
+            parent[find(frag)] = find(host)
+            frag_merges.append({"components": [a, b], "cos": round(cos, 3),
+                                "second": round(second, 3),
+                                "margin": round(cos - second, 3)})
+            merged = True
+            break                                # 컴포넌트가 바뀌었으니 재계산
+        if not merged:
+            break
+
     for r in rows:
         r["subject_id"] = find(r["track_id"])
 
@@ -92,7 +151,8 @@ def stitch_tracks(rows: list[dict], *, tau: float = STITCH_TAU) -> dict:
             "coherence": coherence,      # min member→center cos; low = unstable_subject
         })
 
-    return {"n_subjects": len(subjects), "subjects": subjects, "stitches": merges}
+    return {"n_subjects": len(subjects), "subjects": subjects, "stitches": merges,
+            "frag_stitches": frag_merges}   # tier-2 관측면 — 인스펙터/감사가 근거를 봄
 
 
 def track_purity(rows: list[dict], *, tau: float = 0.35, min_run: int = 3) -> list[dict]:
