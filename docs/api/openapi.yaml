@@ -1,0 +1,161 @@
+# momentscan 알파 API — 회사 공유용 인터페이스 정의 (contracts.md C1 v1의 HTTP 표면)
+# 검증: `momentscan api-check`가 이 계약과 실서버 동작의 일치를 회귀 테스트한다.
+# 페이로드는 transport-agnostic: Kafka 도입 시 메시지 본문 = 동일한 Job JSON.
+openapi: 3.0.3
+info:
+  title: momentscan
+  version: "1"
+  description: >
+    per-rider 비디오 분석. 비디오 주소를 받아 처리하고, 산출물을 S3/로컬에
+    저장한 뒤 저장 경로를 반환한다. 제품은 단계 오픈(현재: likeness).
+    처리는 비동기 — 접수(202) 후 poll 경로로 완료를 조회한다.
+    같은 clip_id 재요청은 재계산 없이 기존 Result를 반환한다(멱등).
+servers:
+  - url: http://{host}:{port}
+    variables: {host: {default: localhost}, port: {default: "8080"}}
+paths:
+  /jobs:
+    post:
+      summary: 처리 요청 접수
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/Job"}
+      responses:
+        "202":
+          description: 접수됨 — poll로 완료 조회
+          headers:
+            Location: {schema: {type: string}, description: "/jobs/{clip_id}"}
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/JobTicket"}
+        "200":
+          description: 이미 완료된 clip_id — 기존 Result 즉시 반환 (재계산 없음)
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Result"}
+        "400":
+          description: 잘못된 Job (clip_id/source_uri 없음 · 미지 product · JSON 오류)
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Error"}
+  /jobs/{clipId}:
+    get:
+      summary: 상태/결과 조회
+      parameters:
+        - {name: clipId, in: path, required: true, schema: {type: string}}
+      responses:
+        "200":
+          description: 진행 중(JobTicket) / 완료(Result) / 실패(Failure)
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - {$ref: "#/components/schemas/JobTicket"}
+                  - {$ref: "#/components/schemas/Result"}
+                  - {$ref: "#/components/schemas/Failure"}
+        "404":
+          description: 미지의 clip_id
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Error"}
+  /health:
+    get:
+      summary: 헬스 (Eureka healthCheckUrl)
+      responses:
+        "200":
+          description: 살아있음 + 큐 지표
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
+                properties:
+                  status: {type: string, enum: [UP]}
+                  queue: {type: integer}
+                  running: {type: string, nullable: true}
+                  done: {type: integer}
+                  failed: {type: integer}
+                  open_products: {type: array, items: {type: string}}
+  /info:
+    get:
+      summary: 앱 메타 (Eureka statusPageUrl)
+      responses:
+        "200":
+          description: 계약 버전·열린 제품·엔드포인트 목록
+components:
+  schemas:
+    Job:
+      type: object
+      description: clip_id 또는 source_uri 중 하나는 필수 (clip_id 생략 시 파일명에서 유도)
+      properties:
+        clip_id: {type: string, description: 멱등키 — 같은 키 재요청 = 같은 결과 경로}
+        source_uri: {type: string, description: "비디오 주소: s3://bucket/key.mp4 | /local/path | file://…"}
+        output_uri: {type: string, description: "결과 저장 위치: s3://bucket/prefix | 로컬 dir (생략 = 서버 stash 경로 반환)"}
+        fps: {type: integer, default: 6, description: 분석 fps (detect와 일치 필수)}
+        products:
+          type: array
+          items: {type: string, enum: [likeness, portrait, highlight]}
+          description: 요청 제품 — 서버의 열린 제품과 교집합만 반출됨 (단계 배포)
+        subject_query: {type: string, description: "누구를 대상으로 — 'seat' | 'face:<참조사진경로>' (C2)"}
+        domain_profile: {type: string, description: 어트랙션 preset 이름 (C9, 현행 기본 race981)}
+      example:
+        clip_id: "20260706_lane3_0912"
+        source_uri: "s3://rides-raw/2026-07-06/20260706_lane3_0912.mp4"
+        output_uri: "s3://rides-results/alpha"
+        products: [likeness]
+    JobTicket:
+      type: object
+      required: [clip_id, status, output_prefix, poll]
+      properties:
+        clip_id: {type: string}
+        status: {type: string, enum: [queued, running]}
+        output_prefix: {type: string, description: 결과가 놓일 결정적 경로 (접수 시점에 확정)}
+        poll: {type: string, description: "완료 조회 경로: /jobs/{clip_id}"}
+        queue_depth: {type: integer}
+    Result:
+      type: object
+      required: [schema, clip_id, ok, output_prefix, outputs]
+      properties:
+        schema: {type: string, enum: ["momentscan.result/v1"]}
+        clip_id: {type: string}
+        ok: {type: boolean, enum: [true]}
+        failure: {nullable: true}
+        output_prefix: {type: string, description: 실제 저장 위치 (s3 prefix 또는 디렉터리)}
+        outputs:
+          type: object
+          description: "제품 → 저장 경로 목록. 열린 제품만. +provenance"
+          additionalProperties: {type: array, items: {type: string}}
+        products_open: {type: array, items: {type: string}}
+        products_requested: {type: array, items: {type: string}}
+        elapsed_s: {type: number}
+        finished_at_iso: {type: string}
+      example:
+        schema: "momentscan.result/v1"
+        clip_id: "20260706_lane3_0912"
+        ok: true
+        failure: null
+        output_prefix: "s3://rides-results/alpha/20260706_lane3_0912"
+        outputs:
+          likeness: ["s3://rides-results/alpha/20260706_lane3_0912/likeness.json"]
+          provenance: ["s3://rides-results/alpha/20260706_lane3_0912/provenance.json"]
+        products_open: [likeness]
+        products_requested: [likeness]
+        elapsed_s: 245.3
+        finished_at_iso: "2026-07-06T02:24:05+00:00"
+    Failure:
+      type: object
+      required: [clip_id, ok, status]
+      properties:
+        clip_id: {type: string}
+        ok: {type: boolean, enum: [false]}
+        status: {type: string, enum: [failed]}
+        failure:
+          type: object
+          properties: {stage: {type: string}, error: {type: string}}
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error: {type: string}

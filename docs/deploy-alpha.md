@@ -1,7 +1,10 @@
 # 알파 배포 런북 — serve-http · Eureka · S3
 
-> 계약 = [contracts.md C1 v1](contracts.md). 실행기 = `momentscan serve-http`
-> (`service.py` — 외부 HTTP 면; `daemon.py`의 UDS 제어면과 별개).
+> 계약 = [contracts.md C1 v1](contracts.md) · **API 명세(회사 공유용) =
+> [api/openapi.yaml](api/openapi.yaml)** · 계약 회귀 테스트 = `momentscan api-check`
+> (인프로세스, GPU/Eureka 불필요 — 명세와 서버의 일치를 13항목 검증).
+> 실행기 = `momentscan serve-http` (`service.py` — 외부 HTTP 면; `daemon.py`의
+> UDS 제어면과 별개).
 
 ## 1. 기동 (로컬 서버 / AWS 서버 동일)
 

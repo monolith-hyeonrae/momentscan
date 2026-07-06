@@ -57,6 +57,9 @@ transport-agnostic `JobRunner`) + `eureka.py`(레지스트리 등록/갱신/해�
 stash `result.json`(응답 기록 = 멱등 근거). 운영 = [deploy-alpha.md](deploy-alpha.md).
 e2e 검증: 접수 202→완료 245s→재요청 200/6ms 무재계산·outputs=열린 제품만·
 mock-Eureka 수명주기 4단·로컬 배송 복사. 미검증 = S3 실계정(AWS 첫 배포 때 스모크).
+**HTTP 표면의 정식 명세 = [api/openapi.yaml](api/openapi.yaml)** (회사 공유 산출물;
+Eureka와 독립) · 명세⇄서버 일치의 회귀 게이트 = `momentscan api-check`(13항목,
+인프로세스+가짜 파이프라인 — run_pipeline만 패치, 접수/큐/egress/배송/멱등은 실코드).
 
 **단계 배포 (user 결정 2026-07-03)**: 세 제품 동시 오픈하지 않는다 — **likeness 확신
 → 1차 배포·알파테스트 → portrait → highlight 순차 오픈**. Result는 *열린* 제품의

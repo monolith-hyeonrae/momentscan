@@ -54,6 +54,12 @@ def _cmd_serve(args: argparse.Namespace) -> int:
     )
 
 
+def _cmd_api_check(args: argparse.Namespace) -> int:
+    from momentscan.verify.apicheck import run_apicheck
+
+    return run_apicheck()
+
+
 def _cmd_serve_http(args: argparse.Namespace) -> int:
     from momentscan.service import serve_http
 
@@ -621,6 +627,10 @@ def main(argv: list[str] | None = None) -> int:
                      help="Eureka에 광고할 host/IP (기본: 자동 감지)")
     psh.add_argument("--app-name", default="momentscan", help="Eureka 앱 이름")
     psh.set_defaults(func=_cmd_serve_http)
+
+    pac = sub.add_parser("api-check", parents=[common],
+                         help="REST API 계약 테스트 — 인프로세스 서버 vs docs/api/openapi.yaml")
+    pac.set_defaults(func=_cmd_api_check)
 
     pp = sub.add_parser("process", parents=[common], help="trigger one clip through the running warm daemon")
     pp.add_argument("path", help="video file to analyze")

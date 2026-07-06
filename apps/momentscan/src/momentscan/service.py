@@ -256,18 +256,19 @@ class JobRunner:
 
 
 # ── HTTP 어댑터 ──────────────────────────────────────────────────────────────
-def serve_http(out_root: str, *, port: int = 8080, fps: int = 6,
-               open_products: tuple[str, ...] = ("likeness",),
-               eureka_url: str | None = None, advertise_host: str | None = None,
-               app_name: str = APP_NAME) -> None:
-    runner = JobRunner(out_root, fps_default=fps, open_products=open_products)
+def build_server(runner: JobRunner, *, port: int = 8080, bind: str = "0.0.0.0",
+                 app_name: str = APP_NAME) -> ThreadingHTTPServer:
+    """HTTP 면을 조립만 하고 돌리지는 않는다 — apicheck가 임시 포트(0)로 물어
+    계약을 검증하는 지점. serve_http = 이것 + Eureka + serve_forever."""
 
     class Handler(BaseHTTPRequestHandler):
-        def _send(self, code: int, body: dict) -> None:
+        def _send(self, code: int, body: dict, headers: dict | None = None) -> None:
             data = json.dumps(body, ensure_ascii=False).encode("utf-8")
             self.send_response(code)
             self.send_header("Content-Type", "application/json; charset=utf-8")
             self.send_header("Content-Length", str(len(data)))
+            for k, v in (headers or {}).items():
+                self.send_header(k, v)
             self.end_headers()
             self.wfile.write(data)
 
@@ -296,13 +297,24 @@ def serve_http(out_root: str, *, port: int = 8080, fps: int = 6,
             except (ValueError, TypeError) as e:
                 self._send(400, {"error": f"bad json: {e}"})
                 return
-            self._send(*runner.submit(body))
+            code, payload = runner.submit(body)
+            loc = {"Location": payload["poll"]} if code == 202 and "poll" in payload else None
+            self._send(code, payload, loc)
 
         def log_message(self, fmt, *args):              # stdlib의 stderr 스팸 → 구조화 로그
             log.debug("service.http", extra={"line": fmt % args})
 
-    server = ThreadingHTTPServer(("0.0.0.0", port), Handler)
+    server = ThreadingHTTPServer((bind, port), Handler)
     server.daemon_threads = True
+    return server
+
+
+def serve_http(out_root: str, *, port: int = 8080, fps: int = 6,
+               open_products: tuple[str, ...] = ("likeness",),
+               eureka_url: str | None = None, advertise_host: str | None = None,
+               app_name: str = APP_NAME) -> None:
+    runner = JobRunner(out_root, fps_default=fps, open_products=open_products)
+    server = build_server(runner, port=port, app_name=app_name)
 
     eureka = None
     if eureka_url:                                      # 등록은 서버가 실제로 열린 뒤
