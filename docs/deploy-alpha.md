@@ -67,7 +67,32 @@ Eureka = **전화번호부**다. 등록은 "MOMENTSCAN이라는 이름의 인스
 - 반출 파일 = `analyzers.PRODUCTS`의 egress 선언 ∩ **열린 제품**(`--products`).
   Phase 1은 likeness.json + provenance.json만 밖으로 나간다.
 
-## 5. 아직 없는 것 (의도된 보류)
+## 5. 관측 — 회사 Grafana(Zabbix+Loki) 합류, 자체 대시보드 없음
+
+분업: **Zabbix**=생존·게이지·알람(`/health` JSON을 HTTP agent+JSONPath로 폴링 —
+트리거: `status≠UP`·`queue>N`·`failed 증가`) / **Loki**=율·지연분포·이벤트
+(구조화 JSON 로그 — traceback도 `exception` 필드로 한-줄) / **클립 단위 "왜"**=
+노드의 inspect·report (플릿 화면에서 clip_id 보고 드릴다운).
+
+**로컬 검증 스택** = [`deploy/observability/`](../deploy/observability/) —
+Grafana+Loki+promtail 3컨테이너 (~500MB램):
+
+```bash
+momentscan serve-http … >> ~/logs/momentscan-service.log 2>&1   # 로그 싱크 고정
+cd deploy/observability && MOMENTSCAN_LOG_DIR=$HOME/logs docker compose up -d
+# → http://localhost:3000 (익명 Admin) · 대시보드 "momentscan · ops"
+```
+
+여기서 검증된 것이 그대로 회사로 이식된다 — **바꿀 곳만**: promtail `clients.url`
+(+`tenant_id`/`basic_auth`, 모니터링 팀 확인)·`labels.env` **dev→alpha**(라벨 격리 —
+운영 쿼리 오염 방지)·`host`. 대시보드는 `momentscan-ops.json` import.
+규율: `clip_id`는 라벨 승격 금지(카디널리티) — 본문 필드로 두고 `| json` 필터.
+
+회사 확인 질문 (유레카 3종에 추가): ④ Loki push 엔드포인트·인증·테넌트
+⑤ promtail/alloy가 로그를 어디서 집나(파일 tail vs journald) ⑥ Zabbix HTTP agent
+아이템 사용 절차 (호스트 등록은 그쪽 운영 절차 — Zabbix에는 자동 발견 시너지 없음).
+
+## 6. 아직 없는 것 (의도된 보류)
 
 - 인증(알파 = 사내망 가정) · Kafka consumer(같은 Job JSON을 먹는 어댑터만 추가하면
   됨 — 페이로드 transport-agnostic) · 오토스케일/워커풀 · S3 실계정 검증(코드는

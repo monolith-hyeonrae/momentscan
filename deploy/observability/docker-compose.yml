@@ -1,0 +1,36 @@
+# 로컬 관측 스택 — 회사 Grafana(Zabbix+Loki) 합류 전의 자체 검증판.
+# 여기서 확정한 promtail 설정·LogQL·대시보드 JSON이 그대로 회사로 이식된다.
+#   기동:  docker compose up -d      (Grafana http://localhost:3000, 익명 Admin)
+#   로그:  momentscan serve-http … >> ~/logs/momentscan-service.log 2>&1
+services:
+  loki:
+    image: grafana/loki:3.1.1
+    command: -config.file=/etc/loki/config.yaml
+    volumes:
+      - ./loki-config.yaml:/etc/loki/config.yaml:ro
+      - loki-data:/loki
+    ports: ["3100:3100"]
+
+  promtail:
+    image: grafana/promtail:3.1.1
+    command: -config.file=/etc/promtail/config.yaml
+    volumes:
+      - ./promtail-config.yaml:/etc/promtail/config.yaml:ro
+      - ${MOMENTSCAN_LOG_DIR:-~/logs}:/var/log/momentscan:ro
+      - promtail-positions:/positions
+    depends_on: [loki]
+
+  grafana:
+    image: grafana/grafana:11.4.0
+    environment:
+      GF_AUTH_ANONYMOUS_ENABLED: "true"      # 로컬 전용 — 회사판은 그쪽 인증
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Admin
+      GF_AUTH_DISABLE_LOGIN_FORM: "true"
+    volumes:
+      - ./grafana-provisioning:/etc/grafana/provisioning:ro
+    ports: ["3000:3000"]
+    depends_on: [loki]
+
+volumes:
+  loki-data:
+  promtail-positions:

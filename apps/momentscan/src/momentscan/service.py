@@ -150,11 +150,13 @@ class JobRunner:
             if prior and prior.get("ok") and not (st and st["status"] == "failed"):
                 # 멱등: 완료 기록 존재 → 재계산 없이 저장 경로 반환 (Kafka 재전송 안전)
                 self.jobs[clip_id] = {"status": "done", "job": job, "result": prior}
+                log.info("service.job.idempotent", extra={"clip_id": clip_id})
                 return 200, prior
             self.jobs[clip_id] = {"status": "queued", "job": job,
                                   "queued_iso": datetime.now(timezone.utc).isoformat(timespec="seconds")}
             self._q.append(clip_id)
             self._cv.notify()
+        log.info("service.job.accepted", extra={"clip_id": clip_id, "queue": len(self._q)})
         return 202, self._ticket(clip_id, "queued")
 
     def status(self, clip_id: str) -> tuple[int, dict]:
@@ -309,12 +311,23 @@ def build_server(runner: JobRunner, *, port: int = 8080, bind: str = "0.0.0.0",
     return server
 
 
+HEALTH_LOG_S = 30      # 큐 깊이 같은 게이지를 Loki에서도 읽게 하는 주기 스냅샷
+                       # (Zabbix가 /health를 폴링하는 것과 같은 내용의 로그판)
+
+
 def serve_http(out_root: str, *, port: int = 8080, fps: int = 6,
                open_products: tuple[str, ...] = ("likeness",),
                eureka_url: str | None = None, advertise_host: str | None = None,
                app_name: str = APP_NAME) -> None:
     runner = JobRunner(out_root, fps_default=fps, open_products=open_products)
     server = build_server(runner, port=port, app_name=app_name)
+
+    def _health_beat() -> None:
+        while True:
+            time.sleep(HEALTH_LOG_S)
+            log.info("service.health", extra=runner.health())
+
+    threading.Thread(target=_health_beat, name="health-log", daemon=True).start()
 
     eureka = None
     if eureka_url:                                      # 등록은 서버가 실제로 열린 뒤

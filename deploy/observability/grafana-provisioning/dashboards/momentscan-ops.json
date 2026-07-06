@@ -1,0 +1,74 @@
+{
+  "uid": "momentscan-ops",
+  "title": "momentscan · ops (Loki)",
+  "description": "운영 관측 — 무엇이 아픈가. 클립 단위 '왜'는 노드의 inspect/report로 드릴다운. 회사 Grafana 이식용 원본.",
+  "schemaVersion": 39,
+  "refresh": "10s",
+  "time": { "from": "now-30m", "to": "now" },
+  "panels": [
+    {
+      "id": 1, "type": "stat", "title": "큐 깊이 (service.health)",
+      "gridPos": { "h": 6, "w": 4, "x": 0, "y": 0 },
+      "datasource": { "type": "loki", "uid": "loki" },
+      "targets": [{
+        "refId": "A", "queryType": "range",
+        "expr": "max_over_time({service=\"momentscan\"} | json | msg=`service.health` | unwrap queue [1m])"
+      }],
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] } }
+    },
+    {
+      "id": 2, "type": "stat", "title": "누적 done / failed",
+      "gridPos": { "h": 6, "w": 4, "x": 4, "y": 0 },
+      "datasource": { "type": "loki", "uid": "loki" },
+      "targets": [
+        { "refId": "A", "queryType": "range", "legendFormat": "done",
+          "expr": "max_over_time({service=\"momentscan\"} | json | msg=`service.health` | unwrap done [1m])" },
+        { "refId": "B", "queryType": "range", "legendFormat": "failed",
+          "expr": "max_over_time({service=\"momentscan\"} | json | msg=`service.health` | unwrap failed [1m])" }
+      ],
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] } }
+    },
+    {
+      "id": 3, "type": "timeseries", "title": "잡 이벤트 율 (5m) — accepted / done / idempotent",
+      "gridPos": { "h": 6, "w": 16, "x": 8, "y": 0 },
+      "datasource": { "type": "loki", "uid": "loki" },
+      "targets": [
+        { "refId": "A", "queryType": "range", "legendFormat": "accepted",
+          "expr": "sum(count_over_time({service=\"momentscan\"} | json | msg=`service.job.accepted` [5m]))" },
+        { "refId": "B", "queryType": "range", "legendFormat": "done",
+          "expr": "sum(count_over_time({service=\"momentscan\"} | json | msg=`service.job.done` [5m]))" },
+        { "refId": "C", "queryType": "range", "legendFormat": "idempotent",
+          "expr": "sum(count_over_time({service=\"momentscan\"} | json | msg=`service.job.idempotent` [5m]))" }
+      ]
+    },
+    {
+      "id": 4, "type": "timeseries", "title": "처리 지연 p90 (elapsed_s, 15m 창)",
+      "gridPos": { "h": 6, "w": 12, "x": 0, "y": 6 },
+      "datasource": { "type": "loki", "uid": "loki" },
+      "targets": [{
+        "refId": "A", "queryType": "range",
+        "expr": "quantile_over_time(0.9, {service=\"momentscan\"} | json | msg=`service.job.done` | unwrap elapsed_s [15m])"
+      }]
+    },
+    {
+      "id": 5, "type": "logs", "title": "실패 (ERROR — clip_id로 노드 inspect/report 드릴다운)",
+      "gridPos": { "h": 6, "w": 12, "x": 12, "y": 6 },
+      "datasource": { "type": "loki", "uid": "loki" },
+      "targets": [{
+        "refId": "A", "queryType": "range",
+        "expr": "{service=\"momentscan\", level=\"ERROR\"}"
+      }],
+      "options": { "showTime": true, "wrapLogMessage": true }
+    },
+    {
+      "id": 6, "type": "logs", "title": "이벤트 스트림 (전체)",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 12 },
+      "datasource": { "type": "loki", "uid": "loki" },
+      "targets": [{
+        "refId": "A", "queryType": "range",
+        "expr": "{service=\"momentscan\"}"
+      }],
+      "options": { "showTime": true, "dedupStrategy": "none" }
+    }
+  ]
+}
