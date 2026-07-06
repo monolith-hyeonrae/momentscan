@@ -409,6 +409,16 @@ def serve_http(out_root: str, *, port: int = 8080, fps: int = 6,
         "open_products": list(open_products), "started_iso": runner.started_iso,
     }, ensure_ascii=False), encoding="utf-8")
 
+    # SIGTERM도 Ctrl-C와 같은 우아한 경로로 — systemd stop·`shutdown-http`·kill 전부
+    # finally 정리(유레카 즉시 해지·런타임 레코드 삭제)를 타야 한다. 시그널 핸들러는
+    # 메인 스레드에서 실행되므로 KeyboardInterrupt를 올리면 serve_forever가 빠져나온다.
+    import signal
+
+    def _term(signum, frame):                           # noqa: ARG001
+        raise KeyboardInterrupt
+
+    signal.signal(signal.SIGTERM, _term)
+
     log.info("service.ready", extra={"port": port, "out_root": out_root,
                                      "open_products": list(open_products),
                                      "eureka": eureka.instance_id if eureka else None})
@@ -423,3 +433,5 @@ def serve_http(out_root: str, *, port: int = 8080, fps: int = 6,
             eureka.stop()                               # 정상 종료 = 즉시 해지 (축출 대기 없음)
         server.server_close()
         runtime.unlink(missing_ok=True)                 # kill -9 잔재는 status가 ⚠로 표시
+        log.info("service.stopped", extra={"port": port, "done":
+                 sum(1 for s in runner.jobs.values() if s["status"] == "done")})

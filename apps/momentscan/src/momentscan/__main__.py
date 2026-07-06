@@ -60,6 +60,42 @@ def _cmd_api_check(args: argparse.Namespace) -> int:
     return run_apicheck()
 
 
+def _cmd_shutdown_http(args: argparse.Namespace) -> int:
+    """로컬 serve-http 우아한 종료 — 런타임 레코드로 pid를 찾아 SIGTERM
+    (finally 정리: 유레카 즉시 해지 + 레코드 삭제). 원격 shutdown 엔드포인트는
+    일부러 없다 — 네트워크에서 끌 수 있는 서비스는 footgun."""
+    import os
+    import signal
+    import time as _time
+
+    recs = sorted((Path.home() / ".cache" / "momentscan").glob("http-*.json"))
+    if args.port:
+        recs = [r for r in recs if r.name == f"http-{args.port}.json"]
+    if not recs:
+        print("serve-http 런타임 레코드 없음 — 이미 꺼져 있거나 kill -9 잔재는 status로 확인")
+        return 2
+    if len(recs) > 1 and not args.port:
+        print("여러 인스턴스가 떠 있음 — --port로 지정:")
+        for r in recs:
+            print(f"  {json.loads(r.read_text(encoding='utf-8')).get('node')}")
+        return 2
+    rec = json.loads(recs[0].read_text(encoding="utf-8"))
+    pid = rec.get("pid")
+    try:
+        os.kill(pid, signal.SIGTERM)
+    except ProcessLookupError:
+        recs[0].unlink(missing_ok=True)
+        print(f"프로세스 {pid} 이미 없음 — 죽은 레코드 정리함")
+        return 0
+    for _ in range(50):                                  # 우아한 종료 대기 (최대 ~10s)
+        if not recs[0].exists():
+            print(f"✓ {rec.get('node')} 종료 (유레카 해지·레코드 삭제 완료)")
+            return 0
+        _time.sleep(0.2)
+    print(f"⚠ {rec.get('node')} 종료 신호는 보냈으나 레코드가 남아 있음 — 잡 처리 중이면 대기, 아니면 status 확인")
+    return 1
+
+
 def _cmd_serve_http(args: argparse.Namespace) -> int:
     from momentscan.service import node_identity, serve_http
 
@@ -670,6 +706,11 @@ def main(argv: list[str] | None = None) -> int:
     pac = sub.add_parser("api-check", parents=[common],
                          help="REST API 계약 테스트 — 인프로세스 서버 vs docs/api/openapi.yaml")
     pac.set_defaults(func=_cmd_api_check)
+
+    psx = sub.add_parser("shutdown-http", parents=[common],
+                         help="로컬 serve-http 우아한 종료 (SIGTERM — 유레카 해지·레코드 정리)")
+    psx.add_argument("--port", type=int, default=None, help="여러 인스턴스 중 대상 포트")
+    psx.set_defaults(func=_cmd_shutdown_http)
 
     pp = sub.add_parser("process", parents=[common], help="trigger one clip through the running warm daemon")
     pp.add_argument("path", help="video file to analyze")

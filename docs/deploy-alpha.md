@@ -21,6 +21,12 @@ momentscan serve-http --port 8080 --out /data/stash --fps 6 \
 serve-http는 기동 시 `~/.cache/momentscan/http-{port}.json` 런타임 레코드를 남기고
 status가 그걸로 발견해 `/health`를 찔러본다 (무응답 기록 = ⚠ 죽은 프로세스 표시).
 
+**종료 = `momentscan shutdown-http [--port N]`** — 레코드의 pid로 SIGTERM.
+Ctrl-C(포그라운드)·`kill <pid>`·systemd stop 전부 같은 우아한 경로: **유레카 즉시
+해지**(90s 축출 대기 없음)·레코드 삭제·`service.stopped` 로그(대시보드에 종료 흔적).
+`kill -9`만 잔재를 남기고, 그건 status ⚠가 잡아 rm 힌트를 준다. 원격 shutdown
+엔드포인트는 **의도적으로 없음** — 네트워크에서 끌 수 있는 서비스는 footgun.
+
 ```
 POST /jobs        {clip_id, source_uri, output_uri?, fps?, products?, subject_query?}
                   → 202 {status, output_prefix, poll} | 200 (이미 완료 = Result)
