@@ -159,7 +159,9 @@ class JobRunner:
                                   "queued_iso": datetime.now(timezone.utc).isoformat(timespec="seconds")}
             self._q.append(clip_id)
             self._cv.notify()
-        log.info("service.job.accepted", extra={"clip_id": clip_id, "queue": len(self._q)})
+        log.info("service.job.accepted", extra={"clip_id": clip_id,
+                                                "source_uri": job.get("source_uri"),
+                                                "queue": len(self._q)})
         return 202, self._ticket(clip_id, "queued")
 
     def status(self, clip_id: str) -> tuple[int, dict]:
@@ -190,11 +192,16 @@ class JobRunner:
                 clip_id = self._q.pop(0)
                 st = self.jobs[clip_id]
                 st["status"] = "running"
+            # 수명주기 표면: 어느 노드가(node=로그 상수) 어떤 비디오를(source_uri)
+            # 언제 시작했나 — 대시보드 잡 테이블의 행이 되는 이벤트들.
+            log.info("service.job.started", extra={"clip_id": clip_id,
+                                                   "source_uri": st["job"].get("source_uri")})
             try:
                 st["result"] = self._run(st["job"])
                 st["status"] = "done"
             except Exception as e:
-                log.exception("service.job.failed", extra={"clip_id": clip_id})
+                log.exception("service.job.failed", extra={
+                    "clip_id": clip_id, "source_uri": st["job"].get("source_uri")})
                 st["error"] = {"stage": "service", "error": str(e)}
                 st["status"] = "failed"
 
@@ -234,6 +241,12 @@ class JobRunner:
             from momentscan.surface.cards import render_highlight_clips
             render_highlight_clips(out, clip_id, video_path=source)
 
+        try:                                            # 사람용 리포트 — /reports 드릴다운의 목적지.
+            from momentscan.surface.report import render_report
+            render_report(out, clip_id)                 # inspect는 무겁고 연구자 온디맨드 — 여기선 안 렌더
+        except Exception as e:
+            log.warning("service.report.skip", extra={"clip_id": clip_id, "error": str(e)})
+
         cdir = clip_dir(Path(out), clip_id)
         prefix, outputs = deliver(cdir, clip_id, collect_egress(cdir, effective),
                                   job.get("output_uri"))
@@ -241,6 +254,7 @@ class JobRunner:
             "schema": RESULT_SCHEMA,
             "clip_id": clip_id, "ok": True, "failure": None,
             "node": self.node,
+            "report_url": f"http://{self.node}/reports/{clip_id}/",   # 플릿→클립 드릴다운 좌표
             "output_prefix": prefix, "outputs": outputs,
             "products_open": list(self.open_products), "products_requested": list(requested),
             "n_ran": len(run["ran"]), "n_skipped": len(run["skipped"]),
@@ -279,8 +293,45 @@ def build_server(runner: JobRunner, *, port: int = 8080, bind: str = "0.0.0.0",
             self.end_headers()
             self.wfile.write(data)
 
+        def _send_file(self, p: Path) -> None:
+            import mimetypes
+            data = p.read_bytes()
+            self.send_response(200)
+            self.send_header("Content-Type",
+                             mimetypes.guess_type(p.name)[0] or "application/octet-stream")
+            self.send_header("Content-Length", str(len(data)))
+            self.end_headers()
+            self.wfile.write(data)
+
+        def _reports(self, path: str) -> None:
+            """/reports/{clip_id}[/{relpath}] — 클립 리포트·inspect의 읽기-전용 정적 서빙.
+            플릿(Grafana)에서 clip_id·node를 보고 이 노드의 "왜"로 들어오는 문."""
+            parts = [urllib.parse.unquote(s) for s in path.split("/") if s][1:]   # drop "reports"
+            if not parts:
+                self._send(404, {"error": "GET /reports/{clip_id}/"})
+                return
+            clip_id, rel = parts[0], parts[1:]
+            root = clip_dir(Path(runner.out_root), clip_id).resolve()
+            if any(s in (".", "..") for s in parts) or not root.is_dir() \
+                    or not root.is_relative_to(Path(runner.out_root).resolve()):
+                self._send(404, {"error": "unknown clip"})
+                return
+            if not rel and not urllib.parse.urlparse(self.path).path.endswith("/"):
+                # 상대 자산(portrait_card.png·inspect/…)이 풀리려면 트레일링 슬래시 필수
+                self._send(301, {"see": f"/reports/{clip_id}/"},
+                           {"Location": f"/reports/{clip_id}/"})
+                return
+            target = (root.joinpath(*rel) if rel else root / "index.html").resolve()
+            if not target.is_relative_to(root) or not target.is_file():
+                self._send(404, {"error": f"no such file under {clip_id}"})
+                return
+            self._send_file(target)
+
         def do_GET(self) -> None:                       # noqa: N802 (stdlib 계약)
             path = urllib.parse.urlparse(self.path).path.rstrip("/")
+            if path.startswith("/reports/") or path == "/reports":
+                self._reports(path)
+                return
             if path == "/health":
                 self._send(200, runner.health())
             elif path in ("", "/info"):

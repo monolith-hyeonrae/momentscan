@@ -92,7 +92,20 @@ cd deploy/observability && MOMENTSCAN_LOG_DIR=$HOME/logs docker compose up -d
 Eureka 광고 주소와 같은 근거)를 **모든 로그 라인·Result·/health·/info에 도장** 찍고,
 promtail이 본문의 `node`를 라벨로 승격한다 → 노드별 promtail 설정 차이가 불필요하고
 (전 노드 동일 설정), Loki에서 `sum by (node)` 분해·Result의 `node`로 "이 결과를 만든
-서버" 추적이 된다. 드릴다운: Result.node → `http://<node>/…`(向후 /reports 정적 서빙).
+서버" 추적이 된다.
+
+**잡 수명주기 가시성**: `service.job.accepted → started → done | failed` 이벤트가
+전부 `clip_id`·`source_uri`(무슨 비디오)·`output_prefix`(출력했는지)를 담는다 —
+대시보드 "잡 수명주기" 테이블이 이걸 행으로 보여주고, **clip_id 클릭 =
+`http://<node>/reports/<clip_id>/`** (데이터 링크).
+
+**개별 scan inspect 확인(드릴다운)**: 각 노드가 자기 stash의 클립 리포트를
+읽기-전용 정적 서빙한다 — `GET /reports/{clip_id}/` = index.html(+상대 자산:
+portrait·highlight mp4·**inspect/clip.html**). 잡 완료 시 서비스가 report를 자동
+렌더하고 Result에 `report_url`을 담는다. inspect 페이지 자체는 무거워서(비디오
+트랜스코드) 자동 렌더 안 함 — 연구자가 그 노드에서 `momentscan inspect <clip>`을
+돌리면 그 순간부터 같은 URL 밑에서 서빙된다. 경로 탈출은 이중 가드(세그먼트
+검사+resolve 격리, api-check가 회귀 검증).
 
 회사 확인 질문 (유레카 3종에 추가): ④ Loki push 엔드포인트·인증·테넌트
 ⑤ promtail/alloy가 로그를 어디서 집나(파일 tail vs journald) ⑥ Zabbix HTTP agent

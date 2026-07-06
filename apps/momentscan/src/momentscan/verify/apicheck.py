@@ -18,7 +18,8 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
-RESULT_KEYS = {"schema", "clip_id", "ok", "failure", "node", "output_prefix", "outputs",
+RESULT_KEYS = {"schema", "clip_id", "ok", "failure", "node", "report_url",
+               "output_prefix", "outputs",
                "products_open", "products_requested", "n_ran", "n_skipped",
                "elapsed_s", "finished_at_iso"}
 TICKET_KEYS = {"clip_id", "status", "output_prefix", "poll", "queue_depth"}
@@ -114,6 +115,23 @@ def run_apicheck(*, keep: bool = False) -> int:
         code_body = runner2.status("t1")
         ok("프로세스 재시작 후 조회 → result.json에서 복원",
            code_body[0] == 200 and code_body[1]["ok"] is True, str(code_body[0]))
+
+        # ── /reports 정적 서빙 (플릿→클립 드릴다운의 문) ──────────────────
+        (clip_dir(tmp, "t1") / "index.html").write_text("<h1>t1 report</h1>", encoding="utf-8")
+        (clip_dir(tmp, "t1") / "inspect").mkdir(exist_ok=True)
+        (clip_dir(tmp, "t1") / "inspect" / "clip.html").write_text("<h1>inspect</h1>", encoding="utf-8")
+        raw = urllib.request.urlopen(f"{base}/reports/t1", timeout=10)   # 301 → urllib이 /로 따라감
+        ok("GET /reports/{clip} → 301 → 리포트 HTML", raw.status == 200
+           and "text/html" in raw.headers["Content-Type"] and b"t1 report" in raw.read(), "")
+        sub = urllib.request.urlopen(f"{base}/reports/t1/inspect/clip.html", timeout=10)
+        ok("하위 자산(inspect/clip.html) 서빙", sub.status == 200 and b"inspect" in sub.read(), "")
+        import http.client                               # urllib은 ..를 클라이언트에서 정규화 → 원시 요청
+        conn = http.client.HTTPConnection("127.0.0.1", server.server_address[1], timeout=10)
+        conn.request("GET", "/reports/t1/../../../etc/passwd")
+        ok("경로 탈출 차단 (…/..) → 404", conn.getresponse().status == 404, "")
+        conn.request("GET", "/reports/../secret")
+        ok("clip_id='..' 차단 → 404", conn.getresponse().status == 404, "")
+        conn.close()
 
         # ── output_uri 로컬 배송 + 단계 배포 스위치 ──────────────────────
         _stage("t2")

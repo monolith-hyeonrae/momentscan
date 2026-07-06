@@ -60,6 +60,17 @@ paths:
           content:
             application/json:
               schema: {$ref: "#/components/schemas/Error"}
+  /reports/{clipId}/:
+    get:
+      summary: 클립 리포트·인스펙트 정적 서빙 (읽기 전용, 노드-로컬 stash)
+      description: >
+        플릿(Grafana)에서 node·clip_id를 보고 "왜"로 들어오는 드릴다운 문.
+        index.html과 하위 자산(inspect/…, *.png, *.mp4)을 서빙. Result.report_url이 이 경로.
+      parameters:
+        - {name: clipId, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: text/html 또는 자산}
+        "404": {description: 미지 클립 / 경로 탈출 시도}
   /health:
     get:
       summary: 헬스 (Eureka healthCheckUrl)
@@ -123,6 +134,7 @@ components:
         ok: {type: boolean, enum: [true]}
         failure: {nullable: true}
         node: {type: string, description: "처리한 노드 (host:port) — 멀티노드 운용의 드릴다운 좌표"}
+        report_url: {type: string, description: "이 클립의 사람용 리포트/인스펙트 (노드-로컬 정적 서빙)"}
         output_prefix: {type: string, description: 실제 저장 위치 (s3 prefix 또는 디렉터리)}
         outputs:
           type: object
