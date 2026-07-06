@@ -74,6 +74,13 @@ Eureka = **전화번호부**다. 등록은 "MOMENTSCAN이라는 이름의 인스
 (구조화 JSON 로그 — traceback도 `exception` 필드로 한-줄) / **클립 단위 "왜"**=
 노드의 inspect·report (플릿 화면에서 clip_id 보고 드릴다운).
 
+⚠ **관측 단위 = `serve-http` 노드**다. `momentscan serve`(UDS 웜 데몬)는 로컬
+연구/운영자 도구라 관측 레인에 안 잡힌다 — 대시보드의 모든 것은 *방출된 로그*에서
+파생되고(Grafana는 아무것도 probe하지 않음), health beat·node 도장은 serve-http만
+낸다. "살아있는 노드" 패널 = 최근 2m 내 `service.health`를 낸 node 수. (데몬을
+굳이 보이게 하려면 `momentscan serve --log-format json >> ~/logs/momentscan-daemon.log`
+— daemon.heartbeat이 이벤트 스트림에 뜨지만 노드 수에는 안 잡힌다, 의도된 경계.)
+
 **로컬 검증 스택** = [`deploy/observability/`](../deploy/observability/) —
 Grafana+Loki+promtail 3컨테이너 (~500MB램):
 
