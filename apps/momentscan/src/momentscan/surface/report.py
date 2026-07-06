@@ -50,6 +50,22 @@ def render_report(out_root, clip_id: str) -> dict:
     hls = sorted((cdir / "highlights").glob("*.mp4")) if (cdir / "highlights").is_dir() else []
     inspect_html = cdir / "inspect" / "clip.html"
 
+    # 단계 배포의 의미를 리포트에도 명시 (user 2026-07-06): 서비스가 처리한 클립은
+    # result.json의 products_open이 진실 — 닫힌 제품 섹션은 숨기지 않고 🔒 접힘으로
+    # "열고 닫음"을 보이게 한다 (내부 연구 뷰로는 펼쳐 볼 수 있음; Result에는 미반출).
+    # result.json 없는 클립(순수 연구 런) = 전체 열림.
+    res = _load(cdir / "result.json") or {}
+    opened = set(res["products_open"]) if res.get("products_open") is not None else None
+
+    def _section(product: str, title: str, body: list[str]) -> str:
+        inner = "".join(body)
+        if opened is None or product in opened:
+            return f"<h2>{title}</h2>" + inner
+        return ("<details style='opacity:.75'><summary style='cursor:pointer'>"
+                f"<h2 style='display:inline'>{title}</h2> "
+                "<span class=chip>🔒 미오픈 — 단계 배포 (내부 연구 뷰 · Result 미반출)</span>"
+                f"</summary>{inner}</details>")
+
     B: list[str] = [f"<style>{_CSS}</style>", f"<h1>momentscan · {html.escape(clip_id)}</h1>"]
     src = html.escape(str(prov.get("source_uri", "")))
     B.append(f"<div class=meta>{src}{' · ' if src else ''}processed {html.escape(str(prov.get('processed_at_iso', '—')))}"
@@ -57,10 +73,10 @@ def render_report(out_root, clip_id: str) -> dict:
              + "</div>")
 
     # ── PORTRAITS ────────────────────────────────────────────────────────────
-    B.append("<h2>PORTRAIT — 대표컷 · 뷰 세트</h2>")
+    sec: list[str] = []
     riders = pj.get("riders", {})
     if not riders:
-        B.append("<div class=warn>portrait 산출물 없음 (portrait 스테이지 미실행?)</div>")
+        sec.append("<div class=warn>portrait 산출물 없음 (portrait 스테이지 미실행?)</div>")
     for sid, r in riders.items():
         cards = []
         rep = r.get("rep") or {}
@@ -72,31 +88,34 @@ def render_report(out_root, clip_id: str) -> dict:
             if e.get("file"):
                 cards.append(f"<div class=card><img src='portraits/{html.escape(e['file'])}'>"
                              f"<div class=cap>{html.escape(e.get('view', '?'))} · f{e.get('frame_idx', '?')}</div></div>")
-        B.append(f"<div class=kv>subject {html.escape(str(sid))} <span class=chip>{html.escape(str(r.get('role')))}</span>"
-                 f" admit {r.get('n_admit')}/{r.get('n_total')}</div><div class=grid>{''.join(cards)}</div>")
+        sec.append(f"<div class=kv>subject {html.escape(str(sid))} <span class=chip>{html.escape(str(r.get('role')))}</span>"
+                   f" admit {r.get('n_admit')}/{r.get('n_total')}</div><div class=grid>{''.join(cards)}</div>")
+    B.append(_section("portrait", "PORTRAIT — 대표컷 · 뷰 세트", sec))
 
     # ── HIGHLIGHTS ───────────────────────────────────────────────────────────
-    B.append("<h2>HIGHLIGHT — 세그먼트 클립</h2>")
+    sec = []
     if hls:
-        B.append("<div class=grid>" + "".join(
+        sec.append("<div class=grid>" + "".join(
             f"<div class=card><video src='highlights/{html.escape(p.name)}' controls muted></video>"
             f"<div class=cap>{html.escape(p.name)}</div></div>" for p in hls) + "</div>")
     else:
-        B.append("<div class=warn>highlight mp4 없음 (`momentscan highlight`가 렌더)</div>")
+        sec.append("<div class=warn>highlight mp4 없음 (`momentscan highlight`가 렌더)</div>")
+    B.append(_section("highlight", "HIGHLIGHT — 세그먼트 클립", sec))
 
     # ── LIKENESS ─────────────────────────────────────────────────────────────
-    B.append("<h2>LIKENESS — 방문-스코프 외형 ID</h2>")
+    sec = []
     for sid, r in (lk.get("riders") or {}).items():
         fid = r.get("face_id") or {}
         fa = r.get("fashion") or {}
         worn = [k for k in ("mask", "hat") if fa.get(k)] + ([fa["eyewear"]] if fa.get("eyewear") not in (None, "none") else [])
-        B.append(f"<div class=kv>subject {html.escape(str(sid))} <span class=chip>{html.escape(str(r.get('role')))}</span>"
-                 f" · 관측 <b>{r.get('n_obs', '—')}</b>"
-                 f" · 재현성 drift <b>{r.get('split_half_drift', '—')}</b>"
-                 f" · face_id coherence <b>{fid.get('coherence_mean', '—')}</b> (n={fid.get('n_emb', '—')})"
-                 f" · 착용 <b>{html.escape(', '.join(worn) or '없음')}</b></div>")
+        sec.append(f"<div class=kv>subject {html.escape(str(sid))} <span class=chip>{html.escape(str(r.get('role')))}</span>"
+                   f" · 관측 <b>{r.get('n_obs', '—')}</b>"
+                   f" · 재현성 drift <b>{r.get('split_half_drift', '—')}</b>"
+                   f" · face_id coherence <b>{fid.get('coherence_mean', '—')}</b> (n={fid.get('n_emb', '—')})"
+                   f" · 착용 <b>{html.escape(', '.join(worn) or '없음')}</b></div>")
     if not lk.get("riders"):
-        B.append("<div class=warn>likeness.json 없음</div>")
+        sec.append("<div class=warn>likeness.json 없음</div>")
+    B.append(_section("likeness", "LIKENESS — 방문-스코프 외형 ID", sec))
 
     out = cdir / "index.html"
     out.write_text("<!doctype html><meta charset='utf-8'>"
