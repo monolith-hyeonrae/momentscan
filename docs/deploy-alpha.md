@@ -94,10 +94,14 @@ Eureka = **전화번호부**다. 등록은 "MOMENTSCAN이라는 이름의 인스
 Grafana+Loki+promtail 3컨테이너 (~500MB램):
 
 ```bash
-momentscan serve-http … >> ~/logs/momentscan-service.log 2>&1   # 로그 싱크 고정
+momentscan serve-http --port 8080 …     # 로그는 기본으로 ~/logs/momentscan-{port}.log (JSON)
 cd deploy/observability && MOMENTSCAN_LOG_DIR=$HOME/logs docker compose up -d
 # → http://localhost:3000 (익명 Admin) · 대시보드 "momentscan · ops"
 ```
+
+⚠ 로그 싱크는 **서비스 기본값**이다 — 셸 리다이렉트 불필요 (터미널에서 그냥 띄워도
+관측 레인에 잡힘; `--log-file`로 바꾸고 `-`는 기존 stderr). 노드마다 자기 파일이라
+한 머신 다중 인스턴스도 안 섞인다.
 
 여기서 검증된 것이 그대로 회사로 이식된다 — **바꿀 곳만**: promtail `clients.url`
 (+`tenant_id`/`basic_auth`, 모니터링 팀 확인)·`labels.env` **dev→alpha**(라벨 격리 —

@@ -99,9 +99,20 @@ def _cmd_shutdown_http(args: argparse.Namespace) -> int:
 def _cmd_serve_http(args: argparse.Namespace) -> int:
     from momentscan.service import node_identity, serve_http
 
+    # 서버의 로그는 기본으로 파일(~/logs/momentscan-{port}.log, JSON)에 떨어진다 —
+    # 관측 레인(promtail→Loki)의 수집 지점이 파일이라, 셸 리다이렉트를 잊으면
+    # 노드가 조용히 관측 불능이 되는 함정을 제거. `--log-file -` = 기존 stderr.
+    stream = None
+    log_path = args.log_file
+    if log_path != "-":
+        p = Path(log_path).expanduser() if log_path else (
+            Path.home() / "logs" / f"momentscan-{args.port}.log")
+        p.parent.mkdir(parents=True, exist_ok=True)
+        stream = p.open("a", encoding="utf-8")
+        print(f"logs → {p}")
     # 모든 로그 라인 본문에 node를 도장 — promtail이 이 필드를 라벨로 승격해
     # Loki에서 노드별 구분/집계가 된다 (멀티노드 운용의 "어느 서버?" 답).
-    setup_logging(level=args.log_level, fmt=args.log_format,
+    setup_logging(level=args.log_level, fmt=args.log_format, stream=stream,
                   constants={"service": "momentscan",
                              "node": node_identity(args.advertise_host, args.port)})
     serve_http(
@@ -701,6 +712,8 @@ def main(argv: list[str] | None = None) -> int:
     psh.add_argument("--advertise-host", default=None,
                      help="Eureka에 광고할 host/IP (기본: 자동 감지)")
     psh.add_argument("--app-name", default="momentscan", help="Eureka 앱 이름")
+    psh.add_argument("--log-file", default=None,
+                     help="로그 파일 (기본 ~/logs/momentscan-{port}.log · '-'=stderr)")
     psh.set_defaults(func=_cmd_serve_http)
 
     pac = sub.add_parser("api-check", parents=[common],
