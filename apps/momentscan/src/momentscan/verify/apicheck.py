@@ -80,6 +80,14 @@ def run_apicheck(*, keep: bool = False) -> int:
            and b["status"] == "UP" and isinstance(b["queue"], int) and b["node"]
            and "gpu" in b, str(b))
 
+        # ── API 자기서술 면 (/docs · /openapi.yaml) ──────────────────────
+        raw = urllib.request.urlopen(f"{base}/openapi.yaml", timeout=10)
+        ok("GET /openapi.yaml → 계약 정본 서빙", raw.status == 200
+           and b"openapi: 3" in raw.read(), "")
+        raw = urllib.request.urlopen(f"{base}/docs", timeout=10)
+        ok("GET /docs → Swagger UI 페이지", raw.status == 200
+           and b"swagger-ui" in raw.read(), "")
+
         # ── 검증 오류 형태 (에러도 계약) ─────────────────────────────────
         c, b, _ = _req("POST", f"{base}/jobs", {})
         ok("POST 빈 Job → 400 {error}", c == 400 and "error" in b, str(b))

@@ -116,6 +116,25 @@ def deliver(cdir: Path, clip_id: str, files: dict[str, list[Path]],
     return str(root), outputs
 
 
+def _openapi_path() -> Path | None:
+    """docs/api/openapi.yaml (계약 정본) 탐색 — 레포 체크아웃 배포(알파 모드) 기준.
+    contract-first: FastAPI처럼 코드에서 스펙을 생성하는 게 아니라, 손으로 쓴 스펙에
+    api-check가 코드를 고정한다. /docs·/openapi.yaml은 그 정본의 서빙일 뿐."""
+    for up in Path(__file__).resolve().parents:
+        p = up / "docs" / "api" / "openapi.yaml"
+        if p.is_file():
+            return p
+    return None
+
+
+_DOCS_HTML = """<!doctype html><meta charset="utf-8"><title>momentscan API</title>
+<link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@5/swagger-ui.css">
+<div id="ui"></div>
+<script src="https://unpkg.com/swagger-ui-dist@5/swagger-ui-bundle.js"></script>
+<script>SwaggerUIBundle({url: "/openapi.yaml", dom_id: "#ui"});</script>
+<noscript>JS 불가 환경 — 스펙 원문: <a href="/openapi.yaml">/openapi.yaml</a></noscript>"""
+
+
 _GPU_CACHE: dict = {"t": 0.0, "snap": None}
 
 
@@ -324,12 +343,20 @@ def build_server(runner: JobRunner, *, port: int = 8080, bind: str = "0.0.0.0",
             self.end_headers()
             self.wfile.write(data)
 
-        def _send_file(self, p: Path) -> None:
+        def _send_file(self, p: Path, ctype: str | None = None) -> None:
             import mimetypes
             data = p.read_bytes()
             self.send_response(200)
-            self.send_header("Content-Type",
+            self.send_header("Content-Type", ctype or
                              mimetypes.guess_type(p.name)[0] or "application/octet-stream")
+            self.send_header("Content-Length", str(len(data)))
+            self.end_headers()
+            self.wfile.write(data)
+
+        def _send_html(self, html_text: str) -> None:
+            data = html_text.encode("utf-8")
+            self.send_response(200)
+            self.send_header("Content-Type", "text/html; charset=utf-8")
             self.send_header("Content-Length", str(len(data)))
             self.end_headers()
             self.wfile.write(data)
@@ -365,12 +392,21 @@ def build_server(runner: JobRunner, *, port: int = 8080, bind: str = "0.0.0.0",
                 return
             if path == "/health":
                 self._send(200, runner.health())
+            elif path == "/docs":                       # Swagger UI (unpkg CDN) — 스펙은 로컬 정본
+                self._send_html(_DOCS_HTML)
+            elif path == "/openapi.yaml":
+                spec = _openapi_path()
+                if spec:
+                    self._send_file(spec, "application/yaml; charset=utf-8")
+                else:
+                    self._send(404, {"error": "openapi.yaml not found (repo checkout 배포 기준)"})
             elif path in ("", "/info"):
                 self._send(200, {"app": app_name, "contract": "momentscan C1 v1",
                                  "result_schema": RESULT_SCHEMA, "node": runner.node,
                                  "open_products": list(runner.open_products),
                                  "endpoints": ["POST /jobs", "GET /jobs/{clip_id}",
-                                               "GET /health", "GET /info"]})
+                                               "GET /health", "GET /info", "GET /docs",
+                                               "GET /openapi.yaml", "GET /reports/{clip_id}/"]})
             elif path.startswith("/jobs/"):
                 self._send(*runner.status(path.removeprefix("/jobs/")))
             else:

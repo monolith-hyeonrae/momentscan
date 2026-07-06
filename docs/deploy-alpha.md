@@ -31,8 +31,10 @@ Ctrl-C(포그라운드)·`kill <pid>`·systemd stop 전부 같은 우아한 경�
 POST /jobs        {clip_id, source_uri, output_uri?, fps?, products?, subject_query?}
                   → 202 {status, output_prefix, poll} | 200 (이미 완료 = Result)
 GET  /jobs/{id}   → queued|running / Result / failed
-GET  /health      → {"status":"UP", queue, running, …}     (Eureka healthCheckUrl)
+GET  /health      → {"status":"UP", node, gpu, queue, …}    (Eureka healthCheckUrl)
 GET  /info        → 앱 메타                                  (Eureka statusPageUrl)
+GET  /docs        → Swagger UI (FastAPI /docs 상당 — 정본 openapi.yaml 렌더;
+GET  /openapi.yaml   UI의 JS는 unpkg CDN이라 오프라인이면 yaml 원문으로)
 ```
 
 ## 2. Eureka — 처음이라면 이것만 알면 된다
