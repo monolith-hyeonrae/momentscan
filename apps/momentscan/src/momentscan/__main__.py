@@ -116,10 +116,44 @@ def _cmd_process(args: argparse.Namespace) -> int:
 
 
 def _cmd_status(args: argparse.Namespace) -> int:
-    pong = _call_daemon(args, "ping")
-    stats = _call_daemon(args, "stats")
-    print(json.dumps({**pong, **stats}, indent=2, ensure_ascii=False))
-    return 0
+    """운영자 표면: 이 머신에서 momentscan의 두 서버 면이 무엇이 돌고 있나 —
+    UDS 웜 데몬(연구/운영자) + serve-http(C1 실행기, 배포·관측 단위)."""
+    import urllib.request
+
+    from visualbus.control import call
+
+    from momentscan.daemon import DEFAULT_SOCKET
+
+    ok_any = False
+    sock = Path(args.socket).expanduser() if args.socket else DEFAULT_SOCKET
+    print("── daemon (UDS 웜 제어면) ──")
+    try:
+        pong = call(sock, "ping", timeout=5.0)
+        stats = call(sock, "stats", timeout=5.0)
+        ok_any = True
+        print(f"  ✓ {sock}")
+        print(f"    {json.dumps({**pong, **stats}, ensure_ascii=False)}")
+    except (FileNotFoundError, ConnectionRefusedError):
+        print(f"  ✗ 없음 ({sock}) — `momentscan serve`로 기동")
+
+    print("── serve-http (외부 HTTP 면 · C1 실행기 · 관측 단위) ──")
+    recs = sorted((Path.home() / ".cache" / "momentscan").glob("http-*.json"))
+    if not recs:
+        print("  ✗ 없음 — `momentscan serve-http`로 기동")
+    for rp in recs:
+        rec = json.loads(rp.read_text(encoding="utf-8"))
+        try:
+            with urllib.request.urlopen(f"http://127.0.0.1:{rec['port']}/health", timeout=3) as r:
+                h = json.loads(r.read().decode("utf-8"))
+            ok_any = True
+            print(f"  ✓ {h.get('node')} · {h.get('status')} · queue {h.get('queue')}"
+                  f" · running {h.get('running') or '—'} · done {h.get('done')}"
+                  f" · failed {h.get('failed')} · open {h.get('open_products')}"
+                  f" · out {rec.get('out_root')}")
+        except Exception:
+            print(f"  ⚠ {rec.get('node', rp.stem)} — 기록은 있으나 /health 무응답"
+                  f" (죽은 프로세스면 정리: rm {rp})")
+    return 0 if ok_any else 2
 
 
 def _cmd_shutdown(args: argparse.Namespace) -> int:

@@ -17,6 +17,9 @@ momentscan serve-http --port 8080 --out /data/stash --fps 6 \
 
 동작: FIFO 단일 워커(GPU 직렬화) · warm detect 캐시(첫 잡만 모델 로드) ·
 멱등(clip_id 재요청 = 재계산 없이 기존 경로 반환, `result.json`이 근거).
+**상태 확인 = `momentscan status`** — 두 서버 면(UDS 데몬 + serve-http)을 다 점검:
+serve-http는 기동 시 `~/.cache/momentscan/http-{port}.json` 런타임 레코드를 남기고
+status가 그걸로 발견해 `/health`를 찔러본다 (무응답 기록 = ⚠ 죽은 프로세스 표시).
 
 ```
 POST /jobs        {clip_id, source_uri, output_uri?, fps?, products?, subject_query?}

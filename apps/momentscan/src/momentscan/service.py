@@ -27,6 +27,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import shutil
 import threading
 import time
@@ -399,6 +400,15 @@ def serve_http(out_root: str, *, port: int = 8080, fps: int = 6,
         eureka = EurekaClient(eureka_url, app_name, port=port, host=advertise_host)
         eureka.start()
 
+    # 런타임 레코드 — 데몬의 daemon.sock 관례와 나란한 로컬 발견 지점:
+    # `momentscan status`가 이 파일로 "이 머신에 어떤 HTTP 면이 떠 있나"를 안다.
+    runtime = Path.home() / ".cache" / "momentscan" / f"http-{port}.json"
+    runtime.parent.mkdir(parents=True, exist_ok=True)
+    runtime.write_text(json.dumps({
+        "node": node, "port": port, "pid": os.getpid(), "out_root": str(out_root),
+        "open_products": list(open_products), "started_iso": runner.started_iso,
+    }, ensure_ascii=False), encoding="utf-8")
+
     log.info("service.ready", extra={"port": port, "out_root": out_root,
                                      "open_products": list(open_products),
                                      "eureka": eureka.instance_id if eureka else None})
@@ -412,3 +422,4 @@ def serve_http(out_root: str, *, port: int = 8080, fps: int = 6,
         if eureka:
             eureka.stop()                               # 정상 종료 = 즉시 해지 (축출 대기 없음)
         server.server_close()
+        runtime.unlink(missing_ok=True)                 # kill -9 잔재는 status가 ⚠로 표시
