@@ -145,8 +145,9 @@ portrait/highlight는 추가 연구 후 순차 오픈."** 이 결정이 아래 �
    "인터페이스 정의 빠른 공유 의무"의 실체). **recipe 측 계약 메모(user)**: hair_match
    결과는 face-recipe에 당연 포함 · **recipe→Blender 프리뷰 필요**(임의 3D 얼굴 모델에
    적용한 렌더) — 이중 트랙: ①기하 검증=repo의 canonical_face_model.obj(468 토폴로지
-   = likeness center 직접 변형, 자산 0) ②캐릭터 프리뷰=VRoid/VRM(애니 헤어 에셋 정합·
-   헤어 분리 메시·Blender VRM add-on·ARKit 52 매핑) — StdGEN(../hair, 단일이미지→분해
+   = likeness center 직접 변형, 자산 0) ②캐릭터 프리뷰=**MPFB2**(CC0·얼굴 몰프 수백 축→쉐이프키·
+   과장=캐리커쳐·클레이 룩; VRoid는 user 기각 — 애니 스타일; 최종 모델=디자인팀 제공
+   예정이라 임시) / 차선 FLAME(⚠연구 라이선스) — StdGEN(../hair, 단일이미지→분해
    캐릭터 생성)은 별도 레인.
 4. **실패 모드의 정직한 표면화**: n_obs 부족·가림-지배·스티치 잔여 의심 시 확신 대신
    불확실성 필드 — 알파에서 신뢰를 깎는 건 틀린 답이 아니라 *자신만만한* 틀린 답.
