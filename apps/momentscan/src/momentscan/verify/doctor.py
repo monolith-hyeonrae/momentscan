@@ -55,16 +55,19 @@ def checks() -> list[dict]:
              serves="highlight-lang: 장면 서술", hint="첫 실행 시 HF 자동 다운로드"),
         dict(name="Qwen2.5-VL-3B", ok=any(_HF.glob("models--Qwen--Qwen2.5-VL-3B*")),
              serves="highlight-lang: LLM-judge", hint="첫 실행 시 HF 자동 다운로드"),
+        dict(name="boto3", ok=importlib.util.find_spec("boto3") is not None, optional=True,
+             serves="serve-http: s3:// 소스 반입·결과 반출 (선택 — AWS 배포만, 로컬 알파 불필요)",
+             hint="uv pip install boto3 — AWS 노드에서만"),
     ]
     return rows
 
 
 def render_text() -> int:
     rows = checks()
-    miss = [r for r in rows if not r["ok"]]
+    miss = [r for r in rows if not r["ok"] and not r.get("optional")]   # 선택 의존은 경고만
     print("── momentscan doctor — 외부 의존 점검 (checker, not fetcher) ──")
     for r in rows:
-        mark = "✓" if r["ok"] else "✗"
+        mark = "✓" if r["ok"] else ("○" if r.get("optional") else "✗")
         print(f"  {mark} {r['name']:28s} {r['serves']}")
         if not r["ok"]:
             print(f"      → {r['hint']}")

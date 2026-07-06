@@ -54,6 +54,21 @@ def _cmd_serve(args: argparse.Namespace) -> int:
     )
 
 
+def _cmd_serve_http(args: argparse.Namespace) -> int:
+    from momentscan.service import serve_http
+
+    serve_http(
+        args.out,
+        port=args.port,
+        fps=args.fps,
+        open_products=tuple(args.products.split(",")) if args.products else ("likeness",),
+        eureka_url=args.eureka,
+        advertise_host=args.advertise_host,
+        app_name=args.app_name,
+    )
+    return 0
+
+
 # ── daemon client verbs — momentscan's own operator surface ──────────────────
 # Thin wrappers over visualbus.control.call (the borrowed wire mechanism); the
 # vocabulary, validation and defaults here are momentscan's.
@@ -592,6 +607,20 @@ def main(argv: list[str] | None = None) -> int:
     ps.add_argument("--fps", type=int, default=None, help="default target fps for jobs (overridable per request)")
     ps.add_argument("--model-root", default=None, help="insightface model root (default ~/.insightface)")
     ps.set_defaults(func=_cmd_serve)
+
+    psh = sub.add_parser("serve-http", parents=[common],
+                         help="외부 HTTP 면 — C1 Job/Result 서버 (알파 배포; POST /jobs)")
+    psh.add_argument("--port", type=int, default=8080)
+    psh.add_argument("--out", default="output", help="stash root")
+    psh.add_argument("--fps", type=int, default=6, help="Job.fps 생략 시 기본값")
+    psh.add_argument("--products", default="likeness",
+                     help="열린 제품 (단계 배포 스위치, 쉼표구분; 기본 likeness)")
+    psh.add_argument("--eureka", default=None,
+                     help="Eureka 서버 URL (예: http://eureka.corp:8761/eureka) — 주면 등록")
+    psh.add_argument("--advertise-host", default=None,
+                     help="Eureka에 광고할 host/IP (기본: 자동 감지)")
+    psh.add_argument("--app-name", default="momentscan", help="Eureka 앱 이름")
+    psh.set_defaults(func=_cmd_serve_http)
 
     pp = sub.add_parser("process", parents=[common], help="trigger one clip through the running warm daemon")
     pp.add_argument("path", help="video file to analyze")

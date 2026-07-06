@@ -52,6 +52,12 @@ Result {
 멱등성: 같은 clip_id 재요청 = 같은 output prefix, 완료 산출물은 재계산 없이 경로 반환
 (파이프라인 resumability가 이미 이 의미론 — probe 파일 존재 = skip). Kafka 재전송 대비.
 
+**실행기 (2026-07-03 구현)**: `momentscan serve-http` = `service.py`(HTTP 어댑터 +
+transport-agnostic `JobRunner`) + `eureka.py`(레지스트리 등록/갱신/해지, stdlib) +
+stash `result.json`(응답 기록 = 멱등 근거). 운영 = [deploy-alpha.md](deploy-alpha.md).
+e2e 검증: 접수 202→완료 245s→재요청 200/6ms 무재계산·outputs=열린 제품만·
+mock-Eureka 수명주기 4단·로컬 배송 복사. 미검증 = S3 실계정(AWS 첫 배포 때 스모크).
+
 **단계 배포 (user 결정 2026-07-03)**: 세 제품 동시 오픈하지 않는다 — **likeness 확신
 → 1차 배포·알파테스트 → portrait → highlight 순차 오픈**. Result는 *열린* 제품의
 산출물만 노출(egress = analyzers.PRODUCTS.egress의 부분집합); 내부 스테이지는 노출과

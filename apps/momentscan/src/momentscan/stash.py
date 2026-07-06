@@ -496,6 +496,26 @@ def read_job(stash_root: Path, clip_id: str) -> dict | None:
     return json.loads(p.read_text(encoding="utf-8")) if p.exists() else None
 
 
+def result_path(stash_root: Path, clip_id: str) -> Path:
+    return clip_dir(stash_root, clip_id) / "result.json"
+
+
+def write_result(stash_root: Path, clip_id: str, record: dict) -> Path:
+    """The RESPONSE record (contracts C1 Result): where the outputs landed —
+    output_prefix · outputs{product→uris} · ok/failure. job.json = 요청,
+    provenance.json = 처리, result.json = 응답. 서비스 멱등의 근거: 존재+ok면
+    재계산 없이 이 경로들을 반환한다 (Kafka 재전송·재요청 안전)."""
+    p = result_path(stash_root, clip_id)
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_text(json.dumps(record, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
+    return p
+
+
+def read_result(stash_root: Path, clip_id: str) -> dict | None:
+    p = result_path(stash_root, clip_id)
+    return json.loads(p.read_text(encoding="utf-8")) if p.exists() else None
+
+
 def select_path(stash_root: Path, clip_id: str) -> Path:
     return clip_dir(stash_root, clip_id) / "select.json"
 
