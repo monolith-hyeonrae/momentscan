@@ -430,6 +430,7 @@ def appearance_clip(out_root, clip_id: str) -> dict:
                                "ratio_vs_drift": round(d / drift, 1) if drift else None})
 
     record = {
+        "schema": "momentscan.likeness/v1",   # P1-③ 동결 (2026-07-07) — contracts.md C11
         "clip_id": clip_id,
         "riders": {k: {**v, "center": np.round(centers[int(k)], 5).reshape(-1).tolist()}
                    for k, v in riders.items()},

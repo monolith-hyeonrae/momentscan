@@ -19,7 +19,8 @@
 | C7 | 좌표계 | 공간·투영·invariant | [`coordinate-conventions.md`](coordinate-conventions.md) · `geometry.CANONICAL_FRAME` | det=+1 assert · `momentscan map frame` |
 | C8 | 제품 → 배달물 | egress (Result에 실리는 산출물 부분집합) | `analyzers.Product.egress` · `momentscan map cascade` | check |
 | C9 | 도메인 지식 ↔ 코어 | **domain profile (preset)** — 빈 슬롯 | 미정 (두 번째 도메인이 지불) | — |
-| C10 | 저장 서술 | 스테이지 분리·stash 레이아웃 | [`data-contract.md`](data-contract.md) ⚠stale(ports.py 개명 미반영) | — |
+| C10 | 저장 서술 | 스테이지 분리·stash 레이아웃 | [`data-contract.md`](data-contract.md) | — |
+| C11 | likeness → face_recipe | **likeness.json 스키마 v1 (동결)** — 아래 | `products/likeness.py` + 이 문서 §C11 | schema 필드 + verify replay |
 
 ## C1 — Job/Result (초안 v1 — 알파 요구 반영 2026-07-03)
 
@@ -42,7 +43,7 @@ Result {
   clip_id · ok · failure(스테이지·사유)
   output_prefix                      실제 저장 위치 (= 반환 계약의 핵심)
   outputs: {product → uri…}          열린 제품의 산출물 경로만:
-    likeness  → likeness.json        방문-스코프 외형 ID (riders[].{분포·face_id·fashion})
+    likeness  → likeness.json        방문-스코프 외형 ID — **스키마 동결 = §C11** (주탑승자만·color_identity 포함)
     portrait  → portrait.json·*.png  쿼리-추출 대표컷 + 뷰 세트
     highlight → highlight.json·*.mp4 세그먼트 기록 + 클립 (7d96185 졸업 — 제품별 산출물)
   provenance.json                    source 지문·처리시각 (audit·멱등성)
@@ -176,3 +177,30 @@ x-교차=flip_segments 동종 트랙-스왑 증거 후보 · dual_1=우발적-�
 `subject_rule`(좌석 구조) · `phase_model`(boarding/ride 2-means) · `portrait_query`(gates.PORTRAIT_QUERY)
 · `expectations`(highlight_lang.EXPECTATIONS) · `knobs`(CLIP_LEN_S·RARITY_WIN_S·CAMERA_FRONTAL_DEG)
 · `role_delivery`(main/aux별 배달). 후보 도메인: 어트랙션들·키즈 스포츠·직캠·포토부스·LBE.
+
+
+## C11 — likeness.json 스키마 v1 (동결 2026-07-07 · P1-③)
+
+**face_recipe 어댑터의 입력 계약**([[memory: likeness-face-recipe-purpose]] — 소비자 =
+blendshape 메타데이터 변환 → 3D 캐릭터 개성 주입). 레코드에 `schema:
+"momentscan.likeness/v1"` 도장. **버전 규율**: additive 필드 = v1 유지(소비자는 미지
+필드 무시), 기존 필드의 의미/형태 변경 = v2 (어댑터와 동시 이행).
+
+**스코프(2026-07-07)**: `riders` = **주탑승자만** (aux는 측정 신뢰 낮음 — P1-② 감사;
+highlight만 aux first-class). 스키마 형태는 riders 맵 유지 (다좌석 확장 대비).
+
+| 필드 (rider 내) | 형태 | 소비자 | 필수 |
+|---|---|---|---|
+| `center` | float[468×3] 정준 좌표 | **recipe 기하-개성** (몰프 계수 사상 원료) | ✔ |
+| `n_obs` · `split_half_drift`(+`_raw` 대조군) · `resid_rms` · `evr_top5` | 스칼라/벡터 | 신뢰·재현성 (recipe가 신뢰 가중에 사용 가능) | ✔ |
+| `axes` | 이름 붙은 개인 변이축 | recipe 보조 (변이 서술) | ✔ |
+| `template` · `neutral` · `blendshapes` | 정준 기하 부속 | recipe 기하 보조 | ✔ |
+| `face_id` | {model, n_emb, coherence_mean/p05, embedding[512]} | **diffusion 개인화**(InstantID류) — recipe와 별개 경로; (연구) MICA→FLAME β 다리 ⚠비상업 | ✔ |
+| `fashion` | 불리언 레인(mask/hat/eyewear+frac+variable) + `clip` 타입 레인(hood/scarf/…) | **캐릭터 액세서리** — ⚠두-레인 융합 수리 전엔 타입 레인 우선 (P1-④) | ✔ |
+| `color_identity` | {primary/secondary/highlight:{lab,hex,area}, palette_diversity, n_px, n_frames} \| null | **캐릭터 의상 팔레트** (Cat W #86-89) — null=관측부족(정직) · n_frames=신뢰 | ✔(nullable) |
+| `samples` | {center_nearest[], pose_bins{frontal/left/right}} | **hair_match 입력**("같은 사람 1~3뷰") — bin 결측=측면 미관측(정직) | ✔ |
+| 레코드 레벨 `separation` | [{tracks, dist, ratio_vs_drift}] | 진단 자(사람-간÷drift) — 소비자 아님 | ✔ |
+
+알려진 정직 신호: color_identity.n_frames 얇음(dual_1 s0=1) · pose_bins 편측 ·
+face_id coherence_p05<0.5 = 저품질 희석(오염 아님 — P1-② 육안). 실패-모드 필드
+확장(P1-④)은 additive로 v1 내에서 진행.
