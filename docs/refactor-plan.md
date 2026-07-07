@@ -112,14 +112,12 @@ viz=output/l2/lane_emit_congruence.png. 남은 조각: 파묻힌-입 spurious ar
 (mouth_vis 판독-가능성 조건화, dual_1 parse 재런 필요) · WHEN/WHICH energy 재편(06-29 설계) ·
 창 형태(onset/release) 방출 · 궤적 표상(장기, substrate 연구 레인).
 
-### ▶ 다음 재개 (2026-07-07~) — 첫 수 = P1-2b color identity 포팅
+### ▶ 다음 (2026-07-07 진행 중) — 2b 완료, 다음 = P1-③ 스키마 동결
 
-**내일 첫 수**: `../appearance-engine/component2/color_identity.py` Cat W #86-89를
-momentscan으로 — 방문-집계판(프레임별 아님)·judgeable 코호트 조건·likeness.json
-`color_identity` 필드. 착지 후 → **P1-③ 스키마 동결**(face_recipe 입력 계약) →
-**P1-④ 실패 모드**(감사 발견 ⓐ~ⓔ가 입력: fashion 두-레인 융합 수리[dual_3 s0·
-test_0 s18 FP]가 1순위 — 타입 레인이 정답 보유라 싼 수리). 서버/관측 스택은
-로컬에 떠 있음(server status로 확인; 7777·Grafana localhost:3000).
+~~P1-2b color identity~~ → **DONE 5c34f2d** (본문 Phase 1 목록 참조). 다음:
+**P1-③ likeness.json 스키마 동결**(=face_recipe 입력 계약; 필수/선택을 recipe
+요구에서 도출, data-contract.md stale 해소 겸) → **P1-④ 실패 모드**(감사 ⓐ~ⓔ:
+fashion 두-레인 융합 수리가 1순위 — 타입 레인이 정답 보유라 싼 수리).
 
 ### (계보) 척추 = 단계 배포 (user 결정 2026-07-03)
 
