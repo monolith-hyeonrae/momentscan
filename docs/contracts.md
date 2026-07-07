@@ -235,8 +235,11 @@ visualbus / visualpath / visualbind)에 대한 momentscan의 **전체 사용 표
 2. **frame-domain에 한정** — visualpath Pipeline/VisualBus는 M01(과 M03 플러그인)
    안에서만. artifact-domain(M04~M12·제품)은 momentscan 자체 선언(analyzers.py)
    유지 — 집행 이원화는 의도된 결정 (refactor-exec-plan §6c).
-3. **역류 금지** — 도메인 지식(놀이기구·게이트·제품·preset)은 visualstack으로
-   가지 않는다. visualstack→momentscan 의존 금지(단방향).
+3. **역류 금지 = 지식 방향의 규칙** (2026-07-07 정정 — user: 포트-어댑터 역전) —
+   substrate가 도메인을 임포트하지 않는다는 뜻이지, 도메인 모듈의 **부착 금지가
+   아니다**. 도메인 분석기/제품은 substrate가 정의한 포트(Module 등)를 구현한
+   어댑터로 꽂히고 뺄 수 있어야 한다 — FaceDetect가 이미 그 모델. 방향은 항상
+   도메인→포트(단방향).
 4. **졸업 경로** — momentscan에서 범용성이 검증되고 정의가 언 조각은 visualstack으로
    졸업 후보 (consolidation 원칙: "정의 얼면 졸업").
 5. enforcement = refactor-exec-plan **R15**(임포트 스캔 테스트가 이 표와 대조).

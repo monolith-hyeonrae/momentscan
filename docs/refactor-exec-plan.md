@@ -148,6 +148,9 @@ momentscan = 놀이기구 탑승 영상 1클립 → 세 제품을 뽑는 배치 
 ### R5 — artifact-edge freshness (핵심 수리)
 - **위치**: `pipeline.py:204-210`(skip 블록) + `freshness.py`(헬퍼 추가).
 - **문제**: L1 — 상류 산출물 갱신이 하류를 stale시키지 못함(사고 3회).
+- **⚠이식성(§6d 대비)**: stale 판정을 **순수 함수**로 작성할 것 —
+  `artifact_stale(artifact_mtime, upstream_mtimes) -> bool` (파일시스템 접근은 호출부).
+  A안 채택 시 이 함수가 visualpath SkipPolicy의 참조 구현으로 졸업한다.
 - **방법**: ① analyzers.py의 선언 의존에서 **직접 상류 산출물 경로**를 끌어온다:
   RUNNERS에 있는 상류는 그 probe, RUNNERS 밖 상류(detect 등)는 신규 매핑
   `UPSTREAM_ARTIFACTS = {"detect": ["detections.parquet", "landmarks.parquet"], ...}`
@@ -344,6 +347,46 @@ momentscan = 놀이기구 탑승 영상 1클립 → 세 제품을 뽑는 배치 
 - **완료 기준**: `uv run pytest apps/momentscan/tests/test_graph_drift.py -q` 통과;
   DETECT_INTERNALS를 일부러 바꾸면 실패하는지 1회 확인 후 복원.
 - **위험/복원**: 추가 전용/revert. **의존**: R2.
+
+## 6d. visualpath 거취 결정 (2026-07-07 — user fork: "확실히 쓰든가 빼든가")
+
+**§6c의 "이원화 유지" 판정을 user가 반박, 재검토 결과 반박이 옳다**: ①포트-어댑터
+역전이면 도메인 모듈(분석기·제품)은 substrate 포트에 부착/배제 가능해야 하고(C12
+규칙 3 정정됨) ②"전체 분석 노드를 선언하는" 기판을 2노드에만 쓰는 것은 비정합.
+
+**기술 사실**: visualpath의 선언 대수 = **topic-flow**(Module의 inputs/outputs가
+pub/sub 패턴, resolver가 signal-level 매칭 — core/module.py). momentscan M-스테이지의
+대수 = **artifact-flow**(파일 생산/소비 + mtime skip). 2노드 사용은 대수 불일치의
+결과였고, analyzers.py+RUNNERS+freshness는 artifact 대수를 위한 **visualpath 역할의
+재발명**이다. 선택지:
+
+**A — 제대로 쓰기 (권고)**: visualpath에 artifact-domain 노드 타입을 추가해 두 대수를
+한 선언 공간에.
+- **R16 (visualstack 레포)**: `visualpath.core`에 `ArtifactNode` 포트 —
+  ClassVar: name/consumes(아티팩트명)/produces/needs_source/tier,
+  `run(stash_root, clip_id, ctx)` 메서드. resolver에 artifact-level 해석(생산→소비
+  매칭 = topic 매칭과 동형) + `closure(target)` 질의. 실행기 = 배치 스케줄러 +
+  **SkipPolicy 포트**(R5의 artifact-edge freshness가 참조 구현으로 이관 — R5를
+  순수 함수로 써두는 이유). 기존 `visualpath.isolation` bridge로 opt-in 서브프로세스
+  격리(네이티브 크래시 격리가 구조로 착지).
+- **R17 (momentscan)**: analyzers.py 선언→ArtifactNode 선언(기계적 — 필드가 이미
+  동형), RUNNERS 함수→run() 어댑터, pipeline.py→resolver 호출 박막.
+  효과: **R11의 --product closure = resolver 질의로 자연 획득 · L12/R14 소멸**(선언
+  단일 공간 — frame·artifact 노드가 같은 introspection) · 부착/배제 = composition
+  root(momentscan __main__/service)의 목록 편집.
+- 게이트: R2(특성화 그물)+R5 완료 후. **visualstack 개발 시간이 전제** — 별도
+  트랙이며 이 계획의 실행자 범위 밖(R16/R17은 소유자가 착수 결정).
+- 미래 정합: 로드맵의 라이브/LBE 스트리밍 모드가 topic-flow의 실소비자로 예정 —
+  그때 두 대수가 한 기판에 있으면 배치↔스트리밍 모드 전환이 선언 수준에서 가능.
+
+**B — 빼기 (차선, 정직한 폴백)**: FaceDetect/IoUTracker를 momentscan으로 벤더링,
+detect는 FileSource 위 평 루프(선형 2모듈이라 버스 불요). visualbus는 유지(C12
+표면 그대로 — 이건 논쟁 없음). visualpath는 소비자 0으로 자유로워져 플랫폼 비전을
+백지에서 추구. 비용 ~1일. 단, 유일한 실소비자를 잃고 스트리밍 모드 때 재진입 비용.
+
+**권고 = A(단계적)**. 근거: 실소비자가 있는 확장이 백지 플랫폼보다 건강하고, L12·
+R11·R14가 패치가 아니라 구조로 풀리며, 격리가 공짜로 따라온다. 단 visualstack 개발
+시간을 못 낼 분기라면 현 2노드 어중간보다 B가 정직하다 — **소유자 결정 항목**.
 
 ## 7. 하지 말아야 할 것
 
