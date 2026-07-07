@@ -181,8 +181,13 @@ portrait/highlight는 추가 연구 후 순차 오픈."** 이 결정이 아래 �
    (p05<0.5 희석 주의 — main 전원 floor 위=코퍼스 휴면, 알파 신규 입력의 자리)
    ⓒbin-내 최선명 선발(감사 때 선반영) ⓓ`samples.hair`(owner hair/face 픽셀비, τ=0.1,
    observable=false→hair_match 건너뜀 — **typed headwear 기각**: 내려진 재킷 후드를
-   conf 0.946으로 오인[mask_1 육안]; 세그 픽셀만이 가림 4명[≤0.049] vs 맨머리[≥0.5]를
-   10× 여백으로 갈랐고 parse hat 레인과 4/4 합치). 판정 카드=lane_failure_modes.png.
+   conf 0.946으로 오인[mask_1 육안]; 세그 픽셀이 가림[≤0.049] vs 맨머리[≥0.5]를
+   10× 여백으로 가름). 판정 카드=lane_failure_modes.png.
+   **⚠user 교정(2026-07-07)**: 가림 4명 중 **test_12는 오판** — 실물=맨머리+얼굴
+   뒤 빨간 의자(등받이 높은 차량)를 내가 후드로 오독; frac 0.0은 세그 오검출 의심
+   (빨간 등받이 교란?). 방향은 보수적(FP=기회 상실이지 오염 아님)이나 원인 조사
+   = user 동행 항목. 확정 가림=dual_1 s0(후드)·dual_2 s1(후드+앞머리)·cap_1 s1(캡).
+   **프로세스 교훈: likeness 확신의 육안 참값은 단독 확정 금지 — user 확인 필수.**
    잔여(ⓓ 후속): 크롭 타인 혼입(dual_2 right bin) 신호는 face-count 세그 필요 — 보류.
    ⓔdual_1 sep 1.4=경계 사례 기록 유지(수리 아닌 관찰).
 5. ~~**배포 이음매**~~ → **구현 DONE (2026-07-03)** — `service.py`(serve-http) +
