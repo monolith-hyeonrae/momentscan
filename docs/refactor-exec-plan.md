@@ -285,10 +285,21 @@ momentscan = 놀이기구 탑승 영상 1클립 → 세 제품을 뽑는 배치 
 기판 — 분석기에 분석용 미디어 제공 + **분석 결과를 트리거로 원본을 편집/메시지
 처리하는 액션 미들웨어**.
 
-**실사용 현황**: visualpath는 M01 detect 내부(frame-bus 2모듈: FaceDetect→IoUTracker,
-detect.py:37-38)와 M03의 DepthEstimator 플러그인뿐. M04~M12는 자체 RUNNERS/
-analyzers.py 선언으로 재발명. visualbase 계열은 **미사용** — media.py 자급(cv2/
-ffmpeg), 제품 픽셀은 전부 분석 스트림에서(portrait=크롭트랙, portrait.py:162).
+**실사용 현황** (⚠2026-07-07 정정 — 초판은 visualbus 사용을 놓쳤음):
+- **visualpath**: M01 detect 내부(frame-bus 2모듈: FaceDetect→IoUTracker,
+  detect.py:37-38)와 M03의 DepthEstimator 플러그인뿐. M04~M12는 자체 RUNNERS/
+  analyzers.py 선언으로 재발명.
+- **visualbus: 광범위 직접 사용 — 사실상 momentscan의 최심층 substrate.**
+  ①미디어 소스 기판: `FileSource`가 원본 접근의 표준 경로(detect·ingest·attribute·
+  tubelets·surface/cards 전부), `VideoFileSink`(detect.mp4), `DrawText/DrawBBox/
+  apply_hint`(렌더), `VisualBus`(detect의 버스) ②제어면: daemon.py=visualbus의
+  `ControlServer`(UDS JSON-lines RPC), server 명령=`visualbus.control.call`
+  ③구조화 로깅: `visualbus.structured_log`(setup_logging/log_context)가 전 로깅·
+  Loki 계약의 기반 ④규약: stash.py bbox가 visualbus.BBox convention, timestamp
+  유틸. media.py는 크롭 산술 등 소형 보조일 뿐 소스 접근 기판이 아님.
+- visualbus에서 **안 쓰는 것**: pub/sub 버스 본체의 detect-밖 사용, 그리고
+  **액션 미들웨어 역할**(결과 트리거→원본 편집/메시지) — 제품 픽셀은 전부 분석
+  스트림에서(portrait=크롭트랙, portrait.py:162). L13은 이 절반에 대한 것.
 
 **판정**:
 - **집행 이원화는 옳다(유지)**: frame-domain(스트리밍 bus)과 artifact-domain(클립
@@ -299,10 +310,11 @@ ffmpeg), 제품 픽셀은 전부 분석 스트림에서(portrait=크롭트랙, p
   |---|---|---|
   | L12 | 선언 이원화 잔여 — verify/graph.py가 렌더로 봉합했으나 detect 내부가 hand-list(`DETECT_INTERNALS` 상수)라 실제 visualpath Pipeline 구성과 어긋나도 모름; 환경(네이티브 크래시) 격리 미착수 | **R14**(drift-test) / 격리는 의도적 보류 |
   | L13 | **배송 품질 천장 = 분석 해상도** — visualbase의 "결과 트리거→원본 편집" 역할 부재로 portrait/highlight 픽셀이 fps6·크롭 해상도에 갇힘. 서비스 잡 시점엔 원본이 source_cache에 **있으므로**(fetch 직후) 풀해상도 재크롭이 retention 결정(소스 ~1주 만료→크롭트랙 영속)과 모순 없이 가능 | §3 소유자 결정 항목(기능 추가라 실행자 범위 밖) |
-- **visualbase 부활은 불요**: 액션 미들웨어 역할의 절반(배송·리포트·메시지 자리)은
-  C1 서비스(collect_egress/deliver, transport-agnostic)에 이미 착지했다. 남은 절반
-  (원본 재접근 편집)은 위 L13의 배송-품질 항목이 실체이며, 별도 패키지가 아니라
-  서비스 배송 단계의 후처리로 들어가는 것이 맞다.
+- **"visualbase" 의도의 현재 지형**: 미디어-기판 절반은 **visualbus로 이미 실현**
+  (FileSource가 전 소스 접근의 표준 경로). 액션 미들웨어 절반 중 배송·리포트·메시지
+  자리는 C1 서비스(collect_egress/deliver, transport-agnostic)에 착지. 남은 것은
+  L13(원본 재접근 편집)뿐이며, 별도 패키지가 아니라 서비스 배송 단계의 후처리로
+  들어가는 것이 맞다 — 구현 시 visualbus FileSource를 그대로 쓰면 규약 일관.
 
 ### R14 — detect 내부 선언 drift-test (L12 소형 수리)
 - **위치**: `apps/momentscan/tests/test_graph_drift.py`(신규), 참조:
