@@ -112,7 +112,20 @@ viz=output/l2/lane_emit_congruence.png. 남은 조각: 파묻힌-입 spurious ar
 (mouth_vis 판독-가능성 조건화, dual_1 parse 재런 필요) · WHEN/WHICH energy 재편(06-29 설계) ·
 창 형태(onset/release) 방출 · 궤적 표상(장기, substrate 연구 레인).
 
-### ▶ 다음 (2026-07-07 진행 중) — ③ 동결 완료, 지금 = P1-④ 실패 모드
+### ▶ 현재 (2026-07-07 저녁) — likeness 연구 일시 중단(경계 양호), 전체 방향성/완성 계획 모드
+
+**user 결정**: likeness는 따로 떼어 나중에 재연구 (경계=C11 스키마·adapters.momentscan·
+recipe 13키가 잘 나뉘어 있음). **likeness 미결 원장**(재개 시 입구): ①recipe registry
+캘리브레이션 불일치(4키 가장자리 고정: Brow_Thickness≈0·Mouth_Size≈0.9·Mouse_Corner
+하향·Brow_Slant 상향 — registry 재캘리 vs 어댑터 보정 선택) ②recipe→MPFB 브리지 착지
+위치(scratchpad/mpfb_recipe.py, appearance-engine이 자연스러움) ③프리뷰 gain 판정(×2.2
+근방, 몽타주=preview_recipe_gain_ab.png) ④어댑터 unfilled 채우기(momentscan이 이제
+color_identity #86-89·fashion·samples.hair 방출) ⑤test_12 hair 세그 오검출 조사(빨간
+등받이 교란 의심 — user 동행) ⑥P1-⑤~⑥(알파 피드백 계기·S3 스모크·회사 Eureka).
+**신설: docs/ids.md** — 분석기(M01~M12)·게이트(V01~V05)·제품(P1~P3) 불변 ID(user 제안,
+세부 연구 지칭용). 다음 = **프로젝트 전체 방향성 분석 + 완성 계획 수립**.
+
+### (완료 기록) P1-④까지의 트랙 — ③ 동결 완료, P1-④ 실패 모드
 
 ~~P1-2b color identity~~ → **DONE 5c34f2d**. ~~P1-③ 스키마 동결~~ → **DONE** —
 contracts.md **C11** (schema="momentscan.likeness/v1" 도장·필드→소비자 표·additive 규율).
