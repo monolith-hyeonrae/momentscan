@@ -274,6 +274,7 @@ def _track_reading(out_root, clip_id: str, track_id: int,
 
 
 FACE_ID_MIN_FRONTAL = 10   # < this many clean-frontal frames → fall back to `valid` (don't starve a mostly-profile track)
+FACE_ID_P05_FLOOR = 0.5    # coherence_p05 < 이 값 → 저품질 프레임이 센트로이드를 희석 (P1-② 감사: aux 희석 라이더들의 자리)
 
 
 def _face_ids(out_root, clip_id: str,
@@ -320,11 +321,13 @@ def _face_ids(out_root, clip_id: str,
         c = mat.mean(axis=0)
         c /= np.linalg.norm(c)
         cos = mat @ c
+        p05 = round(float(np.percentile(cos, 5)), 3)
         out[sid] = {
             "model": "buffalo_l",
             "n_emb": int(len(vecs)),
             "coherence_mean": round(float(cos.mean()), 3),
-            "coherence_p05": round(float(np.percentile(cos, 5)), 3),
+            "coherence_p05": p05,
+            "low_confidence": bool(p05 < FACE_ID_P05_FLOOR),   # 소비자(MICA·diffusion) 주의 신호 — 게이트 아님
             "embedding": np.round(c, 6).tolist(),
         }
     return out
@@ -333,6 +336,8 @@ def _face_ids(out_root, clip_id: str,
 # fashion/accessory thresholds (parse.parquet) — preset policy, calibrated on cap_1.
 _F_EYEWEAR, _F_SUN_LUM, _F_MASK, _F_HAT, _F_WORN = 0.03, 0.7, 0.01, 0.05, 0.5
 _F_MIN_JUDGEABLE = 10   # < this many clean-frontal frames → all-frames fallback (mostly-profile track)
+_F_FUSE_TAU = 0.75      # 두-레인 융합: typed covering이 이 신뢰 이상으로 non-mask를 지목하면 parse mask 불리언을 기각
+_HAIR_OBS_TAU = 0.1     # 소유자 hair/face 픽셀비 중앙값 < 이 값 → hair 관측불가 (후드-업; hair_match 결측 신호)
 
 
 def _fashion_reading(out_root, clip_id: str,
@@ -358,6 +363,7 @@ def _fashion_reading(out_root, clip_id: str,
     # misses clear glasses / over-predicts scarf). Both kept; fusion = preset.
     fc = {}
     ci = {}
+    hair = {}
     fcj = read_fashion(out_root, clip_id)
     if fcj:
         fc = {s["subject_id"]: {k: s[k] for k in ("eyewear", "headwear", "covering") if k in s}
@@ -365,6 +371,7 @@ def _fashion_reading(out_root, clip_id: str,
         # color identity (Cat W #86-89 포팅, P1-2b) — 방문-집계 의상 팔레트.
         # fashion 스테이지가 생산, likeness가 rider 최상위 필드로 배달.
         ci = {s["subject_id"]: s.get("color_identity") for s in fcj.get("subjects", [])}
+        hair = {s["subject_id"]: s.get("hair") for s in fcj.get("subjects", [])}
     out: dict[int, dict] = {}
     for sid in df["track_id"].unique().to_list():
         d = df.filter(pl.col("track_id") == int(sid))
@@ -380,13 +387,28 @@ def _fashion_reading(out_root, clip_id: str,
         hat = d["hat_frac"].to_numpy() > _F_HAT
         ew_f, sun_f, mask_f, hat_f = (round(float(x.mean()), 3) for x in (eyewear, sun, mask, hat))
         eyewear_type = "none" if ew_f < _F_WORN else ("sunglasses" if sun_f >= 0.4 else "clear")
+        # 두-레인 융합 (P1-④ⓐ): parse의 mouth_vis는 occlusion-blind — "입이 안 보인다"
+        # 만 안다. 고신뢰 typed covering이 가린 것의 이름(scarf 등)을 대면 그쪽이 이긴다
+        # (dual_3 s0: 스카프를 턱까지 → parse mask 0.511 FP, covering scarf 0.915가 정답).
+        # 역방향(parse False→mask True) 승격은 코퍼스 증거 없음 — 미적용.
+        mask_worn = mask_f >= _F_WORN
+        cov = (fc.get(int(sid)) or {}).get("covering") or {}
+        mask_override = None
+        if mask_worn and cov.get("winner") not in (None, "mask") and cov.get("conf", 0.0) >= _F_FUSE_TAU:
+            mask_override = {"from": True, "by": "covering",
+                             "winner": cov["winner"], "conf": cov["conf"]}
+            mask_worn = False
+        variable = [k for k, f in (("eyewear", ew_f), ("mask", mask_f), ("hat", hat_f)) if 0.3 < f < 0.7]
+        if mask_override and "mask" in variable:
+            variable.remove("mask")   # 중간 frac의 정체가 밝혀짐(스카프) — 착탈 해석 철회
         out[int(sid)] = {
             "eyewear": eyewear_type, "eyewear_frac": ew_f, "sunglasses_frac": sun_f,
-            "mask": mask_f >= _F_WORN, "mask_frac": mask_f,
+            "mask": mask_worn, "mask_frac": mask_f, "mask_override": mask_override,
             "hat": hat_f >= _F_WORN, "hat_frac": hat_f, "n_obs": n,
-            "variable": [k for k, f in (("eyewear", ew_f), ("mask", mask_f), ("hat", hat_f)) if 0.3 < f < 0.7],
+            "variable": variable,
             "clip": fc.get(int(sid)),     # FashionCLIP typed winners (None if not run)
             "color_identity": ci.get(int(sid)),   # appearance_clip이 최상위로 승격
+            "hair": hair.get(int(sid)),           # appearance_clip이 samples로 승격
         }
     return out
 
@@ -416,6 +438,11 @@ def appearance_clip(out_root, clip_id: str) -> dict:
             continue
         fa = fashion.get(tid)
         color_id = fa.pop("color_identity", None) if fa else None
+        hair = fa.pop("hair", None) if fa else None
+        if hair and hair.get("visible_frac") is not None:
+            # hair_match 이음매의 결측 신호: 후드-업이면 pose_bins 크롭에 hair가 없다.
+            hair["observable"] = hair["visible_frac"] >= _HAIR_OBS_TAU
+        r["samples"]["hair"] = hair
         riders[str(tid)] = {"role": roles.get(tid), **r, "face_id": face_ids.get(tid),
                             "fashion": fa, "color_identity": color_id}
 

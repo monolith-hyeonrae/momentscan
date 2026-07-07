@@ -112,15 +112,17 @@ viz=output/l2/lane_emit_congruence.png. 남은 조각: 파묻힌-입 spurious ar
 (mouth_vis 판독-가능성 조건화, dual_1 parse 재런 필요) · WHEN/WHICH energy 재편(06-29 설계) ·
 창 형태(onset/release) 방출 · 궤적 표상(장기, substrate 연구 레인).
 
-### ▶ 다음 (2026-07-07 진행 중) — 2b 완료, 다음 = P1-③ 스키마 동결
+### ▶ 다음 (2026-07-07 진행 중) — ③ 동결 완료, 지금 = P1-④ 실패 모드
 
-~~P1-2b color identity~~ → **DONE 5c34f2d** (본문 Phase 1 목록 참조).
+~~P1-2b color identity~~ → **DONE 5c34f2d**. ~~P1-③ 스키마 동결~~ → **DONE** —
+contracts.md **C11** (schema="momentscan.likeness/v1" 도장·필드→소비자 표·additive 규율).
 **+ 제품 스코프 확정(user)**: likeness·portrait=**주탑승자만**(aux=측정 신뢰 낮음, 감사 실증) /
 highlight=aux first-class("함께한다"는 맥락). 구현=제품 방출 필터만, 스테이지·trace 전원 유지
-(aux 센트로이드=상대귀속 rival·aux features=highlight 입력). 코퍼스 15/15 main-only 판정 ✓. 다음:
-**P1-③ likeness.json 스키마 동결**(=face_recipe 입력 계약; 필수/선택을 recipe
-요구에서 도출, data-contract.md stale 해소 겸) → **P1-④ 실패 모드**(감사 ⓐ~ⓔ:
-fashion 두-레인 융합 수리가 1순위 — 타입 레인이 정답 보유라 싼 수리).
+(aux 센트로이드=상대귀속 rival·aux features=highlight 입력). 코퍼스 15/15 main-only 판정 ✓.
+지금: **P1-④ 실패 모드** (감사 ⓐ~ⓔ 입력) — ⓐ두-레인 융합(_F_FUSE_TAU 0.75, 오버라이드
+기록) ⓑface_id.low_confidence(p05<0.5) ⓒ~~pose_bin 품질-최고 선발~~(감사 때 선반영)
+ⓓsamples.hair(owner hair/face 픽셀비 — **typed headwear로 못 함**: 내려진 재킷 후드를
+conf 0.946으로도 hood 오인, mask_1 육안 실증; 세그 직접 측정으로) — 전부 additive, v1 유지.
 
 ### (계보) 척추 = 단계 배포 (user 결정 2026-07-03)
 
@@ -173,8 +175,16 @@ portrait/highlight는 추가 연구 후 순차 오픈."** 이 결정이 아래 �
    300·메트리컬·중립) — **face_id→β→쉐이프키의 기성 다리** + β-공간 separation=감사 보강
    후보(P1-② 뒤 파일럿). ⚠MPI 비상업+상업용-학습-금지 명시(우회 증류 불가) — 알파 내부
    검증 한정, 상업=협상 또는 자체 사상(landmark center→디자인팀 몰프 회귀).
-4. **실패 모드의 정직한 표면화**: n_obs 부족·가림-지배·스티치 잔여 의심 시 확신 대신
-   불확실성 필드 — 알파에서 신뢰를 깎는 건 틀린 답이 아니라 *자신만만한* 틀린 답.
+4. ~~**실패 모드의 정직한 표면화**~~ → **DONE (2026-07-07, 48e07ab)** — 감사 ⓐ~ⓓ 전부
+   additive로 v1 내 착지: ⓐmask 두-레인 융합(τ=0.75, `mask_override` 기록 — dual_3 s0
+   scarf FP 해소·진짜 착용자 보존·역방향 승격은 증거 없어 미적용) ⓑ`face_id.low_confidence`
+   (p05<0.5 희석 주의 — main 전원 floor 위=코퍼스 휴면, 알파 신규 입력의 자리)
+   ⓒbin-내 최선명 선발(감사 때 선반영) ⓓ`samples.hair`(owner hair/face 픽셀비, τ=0.1,
+   observable=false→hair_match 건너뜀 — **typed headwear 기각**: 내려진 재킷 후드를
+   conf 0.946으로 오인[mask_1 육안]; 세그 픽셀만이 가림 4명[≤0.049] vs 맨머리[≥0.5]를
+   10× 여백으로 갈랐고 parse hat 레인과 4/4 합치). 판정 카드=lane_failure_modes.png.
+   잔여(ⓓ 후속): 크롭 타인 혼입(dual_2 right bin) 신호는 face-count 세그 필요 — 보류.
+   ⓔdual_1 sep 1.4=경계 사례 기록 유지(수리 아닌 관찰).
 5. ~~**배포 이음매**~~ → **구현 DONE (2026-07-03)** — `service.py`(serve-http) +
    `eureka.py` + `result.json`; e2e = 202→245s 완주→재요청 6ms 무재계산·outputs=열린
    제품만·mock-Eureka 4단·로컬 배송. 운영 = docs/deploy-alpha.md.

@@ -195,12 +195,13 @@ highlight만 aux first-class). 스키마 형태는 riders 맵 유지 (다좌석 
 | `n_obs` · `split_half_drift`(+`_raw` 대조군) · `resid_rms` · `evr_top5` | 스칼라/벡터 | 신뢰·재현성 (recipe가 신뢰 가중에 사용 가능) | ✔ |
 | `axes` | 이름 붙은 개인 변이축 | recipe 보조 (변이 서술) | ✔ |
 | `template` · `neutral` · `blendshapes` | 정준 기하 부속 | recipe 기하 보조 | ✔ |
-| `face_id` | {model, n_emb, coherence_mean/p05, embedding[512]} | **diffusion 개인화**(InstantID류) — recipe와 별개 경로; (연구) MICA→FLAME β 다리 ⚠비상업 | ✔ |
-| `fashion` | 불리언 레인(mask/hat/eyewear+frac+variable) + `clip` 타입 레인(hood/scarf/…) | **캐릭터 액세서리** — ⚠두-레인 융합 수리 전엔 타입 레인 우선 (P1-④) | ✔ |
+| `face_id` | {model, n_emb, coherence_mean/p05, **low_confidence**, embedding[512]} | **diffusion 개인화**(InstantID류) — recipe와 별개 경로; (연구) MICA→FLAME β 다리 ⚠비상업. low_confidence(p05<0.5)=저품질 희석 주의 신호(게이트 아님) | ✔ |
+| `fashion` | 불리언 레인(mask/hat/eyewear+frac+variable) + `clip` 타입 레인(hood/scarf/…) + **mask_override** | **캐릭터 액세서리** — `mask`=융합 확정치(P1-④ⓐ: 고신뢰 typed covering이 non-mask 지목 시 parse 불리언 기각, 오버라이드는 mask_override에 기록). ⚠headwear 타입 레인은 내려진 후드를 conf 0.9+로도 오인 — 단독 신뢰 금지 | ✔ |
 | `color_identity` | {primary/secondary/highlight:{lab,hex,area}, palette_diversity, n_px, n_frames} \| null | **캐릭터 의상 팔레트** (Cat W #86-89) — null=관측부족(정직) · n_frames=신뢰 | ✔(nullable) |
-| `samples` | {center_nearest[], pose_bins{frontal/left/right}} | **hair_match 입력**("같은 사람 1~3뷰") — bin 결측=측면 미관측(정직) | ✔ |
+| `samples` | {center_nearest[], pose_bins{frontal/left/right}, **hair**{visible_frac, observable}\|null} | **hair_match 입력**("같은 사람 1~3뷰") — bin 결측=측면 미관측(정직) · hair.observable=false=후드-업 등으로 hair 픽셀 부재(hair_match 건너뜀) | ✔ |
 | 레코드 레벨 `separation` | [{tracks, dist, ratio_vs_drift}] | 진단 자(사람-간÷drift) — 소비자 아님 | ✔ |
 
 알려진 정직 신호: color_identity.n_frames 얇음(dual_1 s0=1) · pose_bins 편측 ·
-face_id coherence_p05<0.5 = 저품질 희석(오염 아님 — P1-② 육안). 실패-모드 필드
-확장(P1-④)은 additive로 v1 내에서 진행.
+face_id.low_confidence(희석이지 오염 아님 — P1-② 육안) · samples.hair.observable.
+P1-④(2026-07-07)에서 additive로 추가된 필드 = face_id.low_confidence ·
+fashion.mask_override · samples.hair — v1 유지.
