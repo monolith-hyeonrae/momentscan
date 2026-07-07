@@ -21,6 +21,7 @@
 | C9 | 도메인 지식 ↔ 코어 | **domain profile (preset)** — 빈 슬롯 | 미정 (두 번째 도메인이 지불) | — |
 | C10 | 저장 서술 | 스테이지 분리·stash 레이아웃 | [`data-contract.md`](data-contract.md) | — |
 | C11 | likeness → face_recipe | **likeness.json 스키마 v1 (동결)** — 아래 | `products/likeness.py` + 이 문서 §C11 | schema 필드 + verify replay |
+| C12 | momentscan ↔ visualstack | **substrate 사용 경계** (임포트 화이트리스트) — 아래 | 이 문서 §C12 | R15 경계 테스트 (refactor-exec-plan) |
 
 ## C1 — Job/Result (초안 v1 — 알파 요구 반영 2026-07-03)
 
@@ -205,3 +206,43 @@ highlight만 aux first-class). 스키마 형태는 riders 맵 유지 (다좌석 
 face_id.low_confidence(희석이지 오염 아님 — P1-② 육안) · samples.hair.observable.
 P1-④(2026-07-07)에서 additive로 추가된 필드 = face_id.low_confidence ·
 fashion.mask_override · samples.hair — v1 유지.
+
+## C12 — momentscan ↔ visualstack 사용 경계 (2026-07-07)
+
+visualstack(= 실시간 비전 에이전트 미들웨어/플랫폼 지향의 substrate 모노레포:
+visualbus / visualpath / visualbind)에 대한 momentscan의 **전체 사용 표면**.
+이 표 밖의 visualstack 임포트는 계약 위반 — 추가하려면 이 표를 같은 커밋에서 갱신.
+
+### 허용 이음매 (임포트 화이트리스트)
+
+| substrate API | 역할 | momentscan 사용처 |
+|---|---|---|
+| `visualbus.FileSource` | 원본 미디어 읽기의 표준 경로 | extraction/detect · ingest · subjects/attribute · subjects/tubelets · surface/cards |
+| `visualbus.VideoFileSink` | 주석 비디오 싱크 (detect.mp4) | extraction/detect |
+| `visualbus.DrawText/DrawBBox/apply_hint` | 프레임 렌더 힌트 | extraction/detect · ingest · surface/cards |
+| `visualbus.VisualBus` | 프레임 pub/sub 버스 | extraction/detect (M01 내부에 한정) |
+| `visualbus.structured_log` (`setup_logging`/`log_context`) | 구조화 JSON 로깅 — Loki 관측 계약의 기반 | __main__ · daemon · subjects/crops (+ 로깅 쓰는 전 모듈의 간접 기반) |
+| `visualbus.control` (`ControlServer`/`call`) | UDS JSON-lines RPC 제어면 | daemon.py(서버) · __main__.py(server 명령 클라이언트) |
+| `visualbus.timestamp.ns_to_seconds` | 시간 규약 | ingest · tubelets · cards |
+| `visualbus.BBox` *(규약 차용)* | bbox = [x1,y1,x2,y2] 절대 px | stash.py 컬럼 규약 (임포트 아닌 convention) |
+| `visualpath.core.Pipeline` | frame-domain 모듈 해석·topo 실행 | extraction/detect (M01 내부에 한정) |
+| `visualpath.plugins.face_detect` (`FaceDetect`/`IoUTracker`) | 검출·추적 플러그인 | extraction/detect |
+| `visualpath.plugins.depth.DepthEstimator` | depth 플러그인 (optional, ImportError→degrade) | subjects/attribute |
+
+### 경계 규칙
+
+1. **공개 API만** — visualstack 내부(밑줄 모듈) 임포트 금지.
+2. **frame-domain에 한정** — visualpath Pipeline/VisualBus는 M01(과 M03 플러그인)
+   안에서만. artifact-domain(M04~M12·제품)은 momentscan 자체 선언(analyzers.py)
+   유지 — 집행 이원화는 의도된 결정 (refactor-exec-plan §6c).
+3. **역류 금지** — 도메인 지식(놀이기구·게이트·제품·preset)은 visualstack으로
+   가지 않는다. visualstack→momentscan 의존 금지(단방향).
+4. **졸업 경로** — momentscan에서 범용성이 검증되고 정의가 언 조각은 visualstack으로
+   졸업 후보 (consolidation 원칙: "정의 얼면 졸업").
+5. enforcement = refactor-exec-plan **R15**(임포트 스캔 테스트가 이 표와 대조).
+
+### visualstack 측 되먹임 (실소비자 하중 보고 — 별도 레포 작업)
+
+momentscan이 검증한 하중-표면 = 안정화 1순위 API: **FileSource · structured_log ·
+control.ControlServer · BBox convention**. 실시간 비전 에이전트 플랫폼 비전에서
+이들이 코어 계약 후보 — semver·`__all__` 공개면 선언·deprecation 정책이 다음 수.
