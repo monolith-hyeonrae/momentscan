@@ -121,3 +121,32 @@ momentscan-v2는 이 형태로: 선언(M01~M12·V·P)+모듈 본체+preset+렌�
   통폐합 결정 필요.
 - 알파 기간 중 이관 리스크: R2 특성화+replay가 그물; 회사-대면 계약(C1)은 어떤
   단계에서도 불변.
+
+## 7. 재고 감사와 처분 (2026-07-07 — 전면 재개발 vs 증축 결정 자료)
+
+**실측**: visualstack 총 ~10.3k LOC — visualbus 36py/4,989 · visualpath 12py/1,465 ·
+visualbind 13py/946 · plugins 19py/2,863. portrait981 = 479 py 파일.
+
+**판정: 전면 재개발 아님 — 기존 위에 증축.** 근거:
+1. **visualbus 코어는 하중-검증 완료**(momentscan 8개 모듈이 소비). 내부 구획이
+   이미 깨끗함(bbox/frame/detection/clip/dense/keypoint/metrics = 미디어·데이터 타입,
+   bus/partition = 수송, control, overlay) → §2의 visualbase 분리는 **재작성이 아니라
+   모듈 재배열**: 미디어·타입·overlay → visualbase / bus·partition → visualbus(수송만).
+   visualbase는 단독 사용 가능하게, 단 **visualstack이 껍질**(umbrella `App`이 통합
+   표면, 멤버는 독립 설치 가능) — user 방향.
+2. **visualpath 코어 설계는 증축점이 명확** — Module 프로토콜(메타데이터·resolver)
+   품질 양호, ArtifactNode는 추가이지 개조가 아님.
+3. 백지 재설계는 portrait981의 사인(맥락 단절) 반복 위험.
+
+**처분 목록** (충돌/불용 정리 — 이후 다른 모델이 이어도 맥락이 안 꼬이게):
+
+| 대상 | 판정 | 처분 |
+|---|---|---|
+| **portrait981 전체** | 채석장(교훈은 momentscan 메모리/문서로 이미 수확) | **읽기-전용 동결** — 루트 README/CLAUDE.md에 "빌드 금지·참조 전용" 배너. 예외: models/*.pkl = beyond-teacher eval 베이스라인(모델 인벤토리 메모리) |
+| **visualbind** (946 LOC) | 신호 모델링 프레임워크(statistics/normalizer/selector) — **소비자 0**: momentscan이 안 쓰고 specialist45d·signals·select로 자체 구현. "소비자보다 먼저 지어진 층"의 실례 | **아카이브**(visualstack에서 제외) — vocabulary(통계 누산기/셀렉터 3분류)는 문서로 수확; readings-계층이 언젠가 두 번째 소비자를 얻으면 그때 재평가. §2의 6층에서 제어면 후보로 언급했던 것 철회 — 제어면은 visualbus.control이 현직 |
+| **plugins/face-expression · face-landmarks · head-pose** | momentscan이 자체 구현 보유(emotion·warm-ingest 랜드마크·headpose6d)한 **미사용 병렬 구현** = 드리프트·혼동 원천 | deprecated 표기(README 한 줄) — momentscan 구현이 정본; v2에서 앱→플러그인 졸업 시 그쪽이 대체 |
+| **plugins/face-detect · depth** | 현역(momentscan M01·M03) | 유지 — C12 표면 |
+| visualstack 루트 stash/·clips/·dist/ | 작업 잔재 추정 | 내용 확인 후 .gitignore 또는 삭제(다음 세션 소형 작업) |
+
+**visualbind 아카이브의 §2 반영**: L4 제어면은 visualbus.control 승격으로 충당
+(visualbind 재활용 아님). 6층 명단은 유지, visualbind는 명단에서 제외.
