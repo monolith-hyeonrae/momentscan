@@ -316,6 +316,22 @@ momentscan = 놀이기구 탑승 영상 1클립 → 세 제품을 뽑는 배치 
   L13(원본 재접근 편집)뿐이며, 별도 패키지가 아니라 서비스 배송 단계의 후처리로
   들어가는 것이 맞다 — 구현 시 visualbus FileSource를 그대로 쓰면 규약 일관.
 
+**경계의 정본 = contracts.md §C12** (2026-07-07 신설): momentscan↔visualstack 사용
+표면 전체가 임포트 화이트리스트로 명문화됨(공개 API만·frame-domain 한정·역류 금지·
+졸업 경로). R15가 그 enforcement.
+
+### R15 — C12 경계 테스트 (visualstack 임포트 화이트리스트 enforcement)
+- **위치**: `apps/momentscan/tests/test_substrate_boundary.py`(신규).
+- **문제**: C12 화이트리스트가 문서뿐이면 새 임포트가 조용히 경계를 넓힌다.
+- **방법**: 테스트가 `apps/momentscan/src/momentscan/**/*.py`를 AST 파싱해
+  `visualbus`/`visualpath`/`visualbind`로 시작하는 모든 임포트를 (모듈경로, 임포트명)
+  으로 수집 → C12 표를 그대로 옮긴 상수 `ALLOWED: dict[str, set[str]]`(파일→허용
+  임포트 집합)와 비교. 초과분 발견 시 "C12 갱신과 함께만 추가하라"는 메시지로 실패.
+  밑줄-내부 모듈(`visualbus._*`) 임포트는 무조건 실패.
+- **완료 기준**: `uv run pytest apps/momentscan/tests/test_substrate_boundary.py -q`
+  통과; detect.py에 가짜 `from visualbus import Foo` 추가 시 실패 확인 후 복원.
+- **위험/복원**: 추가 전용/revert. **의존**: R2.
+
 ### R14 — detect 내부 선언 drift-test (L12 소형 수리)
 - **위치**: `apps/momentscan/tests/test_graph_drift.py`(신규), 참조:
   `verify/graph.py:26-28`(DETECT_INTERNALS 하드코딩), `extraction/detect.py:37-38`.
