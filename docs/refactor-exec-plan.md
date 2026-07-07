@@ -207,6 +207,74 @@ momentscan = 놀이기구 탑승 영상 1클립 → 세 제품을 뽑는 배치 
 - **완료 기준**: ruff check 종료코드 0 (ignore 조정으로) + **소스 파일 diff 0**.
 - **위험**: 없음(설정만). **의존**: 없음.
 
+## 6b. 제품 수직 분리 검토 (2026-07-07 추가 — user 제안 편입)
+
+**제안 요지**: P1/P2/P3은 공통 기판을 공유하되 계산 방식이 전혀 다르다. stash가
+중간값을 들고 있으니 "필요한 stash 없으면 계산, 있으면 재활용"으로 **제품별
+수요-주도 실행**이 가능해야 하고, 디버그 시각화도 제품별로 분리, 산출물도
+최종/중간 구분이 명확해야 한다.
+
+**검토 판정: 타당하며, 구조가 이미 절반을 갖고 있다** — analyzers.py 선언 DAG(의존
+정본)+stash resumability가 있으므로 closure(P)를 파생해 그 부분그래프만 돌리면
+된다. 단, 제안이 드러낸 **추가 헛점 3개**:
+
+| # | 헛점 | 증거 |
+|---|---|---|
+| L9 | **P1→P2 숨은 결합**: gate_trace.parquet(V01~V05의 판정)을 **portrait 실행기가 생산**(portrait.py:427)하고 likeness가 소비(likeness.py:53). 전체-캐스케이드가 항상 돌아서 은폐돼 있었음. 제품 분리 시 closure(P1)이 P2를 끌어들이는 오류가 됨 | grep 확정 |
+| L10 | **전량-계산 낭비**: 서비스가 products=[likeness]여도 13 스테이지 전부 실행. closure(P1)={M01,M02,M03,M06,M07,M08,M09,+gates} — scene(M05)·headpose6d(M10)·emotion(M11)·select(M12) 불필요. 2000 vids/day에서 GPU 낭비 실질적 | likeness.py의 read_* 목록 |
+| L11 | **stash 평면 산개**: clip 디렉토리에 기판(parquet)·제품(json)·표면(html/png)·운영(run/provenance/result)이 한 층에 섞임. 최종/중간 구분이 파일명 지식에 의존 | output/l2/* 목록 |
+
+### R10 — gates 스테이지 독립 (L9 수리; R11의 전제)
+- **위치**: `products/portrait.py`(PASS 1 게이트 평가+write_gate_trace :427 부근을 분리),
+  신규 `extraction/` 또는 `gates.py`에 스테이지 진입 함수, `pipeline.py` RUNNERS에
+  `"gates": ("gate_trace.parquet", _gates)` 추가(M09 뒤·제품들 앞), `analyzers.py`에
+  선언 추가(likeness/portrait의 의존을 gates로 갱신).
+- **문제**: 게이트는 측정(V01~V05)인데 제품 실행기 안에 살아 P1←P2 결합.
+- **방법**: portrait.py의 게이트 평가 블록을 함수로 추출해 스테이지로 등록. portrait은
+  read_gate_trace로 전환(자기 재평가 삭제). **행동 불변이 목표** — 같은 입력, 같은
+  gate_trace 바이트.
+- **완료 기준**: `--force` 전체 재실행 후 ①gate_trace.parquet가 기존과 **byte-identical**
+  (`cmp` 또는 parquet 정렬-후 diff) ②run.json에 gates 스테이지 등장 ③특성화 테스트
+  전부 통과 ④`verify replay test_3` drift 0.
+- **위험/복원**: 추출 시 평가 순서·시드가 바뀌면 trace가 달라짐 → byte 비교가 가드.
+  실패 시 커밋 revert. **의존**: R2, R5.
+
+### R11 — 제품 closure 실행 (`run --product`)
+- **위치**: `pipeline.py` run_pipeline(only 파라미터 인접), `__main__.py`(run 파서),
+  `service.py`(Job.products → closure 합집합).
+- **문제**: L10.
+- **방법**: `closure(p) = analyzers 선언 DAG에서 p의 상류 전체` 파생 함수 추가 →
+  `--product likeness|portrait|highlight`(복수 허용)가 order를 closure 합집합으로
+  제한. `--only`(스테이지 지정)와 상호배타. service는 job.products를 그대로 전달.
+- **완료 기준**: ①깨끗한 사본 클립에서 `run <clip> --product likeness` → run.json의
+  ran ⊆ {detect,stitch,attribute,tubelets,features,crops,parse,fashion,gates,likeness}
+  이고 scene/emotion/headpose6d/select **부재** ②그 likeness.json이 전체-런 산출과
+  동일(특성화 값 비교) ③서비스 e2e: products=[likeness] 잡이 동일 결과.
+- **위험/복원**: closure 누락(숨은 read_*)이면 스테이지가 결측 artifact로 실패 —
+  L4 수리(R1) 덕에 조용히 안 죽고 드러남. analyzers 선언과 실제 read_*의 괴리가
+  있으면 선언을 고치는 것이 수리(선언=정본). revert 자유. **의존**: R10.
+
+### R12 — 산출물 tier 선언 (L11 1단계: 물리 이동 없이 논리 구분)
+- **위치**: `analyzers.py`(각 선언에 `tier: "substrate"|"product"|"surface"|"ops"` 필드),
+  `verify/registry` 체크 추가, `momentscan map cascade`·report의 파일 목록을 tier
+  그룹으로 렌더, per-clip `manifest.json`에 {파일→tier} 기록.
+- **완료 기준**: registry 0 err(전 산출물 tier 보유) + report 하단 목록이 4그룹 표시
+  + manifest.json 존재.
+- **위험**: 없음(선언+렌더). **의존**: R2.
+- **⚠물리 재배치(stash/·products/·surface/ 하위 디렉토리로 이동)는 이 계획에서 제외**
+  — 기존 코퍼스·replay 기준·모든 read_* 경로·서비스 egress를 깨는 마이그레이션이라
+  별도 결정 필요. R12의 tier 선언이 그 마이그레이션의 지도가 된다.
+
+### R13 — 제품별 디버그 페이지 분리
+- **위치**: `surface/report.py`·`cards.py` — 단일 index.html에서 제품 섹션을
+  `report_p1.html`/`report_p2.html`/`report_p3.html`로 분리, 공통 기판(타임라인·
+  게이트 사다리·M-스테이지 상태)은 `report_substrate.html`, index.html은 4링크+
+  요약만. products_open 잠금 배지 로직은 페이지 단위로 이동.
+- **완료 기준**: `momentscan report test_3` 후 5파일 존재·각각 브라우저 렌더 정상,
+  result.json 있는 클립에서 미오픈 제품 페이지에 잠금 배지, 인스펙터(한-런 창)는
+  변경 없음.
+- **위험/복원**: 렌더 전용, revert 자유. **의존**: R12(그룹화 재사용).
+
 ## 7. 하지 말아야 할 것
 
 - 기능 추가 금지(§3 사용성 제안 포함 — 소유자 결정 대기).
@@ -222,7 +290,7 @@ momentscan = 놀이기구 탑승 영상 1클립 → 세 제품을 뽑는 배치 
 
 > momentscan 리팩토링을 `docs/refactor-exec-plan.md`대로 수행하라.
 > 1. R0(안전망)을 먼저 실행하고 기준 검증 3종의 실제 출력을 기록하라.
-> 2. 항목은 **한 번에 하나**, 문서의 순서(R1→R2→R3→R4→R5→R6→R7→R8→R9)대로.
+> 2. 항목은 **한 번에 하나**, 순서 R1→R2→R3→R4→R5→R6→R7→**R10→R11→R12→R13**→R8→R9.
 > 3. 각 항목 완료 시 **그 항목만 담은 커밋 1개**(메시지 앞에 항목 ID, 예:
 >    "R5: artifact-edge freshness"). co-author 트레일러 금지, 백틱 금지.
 > 4. 각 항목의 "완료 기준" 명령을 실행해 예상 결과와 대조하라. 불일치하면
@@ -238,4 +306,8 @@ R2는 추가-전용 → R3·R4는 R2의 테스트가 회귀 그물(R4의 schema 
 키 "부재"를 단언하지 않으므로 충돌 없음 — R0-4 기준값은 존재 필드만 단언) →
 R5는 mtime 비교 추가라 R2 특성화(값 단언)와 독립, 완료 기준 ①이 무한 재실행 가드 →
 R6은 R5 뒤라 --force 재실행이 신선한 파이프에서 수행됨 → R7의 컬럼 추가는 replay
-기준 재생성 절차 필요를 항목 내 명시 → R8·R9는 무변경. 전제 파괴 없음. ✓
+기준 재생성 절차 필요를 항목 내 명시 → **R10은 gate_trace byte-identical이 가드라
+R2 특성화·R7 버전 컬럼과 충돌 없음(R7이 먼저면 R10의 byte 비교는 R7-이후 기준으로)
+→ R11은 R10이 만든 gates 스테이지를 closure에 포함(전제 충족) → R12는 선언 추가라
+R11의 closure 파생과 독립 → R13은 R12의 그룹만 소비** → R8·R9는 무변경. 전제 파괴
+없음. ✓
