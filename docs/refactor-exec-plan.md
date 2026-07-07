@@ -47,6 +47,9 @@ momentscan = 놀이기구 탑승 영상 1클립 → 세 제품을 뽑는 배치 
   quickstart 1단계로 못박기.
 - ids.md를 `momentscan map` 출력에 병기(M/V/P ID 노출)하면 대화-지칭이 코드 표면과
   일치 — 소형 후속.
+- **배송 풀해상도 재크롭(L13)**: 서비스 배송 단계에서 portrait 대표컷·highlight
+  세그를 source_cache의 원본으로부터 재추출(분석=크롭트랙 유지, 배송만 원본).
+  제품 체감 품질 직결 — visualbase 의도의 올바른 착지점. 기능 추가라 소유자 결정.
 
 ## 4. 파이썬 생태계 안정성 점검 (채택/기각 근거)
 
@@ -274,6 +277,45 @@ momentscan = 놀이기구 탑승 영상 1클립 → 세 제품을 뽑는 배치 
   result.json 있는 클립에서 미오픈 제품 페이지에 잠금 배지, 인스펙터(한-런 창)는
   변경 없음.
 - **위험/복원**: 렌더 전용, revert 자유. **의존**: R12(그룹화 재사용).
+
+## 6c. substrate 활용 점검 (visualpath / visualbase — 2026-07-07 추가)
+
+**의도(설계 당시)**: visualpath = 분석 모듈 플러그인 슬롯·관계 선언→해석 실행·환경
+격리. visualbase(visualstack 실멤버로는 visualbus/visualbind가 근연) = 원본 미디어
+기판 — 분석기에 분석용 미디어 제공 + **분석 결과를 트리거로 원본을 편집/메시지
+처리하는 액션 미들웨어**.
+
+**실사용 현황**: visualpath는 M01 detect 내부(frame-bus 2모듈: FaceDetect→IoUTracker,
+detect.py:37-38)와 M03의 DepthEstimator 플러그인뿐. M04~M12는 자체 RUNNERS/
+analyzers.py 선언으로 재발명. visualbase 계열은 **미사용** — media.py 자급(cv2/
+ffmpeg), 제품 픽셀은 전부 분석 스트림에서(portrait=크롭트랙, portrait.py:162).
+
+**판정**:
+- **집행 이원화는 옳다(유지)**: frame-domain(스트리밍 bus)과 artifact-domain(클립
+  배치+resumability)은 실행 체제가 다르고 visualpath는 전자용. 레거시(portrait981)
+  붕괴가 과-아키텍처에서 왔으므로 M-스테이지를 플러그인 슬롯에 강제 편입하는 것은
+  역행. 단, 대가로 잃은 것을 명시 보류로 기록:
+  | # | 잃은 것 | 처분 |
+  |---|---|---|
+  | L12 | 선언 이원화 잔여 — verify/graph.py가 렌더로 봉합했으나 detect 내부가 hand-list(`DETECT_INTERNALS` 상수)라 실제 visualpath Pipeline 구성과 어긋나도 모름; 환경(네이티브 크래시) 격리 미착수 | **R14**(drift-test) / 격리는 의도적 보류 |
+  | L13 | **배송 품질 천장 = 분석 해상도** — visualbase의 "결과 트리거→원본 편집" 역할 부재로 portrait/highlight 픽셀이 fps6·크롭 해상도에 갇힘. 서비스 잡 시점엔 원본이 source_cache에 **있으므로**(fetch 직후) 풀해상도 재크롭이 retention 결정(소스 ~1주 만료→크롭트랙 영속)과 모순 없이 가능 | §3 소유자 결정 항목(기능 추가라 실행자 범위 밖) |
+- **visualbase 부활은 불요**: 액션 미들웨어 역할의 절반(배송·리포트·메시지 자리)은
+  C1 서비스(collect_egress/deliver, transport-agnostic)에 이미 착지했다. 남은 절반
+  (원본 재접근 편집)은 위 L13의 배송-품질 항목이 실체이며, 별도 패키지가 아니라
+  서비스 배송 단계의 후처리로 들어가는 것이 맞다.
+
+### R14 — detect 내부 선언 drift-test (L12 소형 수리)
+- **위치**: `apps/momentscan/tests/test_graph_drift.py`(신규), 참조:
+  `verify/graph.py:26-28`(DETECT_INTERNALS 하드코딩), `extraction/detect.py:37-38`.
+- **문제**: hand-list된 detect 내부 표현이 실제 visualpath Pipeline 구성과 어긋나도
+  침묵.
+- **방법**: 테스트에서 detect.py가 구성하는 Pipeline의 모듈 클래스명 시퀀스를
+  introspect(임포트만, 실행 없음 — `FaceDetect`/`IoUTracker` 임포트 가능성은
+  visualpath 설치 여부에 따라 `pytest.importorskip("visualpath")`)하여
+  `graph.DETECT_INTERNALS` 문자열과 일치 단언.
+- **완료 기준**: `uv run pytest apps/momentscan/tests/test_graph_drift.py -q` 통과;
+  DETECT_INTERNALS를 일부러 바꾸면 실패하는지 1회 확인 후 복원.
+- **위험/복원**: 추가 전용/revert. **의존**: R2.
 
 ## 7. 하지 말아야 할 것
 
