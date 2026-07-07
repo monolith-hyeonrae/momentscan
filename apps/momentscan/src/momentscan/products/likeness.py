@@ -402,11 +402,18 @@ def appearance_clip(out_root, clip_id: str) -> dict:
     cohorts = _gate_cohorts(out_root, clip_id)  # {tid: {valid, frontal}} (None → all-frames fallback)
     face_ids = _face_ids(out_root, clip_id, cohorts)   # identity core → FRONTAL cohort
     fashion = _fashion_reading(out_root, clip_id, cohorts)   # judgeable = clean-frontal cohort
+    drifts: dict[int, float] = {}
     for tid in sorted(set(lm["track_id"].to_list())):
         r = _track_reading(out_root, clip_id, tid, cohorts)
         if r is None:
             continue
         centers[tid] = r.pop("_center")
+        drifts[tid] = r.get("split_half_drift")
+        # 제품 스코프 (user 2026-07-07): likeness는 **주탑승자만** — aux는 얼굴이 작고
+        # 상시 가림이라 측정 신뢰가 낮다 (P1-② 감사: aux들이 coherence·n_obs 최저).
+        # 센터/drift는 전 트랙 계산 유지 — separation(사람-간÷drift) 자의 상대측 필요.
+        if roles.get(tid) != "main":
+            continue
         fa = fashion.get(tid)
         color_id = fa.pop("color_identity", None) if fa else None
         riders[str(tid)] = {"role": roles.get(tid), **r, "face_id": face_ids.get(tid),
@@ -418,8 +425,7 @@ def appearance_clip(out_root, clip_id: str) -> dict:
     for i, a in enumerate(tids):
         for b in tids[i + 1:]:
             d = float(np.sqrt(((centers[a] - centers[b]) ** 2).sum(axis=1).mean()))
-            drifts = [riders[str(t)]["split_half_drift"] for t in (a, b)]
-            drift = float(np.nanmean(drifts))
+            drift = float(np.nanmean([drifts.get(t) for t in (a, b)]))
             separation.append({"tracks": [a, b], "dist": round(d, 5),
                                "ratio_vs_drift": round(d / drift, 1) if drift else None})
 

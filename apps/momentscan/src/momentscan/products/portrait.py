@@ -291,6 +291,13 @@ def select_portrait(out_root, clip_id: str, *, fps: int = 6) -> dict:
         # it instead of re-deciding). Schema owned by gates.py; written after the loop.
         trace_rows += gates.trace_rows(sid, fx, sig, gv)
 
+        # 제품 스코프 (user 2026-07-07): portrait은 **주탑승자만** — aux는 얼굴이 작고
+        # 상시 가림이라 측정 신뢰가 낮다 (P1-② 감사 실증: aux들이 coherence 최저).
+        # 게이트 판정·trace는 전원 유지 — 공유 validity를 likeness가 소비하고, aux
+        # 센트로이드는 상대귀속(cos_other)의 rival로 필요 (스테이지 의존 ≠ 제품 노출).
+        if role != "main":
+            continue
+
         # em_conf (PASS 1) now ALSO gates expr_ok (reject:ambiguous); here it stays the soft
         # anti-ambiguity tiebreak that RANKS the survivors (gate removes the muddled extreme,
         # tiebreak prefers the clearest among the rest — exactly the blink gate+term split).

@@ -183,7 +183,7 @@ class Product:
 
 PRODUCTS: tuple[Product, ...] = (
     Product(
-        "likeness", "visit-invariant ID (오늘 이 사람) — distribution + exemplar picks", "integrate",
+        "likeness", "visit-invariant ID (오늘 이 사람) — distribution + exemplar picks · 주탑승자만(2026-07-07)", "integrate",
         (("landmarks", ("blendshapes", "transform")),
          ("tubelets", ("embedding",)),   # C3: the subjectlet carries the embeddings (was raw detections)
          ("features", ("em_happy", "au12_lip_corner", "au25_lips_part", "head_yaw_dev", "head_pitch", "face_blur")),
@@ -194,7 +194,7 @@ PRODUCTS: tuple[Product, ...] = (
         "molten", "two homes: appearance.py=distribution reading, select.py=exemplar picks (distinct readings, rename pending — NOT a split to consolidate yet)",
         egress=("likeness.json",)),
     Product(
-        "portrait", "query-extraction gate → clean crop-track pixels", "select(static)",
+        "portrait", "query-extraction gate → clean crop-track pixels · 주탑승자만(2026-07-07)", "select(static)",
         (("tubelets", ("embedding",)),
          ("identity_dev", ("identity_deviation",)),
          ("landmarks", ("blendshapes", "transform")),
@@ -209,7 +209,7 @@ PRODUCTS: tuple[Product, ...] = (
         "frozen", "definition froze E008–E009, already its own module; gate verdicts via gates.evaluate → gate_trace; pose(frontal)+headpose6d(profile) fused",
         egress=("portraits/portrait.json", "portraits/*.png")),
     Product(
-        "highlight", "WHEN×WHICH — attraction × customer reaction over a segment", "select(temporal)",
+        "highlight", "WHEN×WHICH — attraction × customer reaction over a segment · aux first-class(함께한 순간)", "select(temporal)",
         (("features", ("em_* (→ fused_valence)", "head_yaw_dev", "face_blur")),
          ("scene", ("scene_change",)),
          ("tubelets", ("Δpose / motion",))),

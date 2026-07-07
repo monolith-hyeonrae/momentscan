@@ -114,7 +114,10 @@ viz=output/l2/lane_emit_congruence.png. 남은 조각: 파묻힌-입 spurious ar
 
 ### ▶ 다음 (2026-07-07 진행 중) — 2b 완료, 다음 = P1-③ 스키마 동결
 
-~~P1-2b color identity~~ → **DONE 5c34f2d** (본문 Phase 1 목록 참조). 다음:
+~~P1-2b color identity~~ → **DONE 5c34f2d** (본문 Phase 1 목록 참조).
+**+ 제품 스코프 확정(user)**: likeness·portrait=**주탑승자만**(aux=측정 신뢰 낮음, 감사 실증) /
+highlight=aux first-class("함께한다"는 맥락). 구현=제품 방출 필터만, 스테이지·trace 전원 유지
+(aux 센트로이드=상대귀속 rival·aux features=highlight 입력). 코퍼스 15/15 main-only 판정 ✓. 다음:
 **P1-③ likeness.json 스키마 동결**(=face_recipe 입력 계약; 필수/선택을 recipe
 요구에서 도출, data-contract.md stale 해소 겸) → **P1-④ 실패 모드**(감사 ⓐ~ⓔ:
 fashion 두-레인 융합 수리가 1순위 — 타입 레인이 정답 보유라 싼 수리).
