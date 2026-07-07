@@ -357,10 +357,14 @@ def _fashion_reading(out_root, clip_id: str,
     # geometric parse signal (each has failure modes: parse misses hoods, clip
     # misses clear glasses / over-predicts scarf). Both kept; fusion = preset.
     fc = {}
+    ci = {}
     fcj = read_fashion(out_root, clip_id)
     if fcj:
         fc = {s["subject_id"]: {k: s[k] for k in ("eyewear", "headwear", "covering") if k in s}
               for s in fcj.get("subjects", [])}
+        # color identity (Cat W #86-89 포팅, P1-2b) — 방문-집계 의상 팔레트.
+        # fashion 스테이지가 생산, likeness가 rider 최상위 필드로 배달.
+        ci = {s["subject_id"]: s.get("color_identity") for s in fcj.get("subjects", [])}
     out: dict[int, dict] = {}
     for sid in df["track_id"].unique().to_list():
         d = df.filter(pl.col("track_id") == int(sid))
@@ -382,6 +386,7 @@ def _fashion_reading(out_root, clip_id: str,
             "hat": hat_f >= _F_WORN, "hat_frac": hat_f, "n_obs": n,
             "variable": [k for k, f in (("eyewear", ew_f), ("mask", mask_f), ("hat", hat_f)) if 0.3 < f < 0.7],
             "clip": fc.get(int(sid)),     # FashionCLIP typed winners (None if not run)
+            "color_identity": ci.get(int(sid)),   # appearance_clip이 최상위로 승격
         }
     return out
 
@@ -402,8 +407,10 @@ def appearance_clip(out_root, clip_id: str) -> dict:
         if r is None:
             continue
         centers[tid] = r.pop("_center")
+        fa = fashion.get(tid)
+        color_id = fa.pop("color_identity", None) if fa else None
         riders[str(tid)] = {"role": roles.get(tid), **r, "face_id": face_ids.get(tid),
-                            "fashion": fashion.get(tid)}
+                            "fashion": fa, "color_identity": color_id}
 
     # Inter-person separation vs intra-person drift — the label-free yardstick.
     separation = []

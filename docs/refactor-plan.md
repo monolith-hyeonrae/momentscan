@@ -147,14 +147,19 @@ portrait/highlight는 추가 연구 후 순차 오픈."** 이 결정이 아래 �
    대표가 품질-무관 선발(블러가 hair 입력 대표) ⓓ크롭 타인 혼입(dual_2 right)·후드=
    hair 관측불가 → hair 이음매에 정직한 결측/오염 신호 필요 ⓔdual_1 separation 1.4
    (가림 클립 기하 불안정 — recipe 경계 사례).
-2b. **color identity 포팅** (user 2026-07-06: "의상 기반 컬러 팔레트도 이 작업에 포함") —
-   출처 = `../appearance-engine/component2/color_identity.py` **Cat W #86-89**:
-   통합 마스크(cloth+hat+glasses+earring+necklace = "외부 stylistic surface",
-   헤어/얼굴 자연색 제외) → Lab K-means k=5 → primary/secondary/highlight(최고 채도·
-   면적>5%)/palette_diversity(Shannon). momentscan판 = **방문-집계**(프레임별이 아니라
-   방문 전체 통합 팔레트, fashion 리딩과 같은 judgeable-코호트 조건) → likeness.json
-   `color_identity` 필드. **스키마 동결(3) 전에 착지** — recipe의 의상 팔레트 입력.
-   (clothing 타입 6축 Cat W #80-85는 FashionCLIP 프롬프트 세트 재활용 후보 — 별도 판단.)
+2b. ~~**color identity 포팅**~~ → **DONE (2026-07-07)** — Cat W #86-89를 fashion.py에
+   착지(방문-집계 Lab K-means k=5 → primary/secondary/highlight/diversity + hex/area/
+   n_px/n_frames), likeness.json rider 최상위 `color_identity`로 배달·report 팔레트 칩.
+   **포팅이 신규 문제를 낳고 풀었다 — 소유권**: 원본은 단일-인물 per-image라 없던
+   "프레임 안 타인 옷" 오염(감사 ⓓ 재현: cap_1 전경 패딩이 팔레트 지배) → **소유자
+   영역-성장 규칙**: 중심-최근접 얼굴(이목구비-자격: 손=skin 덩어리 배제 — dual_1
+   전멸 원인이었음) 씨앗, cloth=얼굴∪목 직접-인접·모자류=+헤어 다리, 타인 얼굴과는
+   **접촉-다수결 배정**(이진 taint는 어깨-맞댄 duo 전멸). 판정: 21/21 팔레트·실물
+   부합(카키/파랑저지/핑크 등, 겨울-다크 지배=정직) 카드=lane_color_identity.png.
+   **잔류 한계(기록)**: ①좌석 하네스/RACE81 시트커버=cloth 오분류 혼입 → **C9 preset
+   장비-색 제외 리스트가 정답 자리** ②타인 얼굴이 프레임 밖이면 접촉-누수 못 끊음
+   (풀링이 희석) ③착용 마스크=skin 분류라 팔레트 제외 ④dual_1 s0 n_frames=1 얇음
+   (n_frames가 신뢰 표기). clothing 6축(#80-85)은 별도 판단 유지.
 3. **likeness.json 스키마 동결 → C-계약 승격** — **face_recipe 어댑터의 입력 계약**으로서
    동결 (필수/선택 필드를 recipe 요구에서 도출; data-contract.md stale 해소 겸;
    "인터페이스 정의 빠른 공유 의무"의 실체). **recipe 측 계약 메모(user)**: hair_match

@@ -108,11 +108,22 @@ def render_report(out_root, clip_id: str) -> dict:
         fid = r.get("face_id") or {}
         fa = r.get("fashion") or {}
         worn = [k for k in ("mask", "hat") if fa.get(k)] + ([fa["eyewear"]] if fa.get("eyewear") not in (None, "none") else [])
+        # 의상 컬러 팔레트 (Cat W 포팅) — 디자이너용 스와치 칩
+        ci = r.get("color_identity")
+        chips = ""
+        if isinstance(ci, dict):
+            for k in ("primary", "secondary", "highlight"):
+                v = ci.get(k)
+                if isinstance(v, dict) and v.get("hex"):
+                    chips += (f"<span title='{k} {html.escape(v['hex'])}' style='display:inline-block;"
+                              f"width:15px;height:15px;background:{html.escape(v['hex'])};"
+                              f"border-radius:3px;border:1px solid #444;vertical-align:-3px;margin:0 2px'></span>")
+            chips = f" · 팔레트 {chips} (다양성 {ci.get('palette_diversity', '—')})" if chips else ""
         sec.append(f"<div class=kv>subject {html.escape(str(sid))} <span class=chip>{html.escape(str(r.get('role')))}</span>"
                    f" · 관측 <b>{r.get('n_obs', '—')}</b>"
                    f" · 재현성 drift <b>{r.get('split_half_drift', '—')}</b>"
                    f" · face_id coherence <b>{fid.get('coherence_mean', '—')}</b> (n={fid.get('n_emb', '—')})"
-                   f" · 착용 <b>{html.escape(', '.join(worn) or '없음')}</b></div>")
+                   f" · 착용 <b>{html.escape(', '.join(worn) or '없음')}</b>{chips}</div>")
     if not lk.get("riders"):
         sec.append("<div class=warn>likeness.json 없음</div>")
     B.append(_section("likeness", "LIKENESS — 방문-스코프 외형 ID", sec))
