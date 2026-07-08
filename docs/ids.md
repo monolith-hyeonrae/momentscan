@@ -32,6 +32,18 @@ gen 레포=p981.gen.*(sty) 소유 · **p981.if.*=중립 지대**(p981-contracts 
 임시 홈=momentscan/docs/api). gen 레지스트리에 p981.scan.*는 **절대 등장하지
 않는다** — 물리 분리가 이 규칙을 권장에서 강제로 바꾼다.
 
+**레포 토폴로지 결정 (2026-07-07)**: 코드 모노레포 회귀 **안 함** — 대신
+**p981 메타(우산) 레포** 신설. 근거: ①scan(알파-라이브·회사 대면)/gen(molten
+연구)/visualstack(semver 플랫폼)은 릴리스 캐덴스가 달라 lockstep 커밋이 해악
+②오늘 세운 경계 규율(C12·if.*-only)은 물리 분리가 지켜줌 — 모노레포는 마감
+압박에서 직접 임포트 유혹 ③~/repo/monolith가 이미 비공식 우산(LAYER_ARCHITECTURE.md
+가 루트에 존재) — 형식화만 하면 됨. **메타 레포 내용물 = 코드 아님**: p981-contracts
+(if.* 스키마·openapi — 와이어 계약의 중립 지대 겸함) · ids.md(이 문서의 최종 이주처)
+· LAYER_ARCHITECTURE.md · 배포 토폴로지·크로스-시스템 결정 기록(ADR). 멤버 코드
+레포(momentscan·momentgen·visualstack·appearance-engine·hair)는 독립 유지, 관계는
+**버전 핀**(visualstack=semver, if.*=스키마 범위 핀)으로. 이주는 메타 레포 생성
+세션에서 일괄(소형).
+
 ## p981.if — 프로젝트-레벨 **와이어 계약** (scan 생산 → gen·회사 앱 소비)
 
 제품 = 단순 출력이 아니라 **두 시스템을 잇는 계약** → 서브시스템이 아닌 프로젝트
