@@ -9,11 +9,18 @@
 ## 1. 기동 (로컬 서버 / AWS 서버 동일)
 
 ```bash
-momentscan server start --port 8080 --out /data/stash --fps 6 \
+setsid nohup momentscan server start --port 8080 --out /data/stash --fps 6 \
     --products likeness \                        # 단계 배포 스위치 (Phase 1 = likeness만)
     --eureka http://<회사-eureka>:8761/eureka \   # 주면 등록, 빼면 등록 없이 HTTP만
-    --advertise-host <이 노드의 IP>               # 생략 = 자동 감지 (아래 §3 주의)
+    --advertise-host <이 노드의 IP> \             # 생략 = 자동 감지 (아래 §3 주의)
+    >/dev/null 2>&1 &
 ```
+
+⚠ **`setsid`로 세션과 분리해 띄울 것** (2026-07-07 실증): 터미널/대화 세션 안에서
+그냥 띄우면 세션 종료가 서버를 함께 내린다 — setsid가 새 세션 리더로 떼어내
+로그아웃·세션 teardown에서 살아남는다. stdout 리다이렉트는 형식일 뿐(로그는 어차피
+`~/logs/momentscan-{port}.log` 파일 싱크가 기본, §5). 장기 운용은 systemd 유닛이
+정석이며 그땐 setsid 불요(systemd가 세션 관리).
 
 동작: FIFO 단일 워커(GPU 직렬화) · warm detect 캐시(첫 잡만 모델 로드) ·
 멱등(clip_id 재요청 = 재계산 없이 기존 경로 반환, `result.json`이 근거).
