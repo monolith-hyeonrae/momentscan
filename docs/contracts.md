@@ -54,6 +54,16 @@ Result {
 멱등성: 같은 clip_id 재요청 = 같은 output prefix, 완료 산출물은 재계산 없이 경로 반환
 (파이프라인 resumability가 이미 이 의미론 — probe 파일 존재 = skip). Kafka 재전송 대비.
 
+**와이어 계약 격상 (2026-07-07 — scan/gen 서버·레포 분리 전망)**: Result가 곧
+**매니페스트**(작은 메타 + 큰 아티팩트의 uri 참조)이고 전달은 비동기·큐 — 이 설계
+베팅은 이미 C1에 있었다. 분리가 강제하는 추가 규율 3: ①**스키마의 중립 지대** —
+p981-contracts 소형 레포(JSON Schema만; R6의 msgspec→json-schema 산출물이 내용물;
+gen 레포 실체화 전 임시 홈=docs/api) ②**semver 진화** — 현행 "v1"(additive 무표기)
+에서 minor 표기(1.0→1.1: additive, →2.0: 파괴적)로; 소비자는 범위 핀(`>=1.0 <2.0`);
+전환 시점=다음 파괴적 변경 또는 contracts 레포 분리 시 ③**매니페스트 보강(additive
+후보)** — outputs 항목에 {contract, schema_version, sha256} 동봉(수신 측이 처리
+가능 버전인지 선검사 + blob 무결성; provenance의 source 지문과 대칭).
+
 **실행기 (2026-07-03 구현 · CLI 통합 07-06: `serve-http`→`serve`)**: `momentscan server start` = `service.py`(HTTP 어댑터 +
 transport-agnostic `JobRunner`) + `eureka.py`(레지스트리 등록/갱신/해지, stdlib) +
 stash `result.json`(응답 기록 = 멱등 근거). 운영 = [deploy-alpha.md](deploy-alpha.md).
