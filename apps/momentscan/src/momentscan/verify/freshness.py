@@ -192,3 +192,12 @@ def is_stale(artifact, modname: str) -> bool:
     except OSError:
         return False
     return amt < source_mtime(modname)
+
+
+def artifact_stale(artifact_mtime: float, upstream_mtimes, eps: float = 1e-6) -> bool:
+    """R5 artifact-edge: 직접 상류 산출물 중 하나라도 내 산출물보다 새로우면 stale.
+
+    순수 함수 — 파일시스템 접근은 호출부(pipeline) 몫. 이 분리는 §6d A안 대비:
+    visualpath SkipPolicy 포트의 참조 구현으로 그대로 졸업할 수 있게.
+    """
+    return any(u > artifact_mtime + eps for u in upstream_mtimes)

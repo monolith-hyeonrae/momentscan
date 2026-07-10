@@ -123,6 +123,33 @@ RUNNERS = {
     "highlight": ("highlight.json", _highlight),   # 2026-07-03 졸업 — 제품 파일 + 자기 산출물
 }
 
+
+def _upstream_probes(name: str) -> tuple[str, ...]:
+    """R5 artifact-edge: 직접 선언 상류(analyzers.depends)의 대표 산출물 경로.
+
+    RUNNERS 상류 → 그 probe (공유 candidates.jsonl이 아니라 자기-산출물 —
+    sibling-write 거짓-stale 가드) · UPSTREAM_OF_RUNNER(detect/landmarks) →
+    선언 artifact · unit(inline)은 제외. **직접 간선만** — 연쇄는 한 런의
+    topo 순서가 자연 전파한다(상류가 재실행되면 산출물이 새로워져 다음
+    소비자가 같은 런에서 stale로 판정)."""
+    try:
+        a = analyzers.get(name)
+    except KeyError:
+        return ()
+    out: list[str] = []
+    for d in a.depends:
+        if d in RUNNERS:
+            out.append(RUNNERS[d][0])
+        else:
+            try:
+                art = analyzers.get(d).artifact
+            except KeyError:
+                continue
+            if art and art != "inline":
+                out.append(art)
+    return tuple(out)
+
+
 # every runner must declare its source module, so freshness can detect a stale
 # artifact (source edited after the artifact was written). Drift = loud at import.
 assert set(freshness.STAGE_MODULE) == set(RUNNERS), (
@@ -200,14 +227,23 @@ def run_pipeline(out_root, clip_id: str, *, source=None, fps: int = 6,
             continue
         probe, fn = RUNNERS[a.name]
         # resumable AND incremental: skip only if the artifact exists and is NEWER
-        # than its source. A code edit (source mtime > artifact) re-runs the stage.
+        # than BOTH its source (code edit) and its direct upstream artifacts
+        # (R5 artifact-edge — 상류 재기록이 하류를 stale시켜야 한다; 갭 3회 실증).
         stale = False
-        if (cdir / probe).exists() and not force:
-            if not freshness.is_stale(cdir / probe, freshness.STAGE_MODULE.get(a.name, "")):
+        stale_why = ""
+        art = cdir / probe
+        if art.exists() and not force:
+            code_stale = freshness.is_stale(art, freshness.STAGE_MODULE.get(a.name, ""))
+            up_mtimes = [p.stat().st_mtime
+                         for p in (cdir / u for u in _upstream_probes(a.name)) if p.exists()]
+            art_stale = freshness.artifact_stale(art.stat().st_mtime, up_mtimes)
+            if not code_stale and not art_stale:
                 result["skipped"].append({"name": a.name, "reason": "exists"})
                 if watch: print(f"  {a.name:11} · cached (fresh)", flush=True)
                 continue
             stale = True
+            stale_why = ("source+upstream" if code_stale and art_stale
+                         else "upstream artifact newer" if art_stale else "source changed")
         if a.needs_source and not source:
             result["skipped"].append({"name": a.name, "reason": "needs --source"})
             if watch: print(f"  {a.name:11} · needs --source", flush=True)
@@ -219,11 +255,11 @@ def run_pipeline(out_root, clip_id: str, *, source=None, fps: int = 6,
             ms = int((time.perf_counter() - t0) * 1000)
             (result["ran"] if ok else result["failed"]).append(
                 {"name": a.name, "ok": ok, "ms": ms,
-                 "reason": ("stale: source changed" if (ok and stale)
+                 "reason": (f"stale: {stale_why}" if (ok and stale)
                             else (None if ok else (r.get("reason") if isinstance(r, dict) else None)))})
             if watch:
                 print(f"  {a.name:11} {'✓' if ok else '✗'} {ms:>6}ms  "
-                      f"{_stage_health(a.name, r)}{'  (stale→reran)' if stale and ok else ''}", flush=True)
+                      f"{_stage_health(a.name, r)}{f'  (stale→reran: {stale_why})' if stale and ok else ''}", flush=True)
         except ImportError as e:
             result["skipped"].append({"name": a.name, "reason": f"dep missing: {e}"})
             if watch: print(f"  {a.name:11} · dep missing: {e}", flush=True)
