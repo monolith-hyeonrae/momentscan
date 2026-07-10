@@ -112,18 +112,45 @@ viz=output/l2/lane_emit_congruence.png. 남은 조각: 파묻힌-입 spurious ar
 (mouth_vis 판독-가능성 조건화, dual_1 parse 재런 필요) · WHEN/WHICH energy 재편(06-29 설계) ·
 창 형태(onset/release) 방출 · 궤적 표상(장기, substrate 연구 레인).
 
-### ▶ 현재 (2026-07-07 저녁) — likeness 연구 일시 중단(경계 양호), 전체 방향성/완성 계획 모드
+### ▶ 현재 (2026-07-08) — 종합 판단 확정: 평가 기판(E-트랙) 선행, 본작업 = track/r0-r2
 
-**user 결정**: likeness는 따로 떼어 나중에 재연구 (경계=C11 스키마·adapters.momentscan·
-recipe 13키가 잘 나뉘어 있음). **likeness 미결 원장**(재개 시 입구): ①recipe registry
-캘리브레이션 불일치(4키 가장자리 고정: Brow_Thickness≈0·Mouth_Size≈0.9·Mouse_Corner
-하향·Brow_Slant 상향 — registry 재캘리 vs 어댑터 보정 선택) ②recipe→MPFB 브리지 착지
-위치(scratchpad/mpfb_recipe.py, appearance-engine이 자연스러움) ③프리뷰 gain 판정(×2.2
-근방, 몽타주=preview_recipe_gain_ab.png) ④어댑터 unfilled 채우기(momentscan이 이제
-color_identity #86-89·fashion·samples.hair 방출) ⑤test_12 hair 세그 오검출 조사(빨간
-등받이 교란 의심 — user 동행) ⑥P1-⑤~⑥(알파 피드백 계기·S3 스모크·회사 Eureka).
-**신설: docs/ids.md** — 분석기(M01~M12)·게이트(V01~V05)·제품(P1~P3) 불변 ID(user 제안,
-세부 연구 지칭용). 다음 = **프로젝트 전체 방향성 분석 + 완성 계획 수립**.
+**종합 문장(user 확정): 사이클(누더기→복잡성 폭발→정체→재정리)을 끊는 건 더 좋은
+아키텍처가 아니라 측정 가능성과 경계.** 외부 대화 2건 검토 결과 방법(2-스트림·쿼리
+정합)은 우리 두-레인 ZVMR의 재도출 — 없는 절반은 평가 기판.
+
+**E-트랙 (신설 — 품질 그물; R2=안정성 그물과 쌍):** 세부 = [eval-plan.md](eval-plan.md)
+- **E1 회귀 세트**: 라벨 원형 = **수용 집합(P2)/의도별 수용 구간(P3)** — 쌍대는
+  영역-간 보조로 강등(수용 영역 안 쌍대=동전던지기, user 실증). 두 라벨 패스 분리.
+  씨앗 = 이름 붙은 사건들 + 15코퍼스. portrait 집합-내 = **쿼리-조건부 평평**
+  (0축 결정 유지, 약순위 도입 안 함).
+- **E2 `momentscan why <clip> <frame>`**: 탈락 사유서 — gate_trace(REASONS)·candidates·
+  frame_scores 위 단일 질의 표면 (재료 완비, 표면만 부재).
+- **E4 D4 명문화**: 승격 = R2 green + 회귀 메트릭 비퇴행 + 판정카드 user 확정
+  (= rq 판정기 = ship gate; 합의 후 우산 architecture.md D4로 bead).
+- **E3 ablation 하니스**: 46-dim leave-one-out on 회귀 세트 — dead weight의 기계적
+  퇴출(측정으로 줄인다).
+
+**방법 연구 등록 (착수는 E1 후 — 새 신호는 측정 기판 위에서만):**
+- **MARLIN**(CVPR23, 자기지도 얼굴 영상 인코더) = "감정=궤적 likelihood"의 기판 후보.
+  mdl 등록(ids.md, 라이선스⚠확인 1순위). 첫 실험 = 코퍼스 궤적이 이름 붙은 사건들을
+  우리 46-dim/em_*보다 잘 가르는가. **동결 제약: baseline-편차를 랭킹 성분으로 쓰지
+  말 것**(test_2 기각 — 기준=쿼리, 편차=게이트). 정렬 병목은 우리 설계가 우회
+  (두-레인 언어화가 다리; portrait 쿼리=정준좌표) — MARLIN 초기 직무는 정렬 불요 자리.
+- **VMR 사다리 갱신**: Moment-DETR 구세대. 1단(Qwen2.5-VL grounding 스모크) 유효
+  유지; 후순위에 TRACE(ICLR25)·TimeExpert(ICCV25)·VTG-GPT(tuning-free) 추가;
+  QD-DETR류는 시간 헤드 distill 자리 옵션. **차별점: 문헌은 viewer-reaction, 우리는
+  in-video subject-reaction**(당사자 반응 — 맥락과 반응이 같은 프레임에 공존).
+
+**프로세스**: 트랙-스코프 규율 확정(CLAUDE.md 하드룰) — 세션=한 트랙, 트랙=브랜치,
+착지=머지, stash는 브랜치 안 탐. 본작업 = `track/r0-r2`(R0 안전망→R2 특성화 그물,
+mb-r17m 내부 게이트 겸함) ∥ E1 라벨 스키마 초안(user 검토 체크포인트).
+
+**likeness 미결 원장**(재개 시 입구): ①recipe registry 캘리브레이션 불일치(4키
+가장자리: Brow_Thickness≈0·Mouth_Size≈0.9·Mouse_Corner 하향·Brow_Slant 상향 —
+재캘리 vs 어댑터 보정) ②recipe→MPFB 브리지 착지(scratchpad/mpfb_recipe.py →
+appearance-engine) ③프리뷰 gain(×2.2 근방) ④어댑터 unfilled 채우기(color_identity·
+fashion·samples.hair 방출됨) ⑤test_12 hair 세그 오검출 조사(user 동행)
+⑥P1-⑤~⑥(알파 피드백 계기[→E1과 병합]·S3 스모크·회사 Eureka).
 
 ### (완료 기록) P1-④까지의 트랙 — ③ 동결 완료, P1-④ 실패 모드
 
