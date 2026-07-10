@@ -90,6 +90,8 @@ momentscan = 놀이기구 탑승 영상 1클립 → 세 제품을 뽑는 배치 
 
 ## 6. 작업 항목 (실행 순서)
 
+### ~~R0~~ → **DONE 2026-07-08** (registry 0err · api 19/19 · replay 0drift — 기준값은 R2 테스트로 전환됨)
+
 ### R1 — `--only` 오타를 에러로
 - **위치**: `apps/momentscan/src/momentscan/pipeline.py:182-183`
 - **문제**: 미지 스테이지명이 조용히 필터-아웃 → 아무것도 안 돌고 성공처럼 끝남 (L4).
@@ -108,7 +110,7 @@ momentscan = 놀이기구 탑승 영상 1클립 → 세 제품을 뽑는 배치 
 - **위험/복원**: service.py는 only 미사용(grep으로 확인) → 영향 없음. 실패 시 revert.
 - **의존**: R0.
 
-### R2 — pytest 도입 + 특성화 테스트 + 속성 테스트
+### R2 — pytest 도입 + 특성화 테스트 + 속성 테스트 → **DONE 2026-07-08 (bbc2af9, track/r0-r2 머지)** — 14 green
 - **위치**: 신규 `apps/momentscan/tests/` (`test_characterization.py`,
   `test_canonicalize.py`, `test_verify_wrappers.py`), `pyproject.toml`(dev-deps).
 - **문제**: L2 — 검증이 사람 기억에 의존.
@@ -145,7 +147,7 @@ momentscan = 놀이기구 탑승 영상 1클립 → 세 제품을 뽑는 배치 
   schema 키 존재, report/inspector 렌더 정상(`momentscan report test_3` 비-0 아님).
 - **위험/복원**: 소비자는 dict.get 접근이라 additive 안전. revert 자유. **의존**: R2.
 
-### R5 — artifact-edge freshness (핵심 수리)
+### R5 — artifact-edge freshness (핵심 수리) → **DONE 2026-07-08 (5cf25c5, track/r5-freshness 머지)** — 4/4 기준·순수함수 artifact_stale=R16 SkipPolicy 참조 구현 준비
 - **위치**: `pipeline.py:204-210`(skip 블록) + `freshness.py`(헬퍼 추가).
 - **문제**: L1 — 상류 산출물 갱신이 하류를 stale시키지 못함(사고 3회).
 - **⚠이식성(§6d 대비)**: stale 판정을 **순수 함수**로 작성할 것 —
