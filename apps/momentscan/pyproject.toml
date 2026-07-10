@@ -14,7 +14,6 @@ license = { text = "TBD" }
 dependencies = [
     "numpy",
     "polars",
-    "visualbind",   # Distribution (merge / center / distance) lives in visualstack
     "visualbus",                       # bus, FileSource, VideoFileSink, control plane, structured log
     "visualpath-core",                 # Module/Pipeline runtime (wires FaceDetect onto the bus)
     "visualpath-plugin-face-detect",   # buffalo_l detector (Layer 1, warm)

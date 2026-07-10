@@ -14,7 +14,6 @@ visualbus                         = { path = "../visualstack/visualbus", editabl
 visualpath-core                   = { path = "../visualstack/visualpath/core", editable = true }
 visualpath-isolation              = { path = "../visualstack/visualpath/isolation", editable = true }
 visualpath-stash                  = { path = "../visualstack/visualpath/stash", editable = true }
-visualbind                        = { path = "../visualstack/visualbind", editable = true }
 visualpath-plugin-face-detect     = { path = "../visualstack/plugins/face-detect", editable = true }
 visualpath-plugin-depth           = { path = "../visualstack/plugins/depth", editable = true }
 visualpath-plugin-face-expression = { path = "../visualstack/plugins/face-expression", editable = true }
