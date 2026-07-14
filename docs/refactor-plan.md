@@ -150,7 +150,8 @@ mb-r17m 내부 게이트 겸함) ∥ E1 라벨 스키마 초안(user 검토 체�
 재캘리 vs 어댑터 보정) ②recipe→MPFB 브리지 착지(scratchpad/mpfb_recipe.py →
 appearance-engine) ③프리뷰 gain(×2.2 근방) ④어댑터 unfilled 채우기(color_identity·
 fashion·samples.hair 방출됨) ⑤test_12 hair 세그 오검출 조사(user 동행)
-⑥P1-⑤~⑥(알파 피드백 계기[→E1과 병합]·S3 스모크·회사 Eureka).
+⑥P1-⑤~⑥(알파 피드백 계기[→E1과 병합]·S3 스모크·회사 Eureka)
+⑦**hair/pose_bins 수집의 boarding-phase 선호**(user 2026-07-14, test_3 라벨 중 발견: 활강 전=바람에 헤어 안 망가짐·얼굴 일그러짐 덜함 — samples.pose_bins/hair_match 입력을 pre-ride 프레임 우선으로; phase-conditioned readings의 likeness 적용).
 
 ### (완료 기록) P1-④까지의 트랙 — ③ 동결 완료, P1-④ 실패 모드
 
