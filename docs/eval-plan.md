@@ -34,16 +34,32 @@ portrait 집합-내는 쿼리-조건부 평평(0축 결정) — 집합 안 순�
 ### 패스 B — P3 highlight: 의도별 수용 구간
 
 ```jsonl
-{"pass": "P3", "clip_id": "test_2", "intent": "peak-thrill",
+{"pass": "P3", "clip_id": "test_2", "intent": "serene-glide",
  "intervals": [[41.2, 47.0], [63.5, 66.0]],
- "note": "두 번째 구간은 동승자 교감 — 단독이면 제외?"}
+ "context_tag": "vista-sea",
+ "note": "여유 미소 × 바다·풍력발전기 전경"}
 ```
 
-- `intent` 슬롯 초안 (race981 — **user가 채울 자리**): `peak-thrill`(절정 반응) ·
-  `boarding-smile`(탑승 교감) · `reaction-after`(직후 리액션) — 몇 개가 맞는지,
-  누가 소유하는지(C9)가 열린 질문.
+- `intent` 슬롯 (**확정 2026-07-14, user**): 3종, 소유 = C9 preset(race981) —
+  - `peak-thrill` — 절정 구간의 반응 (비명·환호·집중)
+  - `reaction-after` — 절정 직후 리액션 (웃음 터짐·안도)
+  - `serene-glide` — **느긋한 활강**: 평온·여유 미소 × 경관 시너지. 자기-컨트롤
+    기구의 성향-조건부 탑승 모드(성향별 컨텐츠 분기 축). 구간이 길 수 있고
+    라이더에 따라 0개일 수 있음 — 둘 다 스키마가 자연 수용.
+  - (boarding-smile은 보류 — 소프트 선호, 라벨 축 아님)
+- `context_tag`(선택): 구간의 코스 맥락(예: vista-sea) — miss 진단 시 장면 레인
+  탓 vs 얼굴 레인 탓 분해용.
 - **메트릭**: ①구간 재현율 = 수용 구간 중 시스템 세그와 겹침(IoU≥τ, τ 초안 0.3)
   있는 비율 ②**incident** = 시스템 세그가 전 구간 밖.
+
+**레인 어텐션 (설계 노트, user 2026-07-14 — 연구는 E1 후):** 맥락이 증거 레인
+(main 얼굴·aux 얼굴·배경 경관)의 가중을 동적으로 정한다 — vista가 열리는 순간
+전경 가중↑는 동승자 탑승 시 aux 얼굴 가중↑와 **같은 메커니즘**(트랜스포머 어텐션
+비유; QD-DETR류 query-dependent representation과 수렴). 코스 프로파일(preset)이
+vista 구간을 손-저작(트랙 고정)하고 DTW-by-scene으로 정렬하는 것이 싼 1단.
+**정직 예측**: 현행 WHEN(강렬함·드묾·장면변화)은 thrill-형이라 serene-glide
+구간을 놓칠 것 — 그 갭의 문서화가 E1의 목적이며, 수리 = intent-조건부 WHEN +
+레인 가중.
 
 ### 씨앗 회귀 케이스 (이름 붙은 사건들 — 첫 라벨 대상)
 
@@ -76,7 +92,8 @@ portrait 집합-내는 쿼리-조건부 평평(0축 결정) — 집합 안 순�
 
 ## 열린 질문 (user 결정)
 
-1. P3 intent 슬롯 — 몇 개, 이름, 소유(C9 preset?).
+1. ~~P3 intent 슬롯~~ → **확정 2026-07-14**: peak-thrill·reaction-after·serene-glide
+   3종, 소유=C9 preset (+레인 어텐션 설계 노트, 위).
 2. 마스크/선글라스 착용 컷의 P2 수용 정책 (fashion=ID 원칙과의 상호작용).
 3. P3 IoU τ (초안 0.3).
 4. 라벨 도구 — `surface/label_server.py`(기존 pairwise 서버) 개조 vs 초기엔
