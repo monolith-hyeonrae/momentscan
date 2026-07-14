@@ -23,8 +23,18 @@ portrait 집합-내는 쿼리-조건부 평평(0축 결정) — 집합 안 순�
 ```jsonl
 {"pass": "P2", "clip_id": "test_3", "track_id": 0, "intent": "default",
  "accepted": [401, 597, 638], "rejected": [84], "missed_good": [512],
+ "worn": {"401": [], "597": [], "638": []},
  "note": "f597 side라도 수용 — 표정이 그 사람다움"}
 ```
+
+**착용 정책 (확정 2026-07-14, user)**: 마스크/선글라스 착용 컷은 **수용** —
+"착용 = 그날의 fashion = 그 사람" 원칙의 P2 일관 적용. 프레임별 `worn` 플래그
+기록(예: ["mask"]) — 키오스크/앱이 나중에 다른 정책을 원하면 재라벨 없이 필터.
+**집합-내 선택 힌트 = 그날-identity 정합**(벗은-얼굴 선호 하드코딩 금지):
+혼합 착용 고객이라도 likeness fashion 판독(sunglasses_frac/mask_frac·worn/
+variable)이 그날 identity가 어느 쪽에 가까운지 이미 재고 있음 — frac 높으면
+쓴 컷이 대표성 우세일 수 있음(user: "반드시 쓴 장면이 유리한 건 아니지만" —
+힌트지 규칙 아님, 실전의 어려운 판단 지점이라 판정 카드+user 동행 대상).
 
 - `intent`: 초기엔 `default`("이 사람을 잘 나타내는 한 장") 하나로 시작 —
   의도 다변화는 C9 preset과 함께 (라벨 재사용을 위해 intent 필드는 지금부터).
@@ -94,7 +104,9 @@ vista 구간을 손-저작(트랙 고정)하고 DTW-by-scene으로 정렬하는 
 
 1. ~~P3 intent 슬롯~~ → **확정 2026-07-14**: peak-thrill·reaction-after·serene-glide
    3종, 소유=C9 preset (+레인 어텐션 설계 노트, 위).
-2. 마스크/선글라스 착용 컷의 P2 수용 정책 (fashion=ID 원칙과의 상호작용).
+2. ~~마스크/선글라스 착용 컷의 P2 수용 정책~~ → **확정 2026-07-14**: 수용 +
+   `worn` 플래그; 선택 힌트 = 그날-identity 정합(likeness fashion frac 구독,
+   벗은-얼굴 선호 하드코딩 금지).
 3. P3 IoU τ (초안 0.3).
 4. 라벨 도구 — `surface/label_server.py`(기존 pairwise 서버) 개조 vs 초기엔
    판정 카드+수기(jsonl 직접 기입)로 시작.
