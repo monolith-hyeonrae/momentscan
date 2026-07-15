@@ -16,7 +16,7 @@ from pathlib import Path
 
 from momentscan import analyzers
 from momentscan.verify import freshness
-from momentscan.stash import clip_dir, provenance_path, write_provenance, write_run
+from momentscan.stash import clip_dir, provenance_path, write_manifest, write_provenance, write_run
 
 log = logging.getLogger("momentscan.pipeline")
 
@@ -155,6 +155,13 @@ def _upstream_probes(name: str) -> tuple[str, ...]:
 assert set(freshness.STAGE_MODULE) == set(RUNNERS), (
     "freshness.STAGE_MODULE ⇄ RUNNERS drift: "
     f"{set(freshness.STAGE_MODULE) ^ set(RUNNERS)}")
+# ...and every declared module path must RESOLVE. A dangling path (typo, file
+# move) makes _origin()→None → source_mtime 0.0 → is_stale 항상 False — freshness가
+# 에러 없이 실명하는 최악의 무증상 모드 (2026-07-15 구조 감사 D1). 이동/개명은
+# 여기서 시끄럽게 죽는다.
+_dangling = {s: m for s, m in freshness.STAGE_MODULE.items()
+             if freshness._origin(m) is None}
+assert not _dangling, f"freshness.STAGE_MODULE에 해석 불가 모듈 경로: {_dangling}"
 
 
 def _stage_health(name: str, r) -> str:
@@ -184,7 +191,7 @@ def run_pipeline(out_root, clip_id: str, *, source=None, fps: int = 6,
         write_job(out_root, clip_id, {"clip_id": clip_id, "subject_query": subject_query,
                                       "fps": fps, "source": str(source) if source else None})
     _t_start, _started_unix = time.perf_counter(), round(time.time(), 3)
-    _started_iso = datetime.datetime.now().isoformat(timespec="seconds")
+    _started_iso = datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds")
     # provenance — what source produced these artifacts, when, with what fps. The
     # Storage port's audit/idempotency seam (source media expires; this is durable).
     # Per-clip only; nothing accumulates across visits. Written once, when a source
@@ -192,7 +199,7 @@ def run_pipeline(out_root, clip_id: str, *, source=None, fps: int = 6,
     if source and not provenance_path(out_root, clip_id).exists():
         rec = {"clip_id": clip_id, "source_uri": str(source), "fps": fps,
                "processed_at_unix": round(time.time(), 3),
-               "processed_at_iso": datetime.datetime.now().isoformat(timespec="seconds")}
+               "processed_at_iso": datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds")}
         _src = Path(source)
         if _src.exists():
             _st = _src.stat()
@@ -288,4 +295,8 @@ def run_pipeline(out_root, clip_id: str, *, source=None, fps: int = 6,
         "stages": [_outcome[a.name] for a in order if a.name in _outcome],
         "n_ran": len(result["ran"]), "n_skipped": len(result["skipped"]), "n_failed": len(result["failed"]),
     })
+    # R12 — 산출물 tier 지도. report·운영이 "이 파일은 무엇인가"를 선언으로 답한다.
+    write_manifest(out_root, clip_id, {
+        "schema": "momentscan.manifest/v0",
+        "tiers": analyzers.classify_clip_files(cdir)})
     return result

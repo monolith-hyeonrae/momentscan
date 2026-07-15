@@ -1,5 +1,5 @@
 """Unit analyzers — one canonical home per primitive signal so selection
-(portrait.py), the inspector (viz.py) and future consumers share the SAME
+(portrait.py), the inspector (surface/inspector.py) and future consumers share the SAME
 computation, never a drifting re-implementation. Each is a pure function over an
 ALREADY-EXTRACTED stream (MediaPipe blendshapes/transform · ArcFace embeddings ·
 the crop track); the model that produced the stream lives upstream. This is the

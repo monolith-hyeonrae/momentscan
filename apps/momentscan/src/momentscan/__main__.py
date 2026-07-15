@@ -398,6 +398,7 @@ def _cmd_cascade(args: argparse.Namespace) -> int:
             "input": {"source": "video → frames", "weights": sorted({a.model for a in stages})},
             "intermediate": {a.name: a.artifact for a in stages} | {"gate": "gate_trace.parquet"},
             "final": {p.name: list(p.egress) for p in A.PRODUCTS},
+            "tiers": A.ARTIFACT_TIERS,          # R12 — 산출물→tier (manifest.json과 동일 근거)
         }, ensure_ascii=False, indent=2))
         return 0
 
@@ -406,14 +407,14 @@ def _cmd_cascade(args: argparse.Namespace) -> int:
     print(f"  {'source video':<13} → frames           (FileSource, decode @ fps)")
     print(f"  {'frozen weights':<13}   per-stage models   (see `momentscan map analyzers`; tracked by freshness)")
 
-    print("\n① FEATURE EXTRACTION   (intermediate — stays in the stash)")
+    print("\n① FEATURE EXTRACTION   (intermediate — stays in the stash · tier=substrate)")
     for a in stages:
         print(f"  {a.name:<12} → {a.artifact:<22} ({a.model})")
 
-    print("\n② GATE   (intermediate — the decision trace)")
+    print("\n② GATE   (intermediate — the decision trace · tier=substrate)")
     print(f"  {'portrait':<12} → {'gate_trace.parquet':<22} (gates.evaluate ladder · T0 valid · T1 sharp · T2 view)")
 
-    print("\n③ PRODUCT   (FINAL — crosses the boundary outward · S3-out / Result)")
+    print("\n③ PRODUCT   (FINAL — crosses the boundary outward · S3-out / Result · tier=product)")
     for p in A.PRODUCTS:
         fin = ", ".join(p.egress) if p.egress else "(none wired)"
         inter = [o for o in p.outputs if o not in p.egress]
@@ -421,6 +422,10 @@ def _cmd_cascade(args: argparse.Namespace) -> int:
         print(f"  {p.name:<12} → {fin}{flag}")
         if inter:
             print(f"  {'':<12}   (intermediate: {', '.join(inter)})")
+    print("\n④ RUN RECORDS & RENDERS   (경계 밖으로 안 나감 — tier=ops/surface)")
+    _extras = sorted((f, t) for f, t in A.EXTRA_ARTIFACT_TIERS.items() if t in ("ops", "surface"))
+    for _f, _t in _extras:
+        print(f"  {_t:<12} · {_f}")
     print("\n  producer detail → `momentscan map analyzers`   ·   vertical read-map → `momentscan map products`")
     return 0
 
