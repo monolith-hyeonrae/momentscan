@@ -205,3 +205,10 @@ label_server) → T4 store/(stash·ports·media·telemetry — INFRA parts[1] �
 이월 가능) → **likeness 트랙**(L-A 코드단독: ②브리지→④어댑터→⑦phase→①캘리
 양안 / L-B user-동행 판정 세션 / L-C 외부 대기) → fold-signals·fold-pixel·
 fold-serve(likeness 후).
+
+**T1 serve/ 착지 (2026-07-15)**: service·company·eureka·daemon → `serve/`
+(외부 접점 항구, visualserve 졸업석 이름 정렬). 갱신=임포트 5파일(+테스트
+mock.patch 문자열), `_openapi_path`=parents 순회라 깊이-불변 확인. **결정:
+로거 이름은 구 경로 유지**(momentscan.service 등 — 관측 정체성은 물리 배치와
+독립, Loki 라벨 연속성). 검증=pytest 38·api 19·registry 0err·replay 0drift·
+라이브 기동/해지 스모크(:18099)·ruff 75 불변.

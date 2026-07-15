@@ -39,7 +39,7 @@ def _req(method: str, url: str, body: dict | None = None):
 def run_apicheck(*, keep: bool = False) -> int:
     """전 계약 항목을 검증하고 0(통과)/1(실패)을 반환. 실패는 첫 항목에서 멈춤."""
     import momentscan.pipeline as pipeline
-    from momentscan.service import JobRunner, build_server
+    from momentscan.serve.service import JobRunner, build_server
     from momentscan.stash import clip_dir
 
     tmp = Path(tempfile.mkdtemp(prefix="momentscan-apicheck-"))
