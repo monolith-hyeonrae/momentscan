@@ -47,7 +47,7 @@ STAGE_MODULE = {
     "parse":      "momentscan.extraction.parse",
     "fashion":    "momentscan.extraction.fashion",
     "headpose6d": "momentscan.extraction.headpose",
-    "emotion":    "momentscan.domains.emotion",
+    "emotion":    "momentscan.readings.emotion",
     "portrait":   "momentscan.products.portrait",
     "likeness":   "momentscan.products.likeness",
     "select":     "momentscan.products.select",
@@ -156,8 +156,8 @@ def _external_deps() -> dict[str, tuple[Path, ...]]:
     except Exception:
         pass
     try:
-        from momentscan.domains.geometry import CANONICAL_OBJ            # MediaPipe canonical mesh
-        deps["momentscan.domains.geometry"] = (Path(CANONICAL_OBJ),)
+        from momentscan.readings.geometry import CANONICAL_OBJ            # MediaPipe canonical mesh
+        deps["momentscan.readings.geometry"] = (Path(CANONICAL_OBJ),)
     except Exception:
         pass
     return deps

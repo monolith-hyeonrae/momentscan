@@ -15,7 +15,7 @@ import cv2
 import polars as pl
 
 from momentscan import gates
-from momentscan.domains import geometry, pose, signals
+from momentscan.readings import geometry, pose, signals
 from momentscan.surface._inspector_html import _TUBELET_INSPECT_HTML
 from momentscan.stash import (
     read_candidates, read_detections, read_gate_trace, read_headpose,
@@ -382,7 +382,7 @@ def render_tubelet_inspect(out_root: str | Path, clip_id: str, *,
                         _f = int(_r["frame_idx"])
                         ev[_f] = _r["valence"]; ec[_f] = _r["em_conf"]; ea[_f] = _r["arousal"]
             else:
-                from momentscan.domains.emotion import reading as _emo_reading
+                from momentscan.readings.emotion import reading as _emo_reading
                 efx, er, emo_base = _emo_reading(out_root, clip_id, int(sid))
                 ev = {int(f): er["valence_signed"][i] for i, f in enumerate(efx)}
                 ec = {int(f): er["em_conf"][i] for i, f in enumerate(efx)}
