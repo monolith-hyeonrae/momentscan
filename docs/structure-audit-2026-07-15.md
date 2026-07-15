@@ -166,3 +166,17 @@ label_server 재결합 — E1=1급 연구 자산이 트리에 가시화, E1 재�
 · graph→engine/ 약한 선호 · verify/ 잔류=가드 3종(이름=내용). CLI 표면 불변.
 지뢰: 소비자 ~11곳 전부 평범 임포트, STAGE_MODULE은 freshness가 담는 쪽이라
 자기 이동 무해 — assert 확장 후 tranche 편입.
+
+**#5 __main__ 비대·clean-code 규칙 부재 (접수·처분안)**: 해부 = 761 LOC 중
+main() 파서 조립 모놀리스 198줄 + 핸들러 23개(대부분 7~30줄로 얇음; 비대는
+_cmd_run 64·_cmd_serve 46·_cmd_status 44·_cmd_cascade 42). 진단 — 함수 품질
+문제가 아니라 "23핸들러+198줄 조립이 한 파일"의 물리 뭉침; CLI 가족(run/서버/
+verify/지도/표면)이 help엔 있는데 파일엔 안 비침(접수 #1 동일 병리). 처분:
+**cli/ 패키지 분할** — 가족별 모듈이 자기 subparser 등록+핸들러 소유,
+__main__=3줄 재수출(entry point "momentscan.__main__:main" 문자열 불변 = 지뢰
+0), main()=조립 뼈대 ~40줄. 이동 tranche 편입(leaf라 지뢰 최소, subprocess
+테스트가 CLI명 기반이라 무해). **clean-code 규칙: 성문화 0이 사실**(스타일
+문서 없음·ruff 미설치 — R9 미착지). 암묵 하우스 스타일은 강함(모듈 독스트링=
+계약·정직한 실패·구조화 로그·선언=단일 권위·stdlib 우선·책임 명명) — 처분:
+docs/code-style.md로 관측된 규칙 성문화(도그마 수입 아님) + R9 ruff 착지
+(검사만·baseline·신규 위반만) + pytest 래퍼. → struct-s1 동승.
