@@ -30,7 +30,7 @@ from visualbus import FileSource
 from visualbus.structured_log import log_context
 from visualbus.timestamp import ns_to_seconds
 
-from momentscan.stash import read_attribution, read_detections, write_tubelets
+from momentscan.store.stash import read_attribution, read_detections, write_tubelets
 
 log = logging.getLogger("momentscan.tubelets")
 

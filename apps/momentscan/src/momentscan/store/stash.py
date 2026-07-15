@@ -25,7 +25,7 @@ from pathlib import Path
 
 import polars as pl
 
-from momentscan.telemetry import CandidateLog
+from momentscan.store.telemetry import CandidateLog
 
 # ── tubelets.parquet — one row per (track_id, frame) ─────────────────────────
 # Step 0 output. Bystanders / staff are dropped; only rider tracks are written.

@@ -30,7 +30,7 @@ from pathlib import Path
 import cv2
 import numpy as np
 
-from momentscan.stash import clip_dir, write_headpose
+from momentscan.store.stash import clip_dir, write_headpose
 
 log = logging.getLogger("momentscan.headpose")
 

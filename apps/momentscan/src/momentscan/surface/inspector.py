@@ -17,7 +17,7 @@ import polars as pl
 from momentscan import gates
 from momentscan.readings import geometry, pose, signals
 from momentscan.surface._inspector_html import _TUBELET_INSPECT_HTML
-from momentscan.stash import (
+from momentscan.store.stash import (
     read_candidates, read_detections, read_gate_trace, read_headpose,
     read_landmarks, read_parse, read_portrait, read_scene, read_stitch,
     read_tubelets,
@@ -72,7 +72,7 @@ def _mesh_topology():
 def _transcode_h264(src, dst, *, fps=None):
     """detect.mp4 is mpeg4 (browsers can't play it) → H.264 all-intra, browser-
     aligned (zero_pts) + cached. Recipe single home: media.transcode_h264."""
-    from momentscan.media import transcode_h264
+    from momentscan.extraction.media import transcode_h264
     return transcode_h264(src, dst, fps=fps, zero_pts=True, cached=True)
 
 
@@ -192,7 +192,7 @@ def render_tubelet_inspect(out_root: str | Path, clip_id: str, *,
         cand_by_sub.setdefault(c["track_id"], []).append(c)
     # highlight도 portrait처럼 자기 산출물이 authoritative (2026-07-03 졸업):
     # 합동 세그먼트는 highlight.json에서 읽고 main_track 주체에 귀속시킨다.
-    from momentscan.stash import read_highlight
+    from momentscan.store.stash import read_highlight
     hl_rec = read_highlight(Path(out_root), clip_id) or {}
     # portrait OUTPUTS come from portrait.json (the authoritative deliverable record),
     # NOT candidates: portrait "moved out" of select (select.py), and select truncates
@@ -200,12 +200,12 @@ def render_tubelet_inspect(out_root: str | Path, clip_id: str, *,
     # json always reflects the PNGs actually extracted from the crop track.
     portrait_riders = (read_portrait(out_root, clip_id) or {}).get("riders", {})
     from momentscan.products.portrait import MIN_ADMIT          # threshold, for the "why empty" readout
-    from momentscan.stash import read_appearance
+    from momentscan.store.stash import read_appearance
     likeness_riders = (read_appearance(out_root, clip_id) or {}).get("riders", {})   # ③ likeness reading (how identity was read)
     # highlight-lang (optional stage): the generated NL description + its LLM-judge match to the
     # attraction expectation, per analyzed candidate frame. Absent if the stage was not run.
     import json as _json
-    from momentscan.stash import clip_dir as _clip_dir
+    from momentscan.store.stash import clip_dir as _clip_dir
     _hlp = _clip_dir(Path(out_root), clip_id) / "highlight_lang.json"
     hl_lang = _json.loads(_hlp.read_text(encoding="utf-8")) if _hlp.exists() else None
     # the QUERY CRITERION each product was selected AGAINST (what we were looking for) —
@@ -366,7 +366,7 @@ def render_tubelet_inspect(out_root: str | Path, clip_id: str, *,
         # person's baseline p50 is in the readout. Needs features + emotion.json.
         emo_base = {}
         try:
-            from momentscan.stash import read_emotion, read_emotion_frame
+            from momentscan.store.stash import read_emotion, read_emotion_frame
             # OBSERVABILITY: the per-frame valence is now PERSISTED (emotion_frame.parquet),
             # so the inspector READS it instead of re-deriving — the gate_trace pattern on a
             # live channel. Byte-identical: the persisted floats are full-precision and ch()
@@ -536,7 +536,7 @@ def render_tubelet_inspect(out_root: str | Path, clip_id: str, *,
     # observability readout — the per-run trace (run.json) + provenance + which inspector
     # channels are now READ from a persisted trace (the session's observability seam,
     # made visible). Clip-level; rendered in the source-note bar.
-    from momentscan.stash import clip_dir, read_emotion_frame, read_provenance, read_run
+    from momentscan.store.stash import clip_dir, read_emotion_frame, read_provenance, read_run
     _run = read_run(out_root, clip_id) or {}
     _prov = read_provenance(out_root, clip_id) or {}
     obs = {"ran": _run.get("n_ran"), "skipped": _run.get("n_skipped"), "failed": _run.get("n_failed"),
