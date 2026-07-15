@@ -462,8 +462,19 @@ def serve_http(out_root: str, *, port: int = 8080, fps: int = 6,
 
     eureka = None
     if eureka_url:                                      # 등록은 서버가 실제로 열린 뒤
-        from momentscan.eureka import EurekaClient
-        eureka = EurekaClient(eureka_url, app_name, port=port, host=advertise_host)
+        from momentscan.eureka import EurekaClient, TokenProvider
+        # 회사 Eureka는 JWT 필수(2026-07-15 실측: 등록도 401) — 자격은 env로만
+        # (ps/CLI-인자 노출 방지; 회사 패턴과 동일). 셋 다 있으면 Bearer 부착.
+        tok_uri = os.environ.get("EUREKA_TOKEN_URI", "")
+        cid = os.environ.get("EUREKA_CLIENT_ID", "")
+        sec = os.environ.get("EUREKA_CLIENT_SECRET", "")
+        tp = None
+        if tok_uri and cid and sec:
+            tp = TokenProvider(tok_uri, cid, sec,
+                               scope=os.environ.get("EUREKA_TOKEN_SCOPE", "api.write api.read"))
+            log.info("eureka.auth", extra={"token_uri": tok_uri})
+        eureka = EurekaClient(eureka_url, app_name, port=port, host=advertise_host,
+                              token_provider=tp)
         eureka.start()
 
     # 런타임 레코드 — 데몬의 daemon.sock 관례와 나란한 로컬 발견 지점:
