@@ -11,8 +11,8 @@ import threading
 import pytest
 
 import momentscan.pipeline as pipeline
-from momentscan.company import BUSY, GROUP, OK, CompanyShim, resolve_source
-from momentscan.service import JobRunner, build_server
+from momentscan.serve.company import BUSY, GROUP, OK, CompanyShim, resolve_source
+from momentscan.serve.service import JobRunner, build_server
 from momentscan.stash import clip_dir, write_result
 
 
