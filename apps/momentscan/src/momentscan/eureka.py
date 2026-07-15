@@ -21,17 +21,60 @@ stdlib-only(urllib) — py-eureka-client 같은 의존성 대신 위 4개 HTTP �
 
 from __future__ import annotations
 
+import base64
 import json
 import logging
 import socket
 import threading
+import time
 import urllib.error
+import urllib.parse
 import urllib.request
 
 log = logging.getLogger("momentscan.eureka")
 
 RENEWAL_S = 30          # Spring Cloud 기본 heartbeat 주기
 DURATION_S = 90         # 이만큼 heartbeat 없으면 축출 (기본값)
+TOKEN_MARGIN_S = 60     # 만료 이 초 전부터는 새 토큰 (경계 레이스 방지)
+
+
+class TokenProvider:
+    """OAuth2 client_credentials 토큰 발급·캐시 (회사 Eureka가 JWT를 요구 — 2026-07-15
+    실측: control 내장 Eureka는 anyRequest().authenticated(), 등록도 401).
+
+    stdlib-only. 실패는 None 반환 + 경고 로그(정직한 열화 — 호출은 무인증으로 나가고
+    401이 기록됨). 스레드-안전(heartbeat 스레드와 공유)."""
+
+    def __init__(self, token_uri: str, client_id: str, client_secret: str,
+                 scope: str = "api.write api.read"):
+        self.token_uri = token_uri
+        self._basic = base64.b64encode(f"{client_id}:{client_secret}".encode()).decode()
+        self.scope = scope
+        self._lock = threading.Lock()
+        self._token: str | None = None
+        self._expires_at = 0.0
+
+    def token(self, force_refresh: bool = False) -> str | None:
+        with self._lock:
+            if (not force_refresh and self._token
+                    and time.monotonic() < self._expires_at - TOKEN_MARGIN_S):
+                return self._token
+            try:
+                data = urllib.parse.urlencode(
+                    {"grant_type": "client_credentials", "scope": self.scope}).encode()
+                req = urllib.request.Request(
+                    self.token_uri, data=data, method="POST",
+                    headers={"Authorization": "Basic " + self._basic,
+                             "Content-Type": "application/x-www-form-urlencoded"})
+                with urllib.request.urlopen(req, timeout=15) as r:
+                    body = json.loads(r.read())
+                self._token = body["access_token"]
+                self._expires_at = time.monotonic() + float(body.get("expires_in", 300))
+                log.info("eureka.token", extra={"expires_in": body.get("expires_in")})
+            except Exception as e:
+                log.warning("eureka.token.fail", extra={"error": str(e)})
+                self._token = None
+            return self._token
 
 
 def _local_ip() -> str:
@@ -51,7 +94,9 @@ class EurekaClient:
 
     def __init__(self, server_url: str, app: str, *, port: int,
                  host: str | None = None, health_path: str = "/health",
-                 status_path: str = "/info"):
+                 status_path: str = "/info",
+                 token_provider: TokenProvider | None = None):
+        self.token_provider = token_provider
         self.server = server_url.rstrip("/")            # 예: http://eureka:8761/eureka
         self.app = app.upper()                          # Eureka는 앱 이름을 대문자로 정규화
         self.ip = host or _local_ip()
@@ -65,16 +110,28 @@ class EurekaClient:
         self._thread: threading.Thread | None = None
 
     # ── 4개의 HTTP 호출 ────────────────────────────────────────────────────
-    def _call(self, method: str, path: str, body: dict | None = None) -> int:
+    def _do(self, method: str, path: str, body: dict | None, token: str | None) -> int:
+        headers = {"Content-Type": "application/json", "Accept": "application/json"}
+        if token:
+            headers["Authorization"] = f"Bearer {token}"
         req = urllib.request.Request(
             self.server + path, method=method,
             data=json.dumps(body).encode("utf-8") if body is not None else None,
-            headers={"Content-Type": "application/json", "Accept": "application/json"})
+            headers=headers)
         try:
             with urllib.request.urlopen(req, timeout=10) as r:
                 return r.status
         except urllib.error.HTTPError as e:
             return e.code
+
+    def _call(self, method: str, path: str, body: dict | None = None) -> int:
+        tok = self.token_provider.token() if self.token_provider else None
+        code = self._do(method, path, body, tok)
+        if code == 401 and self.token_provider:
+            # 만료/회수 레이스 — 강제 갱신 후 1회 재시도 (재귀 없음)
+            tok = self.token_provider.token(force_refresh=True)
+            code = self._do(method, path, body, tok)
+        return code
 
     def register(self) -> bool:
         payload = {"instance": {
