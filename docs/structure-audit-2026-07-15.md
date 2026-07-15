@@ -235,3 +235,15 @@ gates`)가 일괄 치환에 걸려 gates까지 끌려감 — pytest가 즉시 �
 최상위 재수출(momentscan.Tubelet 등)로 plugins 소비 불변, plugins 내부 stash
 임포트도 갱신(29파일). 검증=pytest 39·registry 0err·api 19·replay 0drift·
 plugin import 스모크.
+
+**T5 cli/ 착지 (2026-07-15, 위임 에이전트 실행)**: __main__ 767→5줄 스텁
+(entry point 문자열 불변), cli/ 가족 5모듈(run 100·server 239·verify 121·
+maps 174·surfaces 116)+조립 __init__ 67. ingest→extraction/ (소비자 1건).
+순수 이동 — 핸들러/파서 로직 무변경, --help 동사 집합·서브그룹·help 문자열
+동일(최상위 순서만 가족순 재정렬 — 수용). 검증=pytest 39·api 19·registry
+0err·replay 0drift·ruff 75 불변·cascade/graph/status 스모크.
+
+**이동 tranche 전체 완료 (T1~T5)** — 최종 트리: serve/·engine/·store/·
+readings/·evals/·cli/·verify/(가드만)·extraction/(+media·ingest)·subjects/·
+products/·surface/ + __main__ 스텁. 루트 평면 파일 14→1(스텁). 다음=struct-s2
+(R10 gates 독립→R11 --product closure) → likeness 트랙.
