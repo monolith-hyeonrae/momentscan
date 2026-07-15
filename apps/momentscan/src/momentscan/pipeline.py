@@ -71,7 +71,7 @@ def _headpose(out, clip, src, fps):
 
 
 def _emotion(out, clip, src, fps):
-    from momentscan.domains.emotion import extract_emotion
+    from momentscan.readings.emotion import extract_emotion
     return extract_emotion(out, clip, fps=fps)
 
 

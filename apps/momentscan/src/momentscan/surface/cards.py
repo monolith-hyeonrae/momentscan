@@ -763,7 +763,7 @@ def render_appearance_card(out_root: str | Path, clip_id: str, *,
     """
     import numpy as np
 
-    from momentscan.domains.geometry import canonicalize, norm468, template
+    from momentscan.readings.geometry import canonicalize, norm468, template
     from momentscan_features_specialist45d.registry import INDEX
 
     from mediapipe.tasks.python.vision.face_landmarker import (

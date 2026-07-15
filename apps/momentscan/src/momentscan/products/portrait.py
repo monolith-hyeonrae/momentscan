@@ -29,10 +29,10 @@ import numpy as np
 import polars as pl
 
 from momentscan import gates
-from momentscan.domains import signals
-from momentscan.domains.emotion import EM_ALL as EM, fused_valence
+from momentscan.readings import signals
+from momentscan.readings.emotion import EM_ALL as EM, fused_valence
 from momentscan.gates import BLINK_MAX
-from momentscan.domains.pose import FRONTAL_DEG, POSE_MAX_DEG, SIDE_DEG, euler_from_transform, fuse_pose
+from momentscan.readings.pose import FRONTAL_DEG, POSE_MAX_DEG, SIDE_DEG, euler_from_transform, fuse_pose
 from momentscan.stash import (
     append_candidate, candidates_path, clip_dir, read_candidates,
     read_features, read_headpose, read_landmarks, read_parse, read_tubelets,

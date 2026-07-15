@@ -212,3 +212,9 @@ mock.patch 문자열), `_openapi_path`=parents 순회라 깊이-불변 확인. *
 로거 이름은 구 경로 유지**(momentscan.service 등 — 관측 정체성은 물리 배치와
 독립, Loki 라벨 연속성). 검증=pytest 38·api 19·registry 0err·replay 0drift·
 라이브 기동/해지 스모크(:18099)·ruff 75 불변.
+
+**T2 readings/ 착지 (2026-07-15)**: domains/ → `readings/` 개명 (접수 #2 —
+C1 domain_profile과 의미 충돌 해소, anchor×reading 문법 정렬). freshness 문자열
+2곳(emotion 매핑·geometry 외부모델 키)이 정확히 D1 assert의 보호 대상이었고
+일괄 갱신, 소비자 11파일. 검증=pytest 38·registry 0err·api 19·replay 0drift·
+map frame 스모크.
