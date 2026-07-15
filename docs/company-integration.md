@@ -82,6 +82,20 @@ Eureka 프로토콜은 표준이라 vanilla로 동등.)
   라이브 e2e = 실물 control 상대 전 수명주기 PASS.
 - 부산물: control 빈 체인에 **VideoTrackcamService** 존재 — 트랙캠이 이 시스템
   가족에 이미 있음(visualstack 로드맵 4단의 소비자 맥락).
+- **video-process 워커 실기동(같은 날)**: loc + `spring.datasource.read/write.*`
+  로컬 MySQL 오버라이드(jdbc-url은 라이브러리 sgp-mommos-support의
+  DataSourceConfigSupport가 바인딩 — loc yml엔 아예 없음) + ffmpeg 경로
+  교체(loc 기본이 macOS homebrew 경로)로 부팅, **내장 Eureka에 정상 등록** —
+  eureka-ui에 momentscan과 나란히 표시. 워커의 JWT 부착 =
+  `RestTemplateDiscoveryClientOptionalArgs` + `HeaderHttpRequestInterceptor`
+  (OAuth2AuthorizedClientManager→setBearerAuth) — 우리 TokenProvider와 동형.
+- **등록 페이로드 비교(실측)**: instanceId(ip:app:port)·lease 30/90·MyOwn·vip
+  전부 우리와 일치. 차이 2: ①healthCheckUrl=`/actuator/health`(우리 `/health` —
+  alias 후보 재확인) ②**metadata `service-available-status` = 진행중 잡 수**
+  (워커 EurekaMetaService가 잡 시작/종료마다 증감, control EurekaClientService가
+  `processCount`로 읽어 디스패치 판단) — **디스패치가 Eureka 메타데이터 위의
+  부하 신호 관례**임을 확인. momentscan이 디스패치 대상이 되면 같은 키 방출
+  필요(또는 C1 202+poll 합의) → 질문 4의 실측 세부.
 
 ## 회사에 남은 질문 (갱신 2026-07-15)
 
