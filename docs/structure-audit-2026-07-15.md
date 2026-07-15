@@ -116,3 +116,25 @@
 10. **⑥ 알파 피드백 계기 설계** — user 협의, E1(수용집합/의도별 구간 라벨 원형)과 병합. E1 재개 블록(test_3 P2 카드 판정)과 같은 세션으로 묶는 것이 효율적.
 
 **요약 한 줄**: 물리 재배치는 하지 않는다(졸업 예정 모듈=이중 이동, 안전망=경로 회귀에 사각). 대신 assert 확장으로 지뢰를 제거하고, R12(선언)·R10(gate 독립)·R11(product closure)로 likeness 반복 루프의 실측 비용 두 개를 걷어낸 뒤, 브리지 재구성→어댑터→phase 조건화→캘리 순의 코드-단독 작업으로 프리뷰 사슬을 복구하고 user-동행 판정을 한 세션에 몰아 likeness를 닫는다.
+---
+
+## 6) 접수 — user 구조 불만 (2026-07-15, 하나씩 수집 중)
+
+**#1 루트 평면 나열 (접수·설계 합의)**: 루트 14파일·3,918 LOC에 다섯 성질
+(외부접점 1,015 / 실행기계 611 / 저장 798 / 게이트 537 / 관문 940)이 무경계
+나열 — eureka 같은 외부-시스템 접점이 "기능 중 하나"처럼 보임. **판정 갱신**:
+소유자 우선순위에 ls 정직성이 명시됨 → 물리 재배치 기각을 철회하고
+"루트=경계 패키지만"으로. 목표 트리: `serve/`(service·company·eureka·daemon)
+· `engine/`(pipeline·analyzers) · `store/`(stash·ports·media·telemetry) ·
+ingest→extraction/ · 루트 잔류=__main__. 이름을 visualstack 졸업석
+(visualserve/visualpath/visualstash)과 정렬 = 이중-이동이 아니라 졸업 리허설.
+순서: assert 확장 선행 → serve/ tranche(STAGE_MODULE 무관, 최저 지뢰) →
+store/·engine/(STAGE_MODULE 13문자열 + INFRA parts[1] 매칭 가드 핀 후).
+
+**#2 domains/ 이름 모호 (접수·개명안)**: 실체=신호 해석 정책 단일 홈
+(emotion 융합 valence·geometry 정준 프레임·pose 융합/임계·signals 단위 함수;
+멤버십="한 값이 세 제품을 함께 바꾸는가"). 이중 결함 — 이름이 자기 설명을
+못 해 독스트링이 해명 + C1 `domain_profile`(어트랙션 도메인, C9)과 의미 충돌
+= 오독 유도. **개명 권고: `readings/`**(프로젝트 문법 anchor×reading과 일치;
+차선=signals/는 내부 signals.py와 한 겹 더). 지뢰: freshness.py:50·:160 문자열
+2곳 + 임포트 ~10곳 — assert 확장 후 tranche 편입.
