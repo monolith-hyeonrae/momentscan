@@ -167,6 +167,17 @@ vista 구간을 손-저작(트랙 고정)하고 DTW-by-scene으로 정렬하는 
 **+ incident 1** (능동학습 판정 후): 기계 seg1 pk 20.0s ∈ 명시-거부 [20,21]
 (궤적-맥락 상이 — 코드북 §6) = 정제된 incident 정의의 첫 발화.
 
+**⏸ E1 일시 중단 — 재개 지점 (2026-07-15, user: Eureka 연동 우선):**
+- **열려 있는 판정**: test_3 P2 — admit 10장 카드 대기
+  (`eval/cards/test_3_p2_admitted.png`; 클러스터 5개: f273-274·f358-359·f366-367·
+  f375-377·f401[REP]) + 측면 픽 f597(side)·f638(right) + missed_good(P3 zoom 카드
+  3장 재활용, pre-ride 후보 포함).
+- **잔여**: test_2 P2 패스 → dual_1(빈 수용집합) → mask_1/2(worn 실전) →
+  재라벨 안정성 프로브(2클립).
+- **라벨 현황**: accept_labels.jsonl 11행(P3 수용 7·거부 1·명시-0 2·P2 1점) ·
+  측정 2건(test_2 2/5+incident1 · test_3 1/2) · 코드북 10문장 · intent v2.
+- E1 완료 후 1순위 연구 = energy 재편(track/ 브랜치, 라벨이 과녁·성공기준 제공).
+
 **둘째 측정 (test_3, 2026-07-14)**: 재현율 **1/2** · incident 0 — HIT peak-thrill
 [93.5,101](기계 pk 100.0 driver=rarity, 단 창 [98.2,101.2]가 **2상[환호]에만 얹혀
 1상[93.5~98 전환·환해짐]을 놓침** — 가변 창 3~10s + onset-정렬의 구체적 첫 근거,
