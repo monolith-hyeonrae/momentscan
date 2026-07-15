@@ -138,3 +138,21 @@ store/·engine/(STAGE_MODULE 13문자열 + INFRA parts[1] 매칭 가드 핀 후)
 = 오독 유도. **개명 권고: `readings/`**(프로젝트 문법 anchor×reading과 일치;
 차선=signals/는 내부 signals.py와 한 겹 더). 지뢰: freshness.py:50·:160 문자열
 2곳 + 임포트 ~10곳 — assert 확장 후 tranche 편입.
+
+**#3 공통부/미니도구 검토 (접수·처분 완료 — commons-audit 워크플로 3렌즈)**:
+openpilot tools/ 영감(조직-범용 도구 보유 여부). **실측 판정**: ①미니도구
+분리 = 공집합 — 레포-간 중복 0(appearance-engine 임포트 0건), 현존 제2소비자는
+plugins→stash(visualstash 졸업석)뿐, eureka/company의 확실한-미래 소비자
+(momentgen 디스패치)는 미니도구가 아니라 visualserve 졸업 게이트의 조기 트리거.
+조직 공구함의 자리 = momentscan 내부가 아니라 visualstack 자체(Rails 비전).
+②대신 **레포 내 중복 17군집 실측**(순 −350 LOC): stash JSON/parquet 12+9쌍 →
+artifact registry 테이블화 · stash 우회 직접읽기 14곳(S3 포트 스왑 누수) ·
+L2/코사인 11곳 재구현 · bbox 크롭 5곳(배율 5종 산개) · parse≡headpose 문자동일
+루프 · ImageNet 상수 3중복 · cards 렌더 프리미티브 5중복 · eureka≡company
+401 재시도 2벌 · **pipeline.py:187,195 naive 타임스탬프 실버그**. 신설 모듈은
+extraction/preprocess.py·surface/canvas.py 2개뿐(소비자 3+ 실존), utils/common
+서랍 금지 유지. ③과잉-작업 경계: 2곳-중복은 홈 신설 금지·접힘은 이동 tranche에
+혼입 금지(순수 이동 유지)·store 접힘=byte-identical / 수치 접힘=tolerance.
+④트랙 편입: naive 타임스탬프 2줄=struct-s1 동승 / track/fold-store(tranche 후)
+/ fold-signals·fold-pixel·fold-serve=likeness-후(활성 수술 부위 회피). 이식-가능
+재고 9항목=refactor-plan.md 원장에 기록.

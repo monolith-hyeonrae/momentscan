@@ -335,3 +335,25 @@ E-log 튜닝된 연구 노브(CLIP_LEN_S/RARITY_WIN_S/PORTRAIT_QUERY 등 molten 
 **low-effort AND 다음 로직 unblock을 먼저**: 1(pose 홈) → 2(frontal_clean) → 5(emotion)
 → 7(stash 버그) → 3(query_dist). 그 위에서 pose-가림 로직 재개. 8·9·11은 기회주의적.
 전부 replay byte-identity 가드 통과 필수(additive 스키마/순수 이동).
+
+## 이식-가능 재고 인벤토리 (2026-07-15 commons-audit 실측 — 기록만, 분리 금지)
+
+도메인-지식 0(또는 얇은 껍질)이라 조직-범용 이식이 가능한 조각들. **전부
+제2소비자 미실존 또는 졸업석 예약** → 지금 분리하지 않는다(visualbind 전례).
+졸업 게이트가 열릴 때 이 목록이 절단선 지도가 된다.
+
+1. eureka.py 전체(192 LOC, stdlib-only) — TokenProvider+EurekaClient → visualserve
+2. media.py 전체(66 LOC) → visualbase 근연
+3. freshness.py 엔진(~117 LOC, FIRST_PARTY/INFRA 인자화 필요) → visualpath
+4. service.py 프리미티브 — fetch_source/deliver/_split_s3/_gpu_snapshot/
+   node_identity(≈78 LOC 완전범용) + build_server/JobRunner 골격(≈210 LOC) → visualserve
+5. stash IO 3종(_validate/_pl_dtype/_to_table, 31 LOC) → visualstash
+6. replay diff 3종(_close/_json_diff/_parquet_diff, ≈51 LOC)
+7. label_server.py(175 LOC) — 라벨링 하니스
+8. subjects/stitch.py(≈164 LOC) — 코사인 union-find re-id 병합
+9. apicheck 하니스 골격(≈60 LOC) + daemon.serve 골격(60 LOC, visualbus 의존 주의)
+
+레포-간 중복 실측: appearance-engine→momentscan 코드 임포트 0건, parquet IO·
+몽타주 헬퍼 중복 0건 — 현존 코드 제2소비자는 plugins→stash(승인된 이음매)뿐.
+momentgen은 likeness.json 파일 계약만 소비(코드 의존 금지 명시) — momentgen이
+회사 디스패치 대상이 되는 사건 = visualserve 단계3 게이트의 조기 트리거.
