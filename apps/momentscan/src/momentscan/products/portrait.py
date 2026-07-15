@@ -33,12 +33,12 @@ from momentscan.readings import signals
 from momentscan.readings.emotion import EM_ALL as EM, fused_valence
 from momentscan.gates import BLINK_MAX
 from momentscan.readings.pose import FRONTAL_DEG, POSE_MAX_DEG, SIDE_DEG, euler_from_transform, fuse_pose
-from momentscan.stash import (
+from momentscan.store.stash import (
     append_candidate, candidates_path, clip_dir, read_candidates,
     read_features, read_headpose, read_landmarks, read_parse, read_tubelets,
     write_gate_trace, write_portrait,
 )
-from momentscan.telemetry import CandidateLog
+from momentscan.store.telemetry import CandidateLog
 
 log = logging.getLogger("momentscan.portrait")
 

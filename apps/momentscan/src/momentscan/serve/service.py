@@ -37,7 +37,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 from momentscan.engine.analyzers import PRODUCTS
-from momentscan.stash import clip_dir, detections_path, read_result, write_job, write_result
+from momentscan.store.stash import clip_dir, detections_path, read_result, write_job, write_result
 
 log = logging.getLogger("momentscan.service")
 

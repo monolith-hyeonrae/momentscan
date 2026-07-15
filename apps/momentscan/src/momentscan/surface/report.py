@@ -14,7 +14,7 @@ import logging
 import time
 from pathlib import Path
 
-from momentscan.stash import clip_dir
+from momentscan.store.stash import clip_dir
 
 log = logging.getLogger("momentscan.surface.report")
 

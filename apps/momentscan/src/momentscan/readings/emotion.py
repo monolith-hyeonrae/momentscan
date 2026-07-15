@@ -96,7 +96,7 @@ def valence_timeline(out_root, clip_id: str, track_id: int | None = None):
     (frame_idx[np], reading_dict, track_id[np])."""
     import polars as pl
 
-    from momentscan.stash import read_features
+    from momentscan.store.stash import read_features
     from momentscan_features_specialist45d.registry import INDEX
 
     f = read_features(out_root, clip_id, "A")
@@ -166,7 +166,7 @@ def extract_emotion(out_root, clip_id: str, *, fps: int = 6) -> dict:
 
     import polars as pl
 
-    from momentscan.stash import (
+    from momentscan.store.stash import (
         clip_dir, read_features, read_tubelets, write_emotion, write_emotion_frame,
     )
     from momentscan_features_specialist45d.registry import INDEX
@@ -213,7 +213,7 @@ def reading(out_root, clip_id: str, track_id: int):
     person baseline (from emotion.json) for one subject, so a product reads emotion
     in ONE call. Returns (frame_idx, reading_dict, baseline_dict). state_anomaly is
     derived here (|valence - p50|) — not persisted."""
-    from momentscan.stash import read_emotion
+    from momentscan.store.stash import read_emotion
 
     fx, r, _ = valence_timeline(out_root, clip_id, track_id=track_id)
     em = read_emotion(out_root, clip_id) or {}

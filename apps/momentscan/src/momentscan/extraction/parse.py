@@ -33,7 +33,7 @@ import cv2
 import numpy as np
 
 from momentscan.subjects.crops import portrait_box
-from momentscan.stash import clip_dir, read_landmarks, read_tubelets, write_parse
+from momentscan.store.stash import clip_dir, read_landmarks, read_tubelets, write_parse
 
 log = logging.getLogger("momentscan.parse")
 

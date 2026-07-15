@@ -18,7 +18,7 @@ from pathlib import Path
 import cv2
 import numpy as np
 
-from momentscan.stash import clip_dir, write_fashion
+from momentscan.store.stash import clip_dir, write_fashion
 
 log = logging.getLogger("momentscan.fashion")
 

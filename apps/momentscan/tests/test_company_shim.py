@@ -13,7 +13,7 @@ import pytest
 import momentscan.engine.pipeline as pipeline
 from momentscan.serve.company import BUSY, GROUP, OK, CompanyShim, resolve_source
 from momentscan.serve.service import JobRunner, build_server
-from momentscan.stash import clip_dir, write_result
+from momentscan.store.stash import clip_dir, write_result
 
 
 def test_resolve_source_rules():

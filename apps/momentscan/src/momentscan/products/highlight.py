@@ -37,7 +37,7 @@ import numpy as np
 import polars as pl
 
 from momentscan.products.select import TOP_K, frame_scores, rolling_median
-from momentscan.stash import read_tubelets, write_highlight
+from momentscan.store.stash import read_tubelets, write_highlight
 
 log = logging.getLogger("momentscan.highlight")
 

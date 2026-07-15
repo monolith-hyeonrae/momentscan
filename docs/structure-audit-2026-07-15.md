@@ -226,3 +226,12 @@ graph(verify→) → `engine/` / evalharness→`evals/harness`·label_server(sur
 gates`)가 일괄 치환에 걸려 gates까지 끌려감 — pytest가 즉시 적발(fail-fast
 그물 동작 증명), 2곳 분리 수리. 검증=pytest 38·registry 0err·api 19·replay
 0drift·map graph·verify eval.
+
+**T4 store/ 착지 (2026-07-15)**: stash·ports·telemetry → `store/`(visualstash
+졸업석). **media는 계획 수정 — extraction/media.py로**(저장이 아니라 픽셀/인코딩
+규약, 졸업석=visualbase; store/행이면 INFRA 제외에 휩쓸려 media 수정이 stale을
+못 일으키는 의미 변화가 생겼음). freshness INFRA={"stash","telemetry"}→{"store"}
+(parts[1] 매칭 지뢰 해소) + 행동 핀(crops 클로저: store 제외·media 포함).
+최상위 재수출(momentscan.Tubelet 등)로 plugins 소비 불변, plugins 내부 stash
+임포트도 갱신(29파일). 검증=pytest 39·registry 0err·api 19·replay 0drift·
+plugin import 스모크.

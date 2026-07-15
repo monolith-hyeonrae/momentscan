@@ -28,7 +28,7 @@ import time
 import numpy as np
 import polars as pl
 
-from momentscan.stash import (
+from momentscan.store.stash import (
     read_features, read_gate_trace, read_landmarks, read_parse, read_tubelets,
     read_fashion, write_appearance,
 )

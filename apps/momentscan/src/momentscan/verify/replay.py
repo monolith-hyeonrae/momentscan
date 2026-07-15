@@ -97,7 +97,7 @@ def replay_check(out_root, clip_id: str, *, fps: int = 6) -> tuple[bool, dict]:
     import logging
 
     from momentscan.engine.pipeline import run_pipeline
-    from momentscan.stash import clip_dir
+    from momentscan.store.stash import clip_dir
 
     src = clip_dir(Path(out_root), clip_id)
     tmp_root = Path(tempfile.mkdtemp(prefix="msreplay_"))

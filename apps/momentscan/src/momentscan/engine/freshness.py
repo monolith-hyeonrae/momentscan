@@ -32,10 +32,10 @@ FIRST_PARTY = ("momentscan", "momentscan_features_specialist45d")
 # stale (the signal would always fire = useless). Excluded from closures so staleness
 # tracks ALGORITHM change. Honest gap: a stash change that alters VALUES is not caught
 # here — re-run with --force after an I/O-layer format/value change.
-INFRA = frozenset({"stash", "telemetry"})
+INFRA = frozenset({"store"})   # store/ 패키지 전체(stash·ports·telemetry) — IO 배관은 클로저 제외
 
 # stage name → its primary algorithm module (what the pipeline wrapper invokes).
-# Not always identity: headpose6d→headpose, emotion→domains.emotion, and scene/features
+# Not always identity: headpose6d→headpose, emotion→readings.emotion, and scene/features
 # live in the sibling features package. Kept in lockstep with RUNNERS by an
 # import-time assert in pipeline.py.
 STAGE_MODULE = {

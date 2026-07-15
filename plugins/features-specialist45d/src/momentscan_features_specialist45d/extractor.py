@@ -15,7 +15,7 @@ from pathlib import Path
 import cv2
 import numpy as np
 
-from momentscan.stash import read_tubelets, write_features, write_landmarks
+from momentscan.store.stash import read_tubelets, write_features, write_landmarks
 from visualbus import FileSource
 from visualbus.structured_log import log_context
 
