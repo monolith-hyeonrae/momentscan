@@ -103,14 +103,59 @@ Eureka 프로토콜은 표준이라 vanilla로 동등.)
   응답 캐시(~30s) 동일. dev 워커 instanceId=k8s pod명 기반(`pod-name:app`) —
   우리 `ip:app:port`와 다른 관례지만 둘 다 유효.
 
-## 회사에 남은 질문 (갱신 2026-07-15)
+## 잡 디스패치 프로토콜 — 실코드 판독 (2026-07-15, E2E 사슬)
 
-1. momentscan의 등록 대상 Eureka = 어느 control? (video control 직접 vs 신규
-   도메인 control — **내장-Eureka 구조는 확정**)
-2. 앱 네이밍 확정 (`cju-activity-video-scan`? `cju-momentscan`?)
-3. ~~서비스-간 인증~~ → **실측 확정**: Eureka 등록에 JWT 필수, 구현 완료.
-   잔여: **우리 API를 호출하는 쪽**(control 디스패치)도 JWT를 실어올 텐데
-   우리 서비스의 토큰 검증(리소스 서버) 필요 여부 + 우리 전용 client-id 발급
-4. 잡 전달 방식: control 디스패치(REST)+콜백인지, 우리 C1(202+poll)로 합의 가능한지
+**⚡control에 momentscan 자리가 이미 예약돼 있다**: `ProcessGroup.MOMENT_SCAN_PROCESS
+("CJU-ACTIVITY-MOMENT-SCAN-PROCESS")` + `MomentScanApi`(테스트 트리거·콜백) +
+`MomentScanService`(그룹 큐) + `ActivityMediaType.MOMENT_SCAN`. → 질문 1·2가
+코드로 답변됨(등록 대상=video control 자체, 앱명=`cju-activity-moment-scan-process`).
+
+전체 흐름 (파일: control `VideoExecute`/`ProcessSendClient(Api)`/`MomentScanApi` ·
+worker `VideoProcessApi`/`VideoProcessSpringEvent`/`VideoProcessCallBackSpringEvent`/
+`S3Client`/`FileManager`):
+
+1. **기원**: 디바이스→SQS→control 그룹 큐. 테스트 트리거
+   `POST /api/moment-scan/test/{workflowId}` (**permitAll — 로컬 리허설에 사용
+   가능**; 단 parameter=null로 큐잉됨, 수신측은 null 파라미터 허용 필요).
+2. **디스패치**: 10s 스케줄러가 그룹별 Eureka UP 인스턴스 순회, 큐 peek 후
+   Feign `POST {homePageUrl}/video/process/{mediaType}` (connect 3s / read 60s;
+   본문=ProcessClientRequestDTO{workflowId, group, mediaType,
+   parameter.source={requestS3Video/Audio/OverlayVideo/Thumbnail = S3 key}}).
+   통신 실패=쿨다운 블랙리스트+다음 서버 failover; 큐 유지.
+3. **워커 수락**: in-flight≥MAX면 `UNAVAILABLE_CLIENT`(=ACTIVITY-VIDEO-PROCESS.
+   10002 — control이 벌점 없이 다음 인스턴스 시도), 아니면 메타 카운터 +1 →
+   **비동기 이벤트 발행 후 즉시 ok()** (동기 ACK, 처리는 백그라운드).
+4. **처리**: `fileManager.downloadIfNotEmpty(source.requestS3Video)` —
+   S3Client.getObject(videoBucket, key) 스트리밍, **재시도 6회 지수백오프(1s~)**,
+   workflowId-키 임시파일 → ffmpeg/opencv 실행.
+5. **업로드**: uploadFile(video)/uploadFileIfExists(thumb) — **object key가 그대로
+   CloudFront 경로**, 결과=UploadFilePathResultDTO{resultS3Video(+size),
+   resultS3Thumbnail(+Intro), resultCdn* 3종}.
+6. **콜백(실패여도 반드시)**: `POST {control}/process/video/{workflowId}`
+   (momentscan 그룹은 `/process/moment-scan/{workflowId}`) 본문=
+   ProcessClientResultDTO{workflowId, videoProcessSeq, mediaType, group echo,
+   resultPath, status=VIDEO_SUCCESS|실패, errorMessage}. **응답 data에 다음 잡이
+   실려올 수 있음**(같은 워커 체이닝 = S3 재다운로드 절약) — 없으면 카운터 −1.
+7. **정리**: finally에서 workflowId 임시파일 삭제. 회수: failCount≥3 드롭(데드레터
+   TODO)·워커 소실/유휴 10분이면 재큐잉. 원격 드레인=`POST /video/config/initProcess
+   ?count=999`(control의 enabledClient).
+
+**momentscan 어댑터 스펙(이 판독의 직접 귀결)**: ①앱명
+`cju-activity-moment-scan-process`로 등록 ②`POST /video/process/{mediaType}`
+shim(수락/10002-busy 의미론, parameter→C1 Job 변환: source S3 key→source_uri)
+③`service-available-status` 카운터 방출 ④완료 시
+`/process/moment-scan/{workflowId}` 콜백(성공/실패 모두) ⑤C1 202+poll은 내부
+정본 유지 — shim은 어댑터 층.
+
+## 회사에 남은 질문 (갱신 2026-07-15 — 코드 판독 후)
+
+1. ~~등록 대상 Eureka~~ → **코드로 확정**: video control 자체
+   (MOMENT_SCAN_PROCESS 그룹 예약 존재). 확인만: 이 예약이 우리 배치 계획인지.
+2. ~~앱 네이밍~~ → **코드로 확정**: `cju-activity-moment-scan-process`.
+3. 인증 잔여: 우리 API 리소스-서버 검증 필요 여부 + 우리 전용 client-id 발급
+   (디스패치 Feign은 requestInterceptor로 JWT를 실어옴 — 검증 구현 필요 가능성 높음).
+4. ~~잡 전달 방식~~ → **코드로 확정**: 디스패치+콜백(+체이닝). 남은 것:
+   MOMENT_SCAN용 ProcessMediaParameter 구체 클래스(소스 키 구성)와 우리
+   ResultDTO 매핑 필드 합의(resultPath에 뭘 채울지 — likeness JSON의 자리).
 5. S3 버킷/프리픽스: 우리 산출물의 지정 위치 (`981park-media-cju/<root>?`)
 6. Loki/Zabbix: 우리 구조화 로그의 수집 경로
