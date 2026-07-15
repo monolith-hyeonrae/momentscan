@@ -65,7 +65,12 @@ Eureka 프로토콜은 표준이라 vanilla로 동등.)
 - **loc 프로파일 실행 실측**: dev DB(3306)는 VPN에서도 ACL로 불가 + placeholder
   3개 누락(PARK_CLUB/SGP_MEMBER/CJU_GAME_API_URL) → **로컬 MySQL(docker) +
   프로퍼티 오버라이드(datasource·SQS off) + 더미 URL env**로 부팅 성공. 빈
-  스키마의 런타임 쿼리 에러는 무해(내장 Eureka만 필요).
+  스키마는 **등록엔 무해하나 `/manage/eureka-ui`는 죽인다**(컨트롤러가
+  video_process 이력도 조회 → JSON 에러 반환). 해법=`--spring.jpa.hibernate.ddl-auto=update`
+  … 인데 BaseEntity reg_dt/mod_dt의 `DEFAULT CONVERT_TZ(...)` columnDefinition을
+  MySQL이 거부해 9/11 테이블 생성 실패(회사는 스키마 외부관리라 안 밟는 지뢰) →
+  부팅 로그의 실패 DDL 수거·default를 CURRENT_TIMESTAMP로 치환해 수동 적용하면
+  UI 정상(로컬 타임스탬프만 UTC 표기).
 - **⚠Eureka 인증 요구 확정(실측)**: SecurityConfig가 eureka-ui·peer-replication·
   /api만 permitAll, **나머지 전부 JWT** — 등록도 무토큰이면 401. 증명된 흐름:
   계정서버 client_credentials(Basic id:secret, scope api.write api.read,
