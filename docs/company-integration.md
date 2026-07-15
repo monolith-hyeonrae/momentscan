@@ -97,6 +97,12 @@ Eureka 프로토콜은 표준이라 vanilla로 동등.)
   부하 신호 관례**임을 확인. momentscan이 디스패치 대상이 되면 같은 키 방출
   필요(또는 C1 202+poll 합의) → 질문 4의 실측 세부.
 
+- **dev 환경 실등록(같은 날)**: `https://dev-api.cju.981park.com/activity-video/control/eureka`에
+  같은 자격·같은 코드로 등록 204 → 실운영 워커 pod와 나란히 UP → 해지 200.
+  추가 증명: HTTPS+게이트웨이 경로 통과, dev control이 같은 client 자격 수용,
+  응답 캐시(~30s) 동일. dev 워커 instanceId=k8s pod명 기반(`pod-name:app`) —
+  우리 `ip:app:port`와 다른 관례지만 둘 다 유효.
+
 ## 회사에 남은 질문 (갱신 2026-07-15)
 
 1. momentscan의 등록 대상 Eureka = 어느 control? (video control 직접 vs 신규
