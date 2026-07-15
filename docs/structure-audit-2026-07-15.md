@@ -218,3 +218,11 @@ C1 domain_profile과 의미 충돌 해소, anchor×reading 문법 정렬). fresh
 2곳(emotion 매핑·geometry 외부모델 키)이 정확히 D1 assert의 보호 대상이었고
 일괄 갱신, 소비자 11파일. 검증=pytest 38·registry 0err·api 19·replay 0drift·
 map frame 스모크.
+
+**T3 engine/·evals/ 착지 (2026-07-15)**: pipeline·analyzers·freshness(verify→)·
+graph(verify→) → `engine/` / evalharness→`evals/harness`·label_server(surface→)
+→`evals/` (E1 킷 재결합). verify/=가드 3종 잔류(apicheck·replay·doctor,
+자기소개 갱신). 함정 1건 실증: 복합 임포트(`from momentscan import analyzers,
+gates`)가 일괄 치환에 걸려 gates까지 끌려감 — pytest가 즉시 적발(fail-fast
+그물 동작 증명), 2곳 분리 수리. 검증=pytest 38·registry 0err·api 19·replay
+0drift·map graph·verify eval.

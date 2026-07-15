@@ -4,8 +4,8 @@ fail-fast 원칙(code-style §3): 선언이 어긋나면 import에서 지참물�
 이 핀들은 그 가드 자체가 살아 있음을 고정한다."""
 from pathlib import Path
 
-from momentscan import analyzers
-from momentscan.verify import freshness
+from momentscan.engine import analyzers
+from momentscan.engine import freshness
 
 
 def test_stage_module_paths_all_resolve():

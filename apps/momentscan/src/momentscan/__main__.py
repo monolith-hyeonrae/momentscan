@@ -230,21 +230,21 @@ def _shutdown_http(port: int) -> int:
 
 
 def _cmd_label(args: argparse.Namespace) -> int:
-    from momentscan.surface.label_server import serve_labels
+    from momentscan.evals.label_server import serve_labels
 
     serve_labels(args.out, port=args.port, lane=args.lane)
     return 0
 
 
 def _cmd_eval(args: argparse.Namespace) -> int:
-    from momentscan.verify.evalharness import make_template, score
+    from momentscan.evals.harness import make_template, score
 
-    from momentscan.verify.evalharness import score_pairs
+    from momentscan.evals.harness import score_pairs
 
     if args.template:
         result = make_template(args.out, args.template)
     elif args.rescore:
-        from momentscan.verify.evalharness import rescore_pairs
+        from momentscan.evals.harness import rescore_pairs
         result = rescore_pairs(args.out)
     elif (Path(args.out) / "eval" / "pair_verdicts.jsonl").exists():
         result = score_pairs(args.out)     # pairwise = the eval of record
@@ -283,7 +283,7 @@ def _cmd_run(args: argparse.Namespace) -> int:
     # accepted residue: ~8 absl C++ init lines from mediapipe (pre-InitializeLog);
     # suppressing those needs fd-level stderr redirection — more invasive than the noise.
 
-    from momentscan.pipeline import run_pipeline
+    from momentscan.engine.pipeline import run_pipeline
     from momentscan.stash import detections_path
 
     # ONE-COMMAND happy path: `run <video-or-clip>` — a video PATH as clip_id means
@@ -339,7 +339,7 @@ def _cmd_report(args: argparse.Namespace) -> int:
 
 
 def _cmd_analyzers(args: argparse.Namespace) -> int:
-    from momentscan.analyzers import ANALYZERS, topo_order
+    from momentscan.engine.analyzers import ANALYZERS, topo_order
 
     if args.json:
         from dataclasses import asdict
@@ -360,7 +360,7 @@ def _cmd_analyzers(args: argparse.Namespace) -> int:
 
 
 def _cmd_products(args: argparse.Namespace) -> int:
-    from momentscan import analyzers as A
+    from momentscan.engine import analyzers as A
 
     if args.json:
         from dataclasses import asdict
@@ -387,8 +387,8 @@ def _cmd_cascade(args: argparse.Namespace) -> int:
     """The data lineage stated plainly: INPUT → ①FEATURE/②GATE (intermediate, stash)
     → ③PRODUCT (FINAL, egress). DERIVED from ANALYZERS (.artifact) + PRODUCTS (.egress),
     so it cannot drift from what actually runs. Same ①②③ as the run-watch banners."""
-    from momentscan import analyzers as A
-    from momentscan.analyzers import topo_order
+    from momentscan.engine import analyzers as A
+    from momentscan.engine.analyzers import topo_order
 
     stages = [a for a in topo_order() if a.kind == "stage"]
     if args.json:
@@ -463,7 +463,7 @@ def _cmd_frame(args: argparse.Namespace) -> int:
 
 
 def _cmd_graph(args: argparse.Namespace) -> int:
-    from momentscan.verify import graph
+    from momentscan.engine import graph
 
     if args.json:
         from dataclasses import asdict
@@ -497,8 +497,9 @@ def _cmd_replay_check(args: argparse.Namespace) -> int:
 
 
 def _cmd_check(args: argparse.Namespace) -> int:
-    from momentscan import analyzers as A, gates
-    from momentscan.pipeline import RUNNERS, UPSTREAM_OF_RUNNER
+    from momentscan import gates
+    from momentscan.engine import analyzers as A
+    from momentscan.engine.pipeline import RUNNERS, UPSTREAM_OF_RUNNER
 
     problems = A.registry_drift(RUNNERS.keys(), UPSTREAM_OF_RUNNER) + gates.gate_drift()
     errs = [m for sev, m in problems if sev == "error"]
