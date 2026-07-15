@@ -156,3 +156,13 @@ extraction/preprocess.py·surface/canvas.py 2개뿐(소비자 3+ 실존), utils/
 ④트랙 편입: naive 타임스탬프 2줄=struct-s1 동승 / track/fold-store(tranche 후)
 / fold-signals·fold-pixel·fold-serve=likeness-후(활성 수술 부위 회피). 이식-가능
 재고 9항목=refactor-plan.md 원장에 기록.
+
+**#4 verify/ 역할 혼합 (접수·처분안)**: 실측 = 4성질 동거 — 가드(apicheck 171·
+replay 128·doctor 76) / **런타임 기계(freshness 203 — pipeline 매 런 소비,
+검증 아님)** / **연구 평가(evalharness 370 — E1 킷인데 짝꿍 label_server는
+surface/에 = 두 패키지에 분산)** / 선언 지도 렌더(graph 161). 처분:
+freshness→engine/ (접수 #1 물음표 확정) · **evals/ 신설**(evalharness+
+label_server 재결합 — E1=1급 연구 자산이 트리에 가시화, E1 재개 직전 시의성)
+· graph→engine/ 약한 선호 · verify/ 잔류=가드 3종(이름=내용). CLI 표면 불변.
+지뢰: 소비자 ~11곳 전부 평범 임포트, STAGE_MODULE은 freshness가 담는 쪽이라
+자기 이동 무해 — assert 확장 후 tranche 편입.
