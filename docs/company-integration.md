@@ -140,12 +140,22 @@ worker `VideoProcessApi`/`VideoProcessSpringEvent`/`VideoProcessCallBackSpringEv
    TODO)·워커 소실/유휴 10분이면 재큐잉. 원격 드레인=`POST /video/config/initProcess
    ?count=999`(control의 enabledClient).
 
-**momentscan 어댑터 스펙(이 판독의 직접 귀결)**: ①앱명
-`cju-activity-moment-scan-process`로 등록 ②`POST /video/process/{mediaType}`
-shim(수락/10002-busy 의미론, parameter→C1 Job 변환: source S3 key→source_uri)
-③`service-available-status` 카운터 방출 ④완료 시
-`/process/moment-scan/{workflowId}` 콜백(성공/실패 모두) ⑤C1 202+poll은 내부
-정본 유지 — shim은 어댑터 층.
+**momentscan 어댑터 — 구현 완료 (track/dispatch-shim, `company.py`)**: ①앱명
+`cju-activity-moment-scan-process` 등록 ②`POST /video/process/{mediaType}` shim
+(수락 OK/포화 10002, parameter→C1 Job 변환) ③소스 해석=단계 배치(로컬 경로
+그대로 / 상대 key→`--s3-bucket` 해석 / 해석불가=수락 후 정직 VIDEO_ERROR 완주)
+④완료 콜백 `/process/moment-scan/{workflowId}` Bearer(성공/실패 모두, 401 1회
+재갱신) ⑤C1 202+poll은 내부 정본 유지. 잔여=service-available-status 메타 갱신
+(busy는 응답 코드로 이미 동작)·resultPath 실매핑(질문 4).
+
+**로컬 풀-루프 리허설 PASS (2026-07-15, 실물 control 상대)**: control 테스트
+트리거(`/api/moment-scan/test/{wf}`)→10s 스케줄러가 그룹명으로 우리를 발견·
+디스패치(null parameter→VIDEO_ERROR 완주로 큐 정리 확인) + 처리 중 busy
+10002→control 10s 재시도 관측 + 직접 디스패치(wf777, 로컬 소스)→**전 파이프라인
+→VIDEO_SUCCESS 콜백→control 수신** 확인. 이 리허설이 C1 잠복 버그 계보를
+적발: 클립 정체성이 파일명 stem에 은닉(detect + needs_source 스테이지들,
+일부는 심링크도 resolve()로 풀어버림) → detect clip_id 인자 + 서비스 하드링크
+별칭 이음매로 완화(L14, pytest 9핀).
 
 ## 회사에 남은 질문 (갱신 2026-07-15 — 코드 판독 후)
 

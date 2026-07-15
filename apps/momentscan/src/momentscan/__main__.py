@@ -82,6 +82,8 @@ def _cmd_serve(args: argparse.Namespace) -> int:
         eureka_url=args.eureka,
         advertise_host=args.advertise_host,
         app_name=args.app_name,
+        control_url=args.control_url,
+        s3_bucket=args.s3_bucket,
     )
     return 0
 
@@ -600,6 +602,11 @@ def main(argv: list[str] | None = None) -> int:
                     help="Eureka 서버 URL (예: http://eureka:8761/eureka) — 주면 등록")
     ps.add_argument("--advertise-host", default=None, help="광고할 host/IP (기본 자동 감지)")
     ps.add_argument("--app-name", default="momentscan", help="Eureka 앱 이름")
+    ps.add_argument("--control-url", default=None,
+                    help="회사 control 베이스 URL — 주면 디스패치 방언 수신(/video/process/*)"
+                         "+완료 콜백(company.py)이 열림")
+    ps.add_argument("--s3-bucket", default=None,
+                    help="상대 S3 key 소스의 해석 버킷 (로컬 경로 소스는 버킷 불요)")
     ps.add_argument("--log-file", default=None,
                     help="로그 파일 (기본 ~/logs/momentscan-{port}.log · '-'=stderr)")
     ps.add_argument("--socket", default=None, help="[--daemon] control socket path")

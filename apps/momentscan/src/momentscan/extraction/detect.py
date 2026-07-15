@@ -194,11 +194,16 @@ def process_clip(
     out_root: str | Path,
     *,
     fps: int | None = None,
+    clip_id: str | None = None,
 ) -> dict:
     """HOT path — run one clip through the warm detector. NOT re-entrant on a
-    single ``warm`` (the bus pump is single-threaded); the daemon serializes."""
+    single ``warm`` (the bus pump is single-threaded); the daemon serializes.
+
+    clip_id 기본값 = 파일명 stem (CLI/데몬 관례). 서비스 잡은 clip_id가 파일명과
+    다를 수 있어(회사 workflowId 등) 명시 전달한다 — 안 갈라지면 하류가 전멸한다
+    (2026-07-15 wf777 리허설 실증)."""
     video_path = Path(video_path)
-    clip_id = video_path.stem
+    clip_id = clip_id or video_path.stem
     out_dir = Path(out_root) / clip_id
     out_dir.mkdir(parents=True, exist_ok=True)
     trace_path = out_dir / "detect.mp4"

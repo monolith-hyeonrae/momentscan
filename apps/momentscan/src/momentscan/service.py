@@ -254,6 +254,12 @@ class JobRunner:
                     "clip_id": clip_id, "source_uri": st["job"].get("source_uri")})
                 st["error"] = {"stage": "service", "error": str(e)}
                 st["status"] = "failed"
+            cb = st["job"].get("_on_complete")          # 어댑터 완료 훅 (회사 콜백 등)
+            if cb:
+                try:
+                    cb(st)
+                except Exception:
+                    log.exception("service.job.on_complete", extra={"clip_id": clip_id})
 
     def _run(self, job: dict) -> dict:
         from momentscan.pipeline import run_pipeline
@@ -274,6 +280,22 @@ class JobRunner:
         source = None
         if job.get("source_uri"):
             source = fetch_source(str(job["source_uri"]), clip_dir(Path(out), clip_id) / "source_cache")
+            # 파이프라인 관례(클립=파일명 stem)와 잡 clip_id의 정합화 — 단일 지점.
+            # needs_source 스테이지들(attribute/tubelets/scene/…)은 소스 파일명에서
+            # 클립을 파생하므로, 이름이 갈라지면 산출물이 남의 클립 디렉토리로
+            # 흩어진다 (wf777 리허설 실증). 원본 URI는 job.json이 보존한다.
+            if source.stem != clip_id:
+                alias = clip_dir(Path(out), clip_id) / "source_cache" / f"{clip_id}{source.suffix}"
+                alias.parent.mkdir(parents=True, exist_ok=True)
+                if not alias.exists():
+                    # 심링크 금지 — 일부 스테이지가 경로를 resolve()해 원본 이름으로
+                    # 되돌아간다 (wf777 3차 리허설: tubelets/scene이 test_2로 회귀).
+                    # 하드링크(동일 FS 무비용) → 복사 폴백.
+                    try:
+                        os.link(source, alias)
+                    except OSError:
+                        shutil.copy2(source, alias)
+                source = alias
         if not detections_path(out, clip_id).exists():
             if source is None:
                 raise FileNotFoundError(f"no detections for {clip_id} and no source_uri to run detect")
@@ -281,7 +303,9 @@ class JobRunner:
                 from momentscan.extraction.detect import warm_init
                 self._warm = warm_init()
             from momentscan.extraction.detect import process_clip
-            process_clip(self._warm, str(source), out, fps=fps)
+            # clip_id 명시 필수 — 파일명-파생에 맡기면 잡 clip_id와 갈라져
+            # 하류 전멸 (wf777 리허설 실증: detect가 test_2/로 쓰고 잡은 wf777-*)
+            process_clip(self._warm, str(source), out, fps=fps, clip_id=clip_id)
 
         run = run_pipeline(out, clip_id, source=str(source) if source else None, fps=fps)
         if run["failed"]:
@@ -328,9 +352,10 @@ class JobRunner:
 
 # ── HTTP 어댑터 ──────────────────────────────────────────────────────────────
 def build_server(runner: JobRunner, *, port: int = 8080, bind: str = "0.0.0.0",
-                 app_name: str = APP_NAME) -> ThreadingHTTPServer:
+                 app_name: str = APP_NAME, shim=None) -> ThreadingHTTPServer:
     """HTTP 면을 조립만 하고 돌리지는 않는다 — apicheck가 임시 포트(0)로 물어
-    계약을 검증하는 지점. serve_http = 이것 + Eureka + serve_forever."""
+    계약을 검증하는 지점. serve_http = 이것 + Eureka + serve_forever.
+    shim(company.CompanyShim)이 있으면 회사 디스패치 방언 라우트를 함께 연다."""
 
     class Handler(BaseHTTPRequestHandler):
         def _send(self, code: int, body: dict, headers: dict | None = None) -> None:
@@ -413,14 +438,22 @@ def build_server(runner: JobRunner, *, port: int = 8080, bind: str = "0.0.0.0",
                 self._send(404, {"error": f"no route {path}"})
 
         def do_POST(self) -> None:                      # noqa: N802
-            if urllib.parse.urlparse(self.path).path.rstrip("/") != "/jobs":
-                self._send(404, {"error": "POST /jobs only"})
+            path = urllib.parse.urlparse(self.path).path
+            while "//" in path:                         # Feign target(base "…/") + "/경로" 관용
+                path = path.replace("//", "/")
+            path = path.rstrip("/")
+            if not (path == "/jobs" or (shim and path.startswith("/video/process/"))):
+                self._send(404, {"error": "POST /jobs only"
+                                          + (" (+/video/process/{mediaType})" if shim else "")})
                 return
             try:
                 body = json.loads(self.rfile.read(int(self.headers.get("Content-Length", 0)) or 0)
                                   or b"{}")
             except (ValueError, TypeError) as e:
                 self._send(400, {"error": f"bad json: {e}"})
+                return
+            if path != "/jobs":                         # 회사 디스패치 방언 (company.py)
+                self._send(*shim.handle_process(path.removeprefix("/video/process/"), body))
                 return
             code, payload = runner.submit(body)
             loc = {"Location": payload["poll"]} if code == 202 and "poll" in payload else None
@@ -448,10 +481,30 @@ def node_identity(advertise_host: str | None, port: int) -> str:
 def serve_http(out_root: str, *, port: int = 8080, fps: int = 6,
                open_products: tuple[str, ...] = ("likeness",),
                eureka_url: str | None = None, advertise_host: str | None = None,
-               app_name: str = APP_NAME) -> None:
+               app_name: str = APP_NAME,
+               control_url: str | None = None, s3_bucket: str | None = None) -> None:
     node = node_identity(advertise_host, port)
     runner = JobRunner(out_root, fps_default=fps, open_products=open_products, node=node)
-    server = build_server(runner, port=port, app_name=app_name)
+
+    # 회사 Eureka·control 콜백 공용 JWT (2026-07-15 실측: 등록도 콜백도 인증 필수).
+    # 자격은 env로만 — ps/CLI-인자 노출 방지, 회사 패턴과 동일.
+    tp = None
+    tok_uri = os.environ.get("EUREKA_TOKEN_URI", "")
+    cid = os.environ.get("EUREKA_CLIENT_ID", "")
+    sec = os.environ.get("EUREKA_CLIENT_SECRET", "")
+    if tok_uri and cid and sec:
+        from momentscan.eureka import TokenProvider
+        tp = TokenProvider(tok_uri, cid, sec,
+                           scope=os.environ.get("EUREKA_TOKEN_SCOPE", "api.write api.read"))
+        log.info("eureka.auth", extra={"token_uri": tok_uri})
+
+    shim = None
+    if control_url:                                     # 회사 디스패치 방언 어댑터 (company.py)
+        from momentscan.company import CompanyShim
+        shim = CompanyShim(runner, control_url, s3_bucket=s3_bucket, token_provider=tp)
+        log.info("company.shim", extra={"control_url": control_url, "s3_bucket": s3_bucket})
+
+    server = build_server(runner, port=port, app_name=app_name, shim=shim)
 
     def _health_beat() -> None:
         while True:
@@ -462,17 +515,7 @@ def serve_http(out_root: str, *, port: int = 8080, fps: int = 6,
 
     eureka = None
     if eureka_url:                                      # 등록은 서버가 실제로 열린 뒤
-        from momentscan.eureka import EurekaClient, TokenProvider
-        # 회사 Eureka는 JWT 필수(2026-07-15 실측: 등록도 401) — 자격은 env로만
-        # (ps/CLI-인자 노출 방지; 회사 패턴과 동일). 셋 다 있으면 Bearer 부착.
-        tok_uri = os.environ.get("EUREKA_TOKEN_URI", "")
-        cid = os.environ.get("EUREKA_CLIENT_ID", "")
-        sec = os.environ.get("EUREKA_CLIENT_SECRET", "")
-        tp = None
-        if tok_uri and cid and sec:
-            tp = TokenProvider(tok_uri, cid, sec,
-                               scope=os.environ.get("EUREKA_TOKEN_SCOPE", "api.write api.read"))
-            log.info("eureka.auth", extra={"token_uri": tok_uri})
+        from momentscan.eureka import EurekaClient
         eureka = EurekaClient(eureka_url, app_name, port=port, host=advertise_host,
                               token_provider=tp)
         eureka.start()
