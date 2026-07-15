@@ -180,3 +180,28 @@ __main__=3줄 재수출(entry point "momentscan.__main__:main" 문자열 불변 
 계약·정직한 실패·구조화 로그·선언=단일 권위·stdlib 우선·책임 명명) — 처분:
 docs/code-style.md로 관측된 규칙 성문화(도그마 수입 아님) + R9 ruff 착지
 (검사만·baseline·신규 위반만) + pytest 래퍼. → struct-s1 동승.
+
+---
+
+## 7) 최종 트랙 계획 (접수 #1~#5 종합 — 2026-07-15 확정)
+
+**track/struct-s1** (선언·가드·성문화 — 물리 이동 0):
+①assert 확장(D1: STAGE_MODULE 경로 실존을 import-time에 강제) ②R12 tier 선언
+(analyzers tier 필드+registry 체크+map/report tier 그룹+per-clip manifest.json)
+③landmarks 정직화(D4 최소) ④D6 드리프트 청소+E2 naive 타임스탬프 ⑤R9 ruff
+착지(검사만·baseline)+code-style.md enforcement ⑥R8 임계값 인벤토리.
+완료 = registry 0err(전 산출물 tier)·pytest green·tier 그룹 렌더·manifest 존재·
+ruff baseline·preset-inventory.md.
+
+**move tranches** (물리 이동 — 지뢰 밀도 순, 각 tranche=순수 이동만):
+T1 serve/(service·company·eureka·daemon) → T2 readings/(domains 개명) →
+T3 engine/(pipeline·analyzers·freshness[verify→]·graph)+evals/(evalharness+
+label_server) → T4 store/(stash·ports·media·telemetry — INFRA parts[1] 가드 핀
+선행) → T5 cli/(__main__ 분할)+ingest→extraction/.
+각 완료 = pytest·api·registry·replay green + 지뢰 체크리스트 소거.
+
+**struct-s2**: R10 gates 독립(gate_trace byte-identical) → R11 --product closure
+(branch-scoped --out). → **track/fold-store**(stash 레지스트리화 — likeness 뒤로
+이월 가능) → **likeness 트랙**(L-A 코드단독: ②브리지→④어댑터→⑦phase→①캘리
+양안 / L-B user-동행 판정 세션 / L-C 외부 대기) → fold-signals·fold-pixel·
+fold-serve(likeness 후).
