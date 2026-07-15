@@ -553,8 +553,8 @@ def render_tubelet_inspect(out_root: str | Path, clip_id: str, *,
     # freshness: displayed artifacts that PREDATE their producing source — the
     # algorithm was edited but this clip was not re-run, so what's shown is the OLD
     # algorithm's result. Surfaced so the researcher never trusts a stale read.
-    from momentscan.verify import freshness
-    from momentscan.pipeline import RUNNERS as _RUNNERS
+    from momentscan.engine import freshness
+    from momentscan.engine.pipeline import RUNNERS as _RUNNERS
     _cd = clip_dir(out_root, clip_id)
     obs["stale"] = [st for st in _RUNNERS
                     if (_cd / _RUNNERS[st][0]).exists()

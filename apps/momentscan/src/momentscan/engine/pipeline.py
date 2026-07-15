@@ -14,8 +14,8 @@ import logging
 import time
 from pathlib import Path
 
-from momentscan import analyzers
-from momentscan.verify import freshness
+from momentscan.engine import analyzers
+from momentscan.engine import freshness
 from momentscan.stash import clip_dir, provenance_path, write_manifest, write_provenance, write_run
 
 log = logging.getLogger("momentscan.pipeline")

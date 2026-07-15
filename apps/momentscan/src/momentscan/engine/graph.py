@@ -21,7 +21,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from momentscan import analyzers, gates
+from momentscan import gates
+from momentscan.engine import analyzers
 
 # detect runs exactly 2 visualpath bus modules (resolver topo-orders them); shown
 # inline, NOT re-declared as nodes. Source of truth = detect.py:62-69.

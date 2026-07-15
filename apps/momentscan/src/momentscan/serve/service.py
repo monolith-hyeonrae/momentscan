@@ -36,7 +36,7 @@ from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
-from momentscan.analyzers import PRODUCTS
+from momentscan.engine.analyzers import PRODUCTS
 from momentscan.stash import clip_dir, detections_path, read_result, write_job, write_result
 
 log = logging.getLogger("momentscan.service")
@@ -262,7 +262,7 @@ class JobRunner:
                     log.exception("service.job.on_complete", extra={"clip_id": clip_id})
 
     def _run(self, job: dict) -> dict:
-        from momentscan.pipeline import run_pipeline
+        from momentscan.engine.pipeline import run_pipeline
 
         t0 = time.perf_counter()
         clip_id = job["clip_id"]
