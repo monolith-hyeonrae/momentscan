@@ -11,7 +11,9 @@
 ```bash
 setsid nohup momentscan server start --port 8080 --out /data/stash --fps 6 \
     --products likeness \                        # 단계 배포 스위치 (Phase 1 = likeness만)
-    --eureka http://<회사-eureka>:8761/eureka \   # 주면 등록, 빼면 등록 없이 HTTP만
+    --eureka https://<control>/eureka \          # 주면 등록, 빼면 등록 없이 HTTP만
+                                                 # ⚠회사 Eureka=JWT 필수 → env 3종 선설정:
+                                                 # EUREKA_TOKEN_URI/EUREKA_CLIENT_ID/EUREKA_CLIENT_SECRET
     --advertise-host <이 노드의 IP> \             # 생략 = 자동 감지 (아래 §3 주의)
     >/dev/null 2>&1 &
 ```

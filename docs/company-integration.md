@@ -60,12 +60,32 @@ vanilla Spring Cloud Netflix Eureka 서버(docker `steeltoeoss/eureka-server`,
 프로토콜 호환 검증. (control 앱 직접 부팅은 DB/Kafka/OAuth 의존이라 보류;
 Eureka 프로토콜은 표준이라 vanilla로 동등.)
 
-## 회사에 남은 질문 (갱신)
+## 로컬 실검증 결과 (2026-07-15 — control 실물 상대)
 
-1. momentscan의 등록 대상 Eureka = 어느 control? (신규 도메인 control 예정 여부)
+- **loc 프로파일 실행 실측**: dev DB(3306)는 VPN에서도 ACL로 불가 + placeholder
+  3개 누락(PARK_CLUB/SGP_MEMBER/CJU_GAME_API_URL) → **로컬 MySQL(docker) +
+  프로퍼티 오버라이드(datasource·SQS off) + 더미 URL env**로 부팅 성공. 빈
+  스키마의 런타임 쿼리 에러는 무해(내장 Eureka만 필요).
+- **⚠Eureka 인증 요구 확정(실측)**: SecurityConfig가 eureka-ui·peer-replication·
+  /api만 permitAll, **나머지 전부 JWT** — 등록도 무토큰이면 401. 증명된 흐름:
+  계정서버 client_credentials(Basic id:secret, scope api.write api.read,
+  만료 24h) → 등록 204·하트비트 200·조회·해지 200 (해지 후 GET ~30s 잔상 =
+  서버 응답 캐시, 정상).
+- **momentscan 구현 완료(57a46bb)**: eureka.TokenProvider(캐시·60s 만료마진·
+  401 시 강제갱신 1회 재시도) — 자격은 **env로만**: `EUREKA_TOKEN_URI` /
+  `EUREKA_CLIENT_ID` / `EUREKA_CLIENT_SECRET` (+`EUREKA_TOKEN_SCOPE`).
+  라이브 e2e = 실물 control 상대 전 수명주기 PASS.
+- 부산물: control 빈 체인에 **VideoTrackcamService** 존재 — 트랙캠이 이 시스템
+  가족에 이미 있음(visualstack 로드맵 4단의 소비자 맥락).
+
+## 회사에 남은 질문 (갱신 2026-07-15)
+
+1. momentscan의 등록 대상 Eureka = 어느 control? (video control 직접 vs 신규
+   도메인 control — **내장-Eureka 구조는 확정**)
 2. 앱 네이밍 확정 (`cju-activity-video-scan`? `cju-momentscan`?)
-3. **서비스-간 인증**: 우리 API 호출에 OAuth2 client-credentials 요구되는지 —
-   요구되면 JWT 검증(리소스 서버) 추가 필요
+3. ~~서비스-간 인증~~ → **실측 확정**: Eureka 등록에 JWT 필수, 구현 완료.
+   잔여: **우리 API를 호출하는 쪽**(control 디스패치)도 JWT를 실어올 텐데
+   우리 서비스의 토큰 검증(리소스 서버) 필요 여부 + 우리 전용 client-id 발급
 4. 잡 전달 방식: control 디스패치(REST)+콜백인지, 우리 C1(202+poll)로 합의 가능한지
 5. S3 버킷/프리픽스: 우리 산출물의 지정 위치 (`981park-media-cju/<root>?`)
 6. Loki/Zabbix: 우리 구조화 로그의 수집 경로
