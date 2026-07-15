@@ -14,6 +14,9 @@ setsid nohup momentscan server start --port 8080 --out /data/stash --fps 6 \
     --eureka https://<control>/eureka \          # 주면 등록, 빼면 등록 없이 HTTP만
                                                  # ⚠회사 Eureka=JWT 필수 → env 3종 선설정:
                                                  # EUREKA_TOKEN_URI/EUREKA_CLIENT_ID/EUREKA_CLIENT_SECRET
+    --app-name cju-activity-moment-scan-process \ # 회사 워커 그룹명 (control 코드에 예약됨)
+    --control-url https://<control> \            # 주면 회사 디스패치 방언 수신+완료 콜백 (company.py)
+    --s3-bucket dev-981park-media-cju \          # 상대 S3 key 소스의 해석 버킷 (로컬 경로 소스는 불요)
     --advertise-host <이 노드의 IP> \             # 생략 = 자동 감지 (아래 §3 주의)
     >/dev/null 2>&1 &
 ```

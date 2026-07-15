@@ -315,6 +315,7 @@ momentscan = 놀이기구 탑승 영상 1클립 → 세 제품을 뽑는 배치 
   |---|---|---|
   | L12 | 선언 이원화 잔여 — verify/graph.py가 렌더로 봉합했으나 detect 내부가 hand-list(`DETECT_INTERNALS` 상수)라 실제 visualpath Pipeline 구성과 어긋나도 모름; 환경(네이티브 크래시) 격리 미착수 | **R14**(drift-test) / 격리는 의도적 보류 |
   | L13 | **배송 품질 천장 = 분석 해상도** — visualbase의 "결과 트리거→원본 편집" 역할 부재로 portrait/highlight 픽셀이 fps6·크롭 해상도에 갇힘. 서비스 잡 시점엔 원본이 source_cache에 **있으므로**(fetch 직후) 풀해상도 재크롭이 retention 결정(소스 ~1주 만료→크롭트랙 영속)과 모순 없이 가능 | §3 소유자 결정 항목(기능 추가라 실행자 범위 밖) |
+  | L14 | **클립 정체성이 파일명에 은닉** (2026-07-15 track/dispatch-shim 실증) — needs_source 스테이지들(attribute/tubelets/scene/features)이 `fn(src, out)` 시그니처로 소스 stem에서 클립을 재파생 → 잡 clip_id ≠ 파일명이면 산출물이 남의 클립 디렉토리로 흩어짐(wf777에서 하류 9스테이지 전멸 재현). detect는 clip_id 옵션 인자, 서비스는 `{clip_id}` 별칭-심링크 이음매로 **완화 완료**(test_company_shim 2핀) | 근치 = 스테이지 시그니처 `(out, clip, src)` 통일(전 스테이지 clip 명시) — 스테이지 다수 수정이라 별도 트랙, 완화가 있으므로 급하지 않음 |
 - **"visualbase" 의도의 현재 지형**: 미디어-기판 절반은 **visualbus로 이미 실현**
   (FileSource가 전 소스 접근의 표준 경로). 액션 미들웨어 절반 중 배송·리포트·메시지
   자리는 C1 서비스(collect_egress/deliver, transport-agnostic)에 착지. 남은 것은
