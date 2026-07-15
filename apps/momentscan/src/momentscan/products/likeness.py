@@ -1,4 +1,4 @@
-"""appearance — 외형 레퍼런스 = 분포 읽기 (three-product-taxonomy).
+"""likeness — 방문-스코프 외형 ID = 분포 읽기 (구명 appearance, 2026-06-15 개명).
 
 The machine consumer needs MEASUREMENTS, not a JPEG. Per rider track the
 landmark observation stream (landmarks.parquet) is canonicalized — un-rotate

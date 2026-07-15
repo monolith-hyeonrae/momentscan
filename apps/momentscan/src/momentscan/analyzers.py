@@ -27,6 +27,12 @@ OUTPUT_KINDS = (
     "selection",    # a product output (picked frames / segments)
 )
 
+# 산출물 tier — R12 (2026-07-15): 물리 이동 없이 논리 구분을 선언한다.
+# substrate=측정·공유 기판(재계산 가능한 중간물) · product=제품 산출(egress 후보)
+# · surface=사람용 렌더 · ops=런 기록/운영 흔적. 이 선언이 훗날 물리 재배치의
+# 지도가 된다(지금 배치를 정당화하는 게 아니라 실제 지위를 정직하게 기록).
+TIERS = ("substrate", "product", "surface", "ops")
+
 
 @dataclass(frozen=True)
 class Analyzer:
@@ -40,6 +46,9 @@ class Analyzer:
     depends: tuple[str, ...] = ()   # upstream analyzer names (the DAG edges)
     note: str = ""
     needs_source: bool = False      # True = reads the raw video → run_pipeline must pass --source
+    tier: str = "substrate"         # R12 — 측정 스테이지/unit의 기본은 substrate;
+                                    # 제품 엔진만 "product"를 명시(예외: select는 공유
+                                    # 채점 기판이라 substrate 유지 = D5 지위 정직화)
 
 
 ANALYZERS: tuple[Analyzer, ...] = (
@@ -48,7 +57,10 @@ ANALYZERS: tuple[Analyzer, ...] = (
              "timeline", ("bbox", "embedding", "track_id", "subject_id"), "detections.parquet",
              (), "track_id online; subject_id = clip-end re-id stitch"),
     Analyzer("landmarks", "stage", "MediaPipe FaceMesh", ("frames", "detect"),
-             "timeline", ("blendshapes", "transform", "crop_box"), "landmarks.parquet", ("detect",)),
+             "timeline", ("blendshapes", "transform", "crop_box"), "landmarks.parquet", ("detect",),
+             "⚠물리 landmarks.py 없음 — 실제 생산자=features 백엔드(plugins/features-"
+             "specialist45d extractor.write_landmarks). freshness도 features 모듈로만 "
+             "추적됨(선언된 사각 — 구조감사 D4, 근치=격리사다리/R14 몫)"),
     Analyzer("attribute", "stage", "depth (step0b)", ("detect",),
              "aggregate", ("rider_role", "depth"), "attribution.json", ("detect",),
              "main/aux = depth vote, not size", needs_source=True),
@@ -100,14 +112,15 @@ ANALYZERS: tuple[Analyzer, ...] = (
              ("landmarks", "face_quality", "parse", "crops", "headpose6d"),
              "selection", ("portraits/*.png", "candidates(portrait)"), "portraits/",
              ("landmarks", "parse", "crops", "headpose6d"),
-             "fashion admit; 0-axis not ranked; side via headpose6d fallback"),
+             "fashion admit; 0-axis not ranked; side via headpose6d fallback", tier="product"),
     Analyzer("likeness", "engine", "landmark distribution + fashion reading", ("landmarks", "parse", "fashion"),
              "aggregate", ("likeness.json (center, axes, fashion)",), "likeness.json",
              ("landmarks", "parse", "fashion", "portrait"),
              "visit-invariant ID; depends portrait = consumes its shared ① `valid` verdict "
              "(face_id/geometry from valid frames). NB freshness is import-closure based, so a "
              "gates.py change re-runs portrait but NOT likeness — close via lift-assembly (call "
-             "evaluate_validity) or an artifact-dep freshness rule; for now re-run engines together"),
+             "evaluate_validity) or an artifact-dep freshness rule; for now re-run engines together",
+             tier="product"),
     Analyzer("select", "engine", "frame_scores → candidates", ("features", "tubelets"),
              "selection", ("candidates(likeness)",), "candidates.jsonl", ("features", "portrait"),
              "공유 채점 기판(frame_scores) + likeness 후보 로그; highlight는 2026-07-03 "
@@ -115,10 +128,44 @@ ANALYZERS: tuple[Analyzer, ...] = (
     Analyzer("highlight", "engine", "joint WHEN phrases → segments", ("features", "tubelets", "scene"),
              "selection", ("highlight.json (segs)",), "highlight.json", ("features", "select", "portrait"),
              "합동 OR(max) WHEN 악구 + 정합성 방출(joy OR energy 축); frame_scores는 select의 "
-             "기판을 소비 — depends select = 코드 의존(채점 정의 변경 시 함께 재실행)"),
+             "기판을 소비 — depends select = 코드 의존(채점 정의 변경 시 함께 재실행)", tier="product"),
 )
 
 _BY_NAME = {a.name: a for a in ANALYZERS}
+
+for _a in ANALYZERS:                            # R12: 전 선언 tier 유효 — import에서 시끄럽게
+    assert _a.tier in TIERS, f"analyzer {_a.name}: bad tier {_a.tier!r} (valid: {TIERS})"
+
+# artifact → tier 지도. 분석기 산출물은 선언에서 파생, 비-분석기 산출물(공유 흔적·
+# 사람용 렌더·런 기록)은 여기 명시 — per-clip manifest.json과 report 4그룹 렌더의 근거.
+EXTRA_ARTIFACT_TIERS: dict[str, str] = {
+    "gate_trace.parquet": "substrate",      # ② 게이트 사다리 판정 흔적 (portrait 실행이 기록 — R10 전까지)
+    "candidates.jsonl": "substrate",        # 공유 채점 로그 (select·portrait 공동 기록)
+    "emotion_frame.parquet": "substrate",   # per-frame valence 관측 흔적
+    "stitch.json": "substrate",             # re-id 병합 기록
+    "landmarks.parquet": "substrate",       # (선언에도 있으나 명시 — features 백엔드가 기록, D4)
+    "highlights/": "product",               # 렌더된 하이라이트 세그 mp4
+    "detect.mp4": "surface",                # 사람용 오버레이 렌더 (리포트 썸네일 폴백)
+    "index.html": "surface", "inspect/": "surface",
+    "job.json": "ops", "run.json": "ops", "provenance.json": "ops",
+    "result.json": "ops", "manifest.json": "ops",
+    "process_trace.jsonl": "ops", "process_timeline.png": "ops",
+    "source_cache/": "ops", "eval/": "ops",
+}
+
+ARTIFACT_TIERS: dict[str, str] = (
+    {a.artifact: a.tier for a in ANALYZERS if a.artifact != "inline"} | EXTRA_ARTIFACT_TIERS)
+
+
+def classify_clip_files(cdir) -> dict[str, str]:
+    """클립 디렉토리 최상위 항목 → tier. 미지 항목은 'unclassified'(정직) —
+    manifest.json(파이프라인 기록)과 report 하단 지도가 같은 함수를 쓴다."""
+    from pathlib import Path
+    out: dict[str, str] = {}
+    for p in sorted(Path(cdir).iterdir()):
+        key = p.name + "/" if p.is_dir() else p.name
+        out[key] = ARTIFACT_TIERS.get(key, "unclassified")
+    return out
 
 
 def get(name: str) -> Analyzer:
@@ -191,7 +238,7 @@ PRODUCTS: tuple[Product, ...] = (
          ("fashion", ("eyewear", "headwear", "covering"))),
         ("likeness", "select"),
         ("likeness.json", "candidates.jsonl[likeness]"),
-        "molten", "two homes: appearance.py=distribution reading, select.py=exemplar picks (distinct readings, rename pending — NOT a split to consolidate yet)",
+        "molten", "two homes: likeness.py=distribution reading, select.py=exemplar picks (distinct readings — NOT a split to consolidate yet)",
         egress=("likeness.json",)),
     Product(
         "portrait", "query-extraction gate → clean crop-track pixels · 주탑승자만(2026-07-07)", "select(static)",
@@ -297,6 +344,14 @@ def registry_drift(runner_names, upstream=()) -> list[tuple[str, str]]:
         problems.append(("error", f"UPSTREAM_OF_RUNNER {u!r} is not a known analyzer"))
     for u in sorted(up & runners):
         problems.append(("error", f"{u!r} is both upstream-of-runner and a RUNNER (contradiction)"))
+
+    # R12: 모든 stage/engine 산출물에 유효한 tier — import assert의 CLI판 (이중 안전망)
+    for an in ANALYZERS:
+        if an.tier not in TIERS:
+            problems.append(("error", f"analyzer {an.name!r}: tier {an.tier!r} not in {TIERS}"))
+    for art in ("gate_trace.parquet", "candidates.jsonl"):     # 공유 흔적도 지도에 있어야
+        if art not in ARTIFACT_TIERS:
+            problems.append(("error", f"shared artifact {art!r} missing from ARTIFACT_TIERS"))
 
     # every depends edge names a real analyzer (topo_order silently ignores unknowns)
     for a in ANALYZERS:

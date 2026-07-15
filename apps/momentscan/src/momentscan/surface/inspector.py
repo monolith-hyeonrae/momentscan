@@ -19,7 +19,8 @@ from momentscan.domains import geometry, pose, signals
 from momentscan.surface._inspector_html import _TUBELET_INSPECT_HTML
 from momentscan.stash import (
     read_candidates, read_detections, read_gate_trace, read_headpose,
-    read_landmarks, read_parse, read_portrait, read_stitch, read_tubelets,
+    read_landmarks, read_parse, read_portrait, read_scene, read_stitch,
+    read_tubelets,
 )
 
 log = logging.getLogger("momentscan.surface.inspector")

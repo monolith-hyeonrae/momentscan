@@ -35,7 +35,7 @@ FIRST_PARTY = ("momentscan", "momentscan_features_specialist45d")
 INFRA = frozenset({"stash", "telemetry"})
 
 # stage name → its primary algorithm module (what the pipeline wrapper invokes).
-# Not always identity: likeness→appearance, headpose6d→headpose, and scene/features
+# Not always identity: headpose6d→headpose, emotion→domains.emotion, and scene/features
 # live in the sibling features package. Kept in lockstep with RUNNERS by an
 # import-time assert in pipeline.py.
 STAGE_MODULE = {

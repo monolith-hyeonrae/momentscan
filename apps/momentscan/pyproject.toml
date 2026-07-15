@@ -30,3 +30,20 @@ momentscan = "momentscan.__main__:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/momentscan"]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.15.21",
+]
+
+[tool.ruff]
+# R9 — 검사만 (전면 리포맷 금지: diff 오염 방지). baseline 이후 신규 위반만 차단.
+line-length = 120
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "C90"]
+ignore = ["E501"]          # 기존 코드 장문 라인 다수 — line-length는 신규 코드 가이드로만
+
+[tool.ruff.lint.mccabe]
+max-complexity = 22        # baseline 관대 시작 — 신규 함수가 이 문턱을 넘으면 §1 추출 신호

@@ -590,6 +590,20 @@ def run_path(stash_root: Path, clip_id: str) -> Path:
     return clip_dir(stash_root, clip_id) / "run.json"
 
 
+def manifest_path(stash_root: Path, clip_id: str) -> Path:
+    return clip_dir(stash_root, clip_id) / "manifest.json"
+
+
+def write_manifest(stash_root: Path, clip_id: str, record: dict) -> Path:
+    """R12 — per-clip 산출물 tier 지도 {파일→substrate|product|surface|ops}.
+    "이 클립 디렉토리의 각 파일은 무엇인가"에 선언이 답하게 하는 기록.
+    매 런 마지막에 last-run-wins로 재기록(run.json과 같은 규칙)."""
+    p = manifest_path(stash_root, clip_id)
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_text(json.dumps(record, ensure_ascii=False, indent=1), encoding="utf-8")
+    return p
+
+
 def write_run(stash_root: Path, clip_id: str, record: dict) -> Path:
     """Per-clip RUN trace — OBSERVABILITY of run behaviour: what ran, how long, what
     failed (the operational complement to provenance.json's run-IDENTITY; the

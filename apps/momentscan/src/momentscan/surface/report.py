@@ -128,6 +128,17 @@ def render_report(out_root, clip_id: str) -> dict:
         sec.append("<div class=warn>likeness.json 없음</div>")
     B.append(_section("likeness", "LIKENESS — 방문-스코프 외형 ID", sec))
 
+    # ── 산출물 tier 지도 (R12) — 이 디렉토리의 각 파일은 무엇인가, 선언이 답한다 ──
+    from momentscan.analyzers import TIERS, classify_clip_files
+    tiers_map = classify_clip_files(cdir)
+    sec = []
+    for tier in (*TIERS, "unclassified"):
+        members = sorted(f for f, t in tiers_map.items() if t == tier)
+        if members:
+            sec.append(f"<div class=kv><span class=chip>{tier}</span> "
+                       f"{html.escape(' · '.join(members))}</div>")
+    B.append(_section("tiers", "산출물 tier 지도 — substrate/product/surface/ops (R12)", sec))
+
     out = cdir / "index.html"
     out.write_text("<!doctype html><meta charset='utf-8'>"
                    f"<title>momentscan · {html.escape(clip_id)}</title>" + "".join(B), encoding="utf-8")

@@ -1,0 +1,61 @@
+"""struct-s1 핀 — 선언 가드(D1 assert 확장)·R12 tier·manifest (2026-07-15 구조 감사).
+
+fail-fast 원칙(code-style §3): 선언이 어긋나면 import에서 지참물과 함께 죽는다 —
+이 핀들은 그 가드 자체가 살아 있음을 고정한다."""
+from pathlib import Path
+
+from momentscan import analyzers
+from momentscan.verify import freshness
+
+
+def test_stage_module_paths_all_resolve():
+    """D1: STAGE_MODULE의 dotted-path가 하나라도 해석 불가면 freshness가 무증상
+    실명한다(_origin→None→is_stale 항상 False) — 전 경로 실존을 핀."""
+    dangling = {s: m for s, m in freshness.STAGE_MODULE.items()
+                if freshness._origin(m) is None}
+    assert not dangling, f"해석 불가 모듈 경로: {dangling}"
+
+
+def test_every_analyzer_has_valid_tier():
+    for a in analyzers.ANALYZERS:
+        assert a.tier in analyzers.TIERS, (a.name, a.tier)
+
+
+def test_tier_honesty_pins():
+    """D5 정직화: select는 engine이지만 공유 채점 기판 = substrate.
+    제품 엔진 3종만 product."""
+    assert analyzers.get("select").tier == "substrate"
+    for name in ("portrait", "likeness", "highlight"):
+        assert analyzers.get(name).tier == "product", name
+    for name in ("detect", "landmarks", "tubelets", "features", "emotion"):
+        assert analyzers.get(name).tier == "substrate", name
+
+
+def test_artifact_tiers_cover_shared_traces():
+    for art in ("gate_trace.parquet", "candidates.jsonl", "detections.parquet",
+                "likeness.json", "detect.mp4", "run.json"):
+        assert art in analyzers.ARTIFACT_TIERS, art
+
+
+def test_classify_clip_files(tmp_path):
+    (tmp_path / "likeness.json").write_text("{}")
+    (tmp_path / "run.json").write_text("{}")
+    (tmp_path / "detect.mp4").write_bytes(b"")
+    (tmp_path / "crops").mkdir()
+    (tmp_path / "mystery.bin").write_bytes(b"")
+    got = analyzers.classify_clip_files(tmp_path)
+    assert got["likeness.json"] == "product"
+    assert got["run.json"] == "ops"
+    assert got["detect.mp4"] == "surface"
+    assert got["crops/"] == "substrate"
+    assert got["mystery.bin"] == "unclassified"       # 미지 항목 = 정직한 미분류
+
+
+def test_manifest_writer(tmp_path):
+    from momentscan.stash import write_manifest
+    p = write_manifest(tmp_path, "clipX", {"schema": "momentscan.manifest/v0",
+                                           "tiers": {"likeness.json": "product"}})
+    import json
+    rec = json.loads(Path(p).read_text())
+    assert rec["schema"] == "momentscan.manifest/v0"
+    assert rec["tiers"]["likeness.json"] == "product"
