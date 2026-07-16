@@ -76,7 +76,7 @@ def _emotion(out, clip, src, fps):
 
 
 def _gates(out, clip, src, fps):
-    from momentscan.gates import run_gates
+    from momentscan.engine.gates import run_gates
     return run_gates(out, clip, fps=fps)
 
 
