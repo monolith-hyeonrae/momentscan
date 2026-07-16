@@ -1,6 +1,6 @@
 """graph.py — the ONE declared graph (the legibility spine).
 
-analyzers.py, gates.py, and the PRODUCTS map each declare a SLICE of the system;
+registry.py, gates.py, and the PRODUCTS map each declare a SLICE of the system;
 to see "what runs in what order, reading what, producing what" you had to merge
 2.5 representations in your head (the visualpath frame-DAG hidden in detect, the
 analyzers artifact-DAG, the gate ladder, the product read-map). This is the thin
@@ -14,14 +14,14 @@ PRODUCTS. detect's two internal visualpath bus modules are shown as a one-LINE
 annotation (DETECT_INTERNALS), NOT re-declared as nodes (2 nodes do not justify a
 hand-kept mirror + a drift guard). Edges are DERIVED (depends, product reads, gate
 reads), never hand-listed — copying visualpath's introspectability into the
-clip-DAG without copying its runtime. Imports analyzers + gates ONLY (both
+clip-DAG without copying its runtime. Imports registry + gates ONLY (both
 import-light: stdlib + numpy), so `momentscan map graph` stays torch/polars-free.
 """
 from __future__ import annotations
 
 from dataclasses import dataclass
 
-from momentscan.engine import analyzers, gates
+from momentscan.pipeline import gates, registry
 
 # detect runs exactly 2 visualpath bus modules (resolver topo-orders them); shown
 # inline, NOT re-declared as nodes. Source of truth = detect.py:62-69.
@@ -52,13 +52,13 @@ def _analyzer_backend(a) -> str:
 def nodes() -> list[Node]:
     """Project the 2.5 declarations into ONE uniform node list (a derived VIEW)."""
     ns: list[Node] = []
-    for a in analyzers.ANALYZERS:
+    for a in registry.ANALYZERS:
         grain = "frame" if a.name in _FRAME else "clip"
         ns.append(Node(a.name, a.kind, grain, _analyzer_backend(a), a.artifact, a.model))
     for n in gates.LADDER:
         label = f"{n.semantics} · {n.tier}" if n.kind == "gate" else "cohort stat"
         ns.append(Node(n.name, n.kind, "clip", "gate-ladder", "gate_trace.parquet", label))
-    for p in analyzers.PRODUCTS:
+    for p in registry.PRODUCTS:
         ns.append(Node(p.name, "product", "clip", "product", ", ".join(p.outputs),
                        f"[{p.state}] {p.definition}"))
     return ns
@@ -71,10 +71,10 @@ def edges() -> list[tuple[str, str, str]]:
     assembled inline by the engine, surfaced separately by unjoined_reads()."""
     ladder_names = {n.name for n in gates.LADDER}
     es: list[tuple[str, str, str]] = []
-    for a in analyzers.ANALYZERS:
+    for a in registry.ANALYZERS:
         for d in a.depends:
             es.append((d, a.name, "depends"))
-    for p in analyzers.PRODUCTS:
+    for p in registry.PRODUCTS:
         for stage, _keys in p.reads:
             es.append((stage, p.name, "reads"))
     for n in gates.LADDER:
@@ -89,10 +89,10 @@ def unjoined_reads() -> dict[str, list[str]]:
     node. Products SHOULD all resolve (they reference analyzer names); gate reads
     that aren't ladder nodes are the engine's inline-assembled SIGNALS (expected —
     ③ checks them against gates.SIGNAL_INPUTS, not the analyzer catalog)."""
-    analyzer_names = {a.name for a in analyzers.ANALYZERS}
+    analyzer_names = {a.name for a in registry.ANALYZERS}
     ladder_names = {n.name for n in gates.LADDER}
     out: dict[str, list[str]] = {"product": [], "gate-signal": []}
-    for p in analyzers.PRODUCTS:
+    for p in registry.PRODUCTS:
         for stage, _ in p.reads:
             if stage not in analyzer_names:
                 out["product"].append(f"{p.name} → {stage}")
@@ -150,7 +150,7 @@ def render_text() -> str:
             L.append(f"  {'':<10}  ← {reads}")
             L.append(f"  {'':<10}  → {n.artifact}")
 
-    L.append("\nrun order (clip DAG): " + " → ".join(a.name for a in analyzers.topo_order()))
+    L.append("\nrun order (clip DAG): " + " → ".join(a.name for a in registry.topo_order()))
 
     uj = unjoined_reads()
     if uj["product"]:

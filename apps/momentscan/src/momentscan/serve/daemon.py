@@ -29,7 +29,7 @@ from pathlib import Path
 from visualbus.control.server import ControlServer
 from visualbus.structured_log import log_context
 
-from momentscan.extraction.detect import DEFAULT_MODEL_ROOT, process_clip, warm_init
+from momentscan.subjects.detect import DEFAULT_MODEL_ROOT, process_clip, warm_init
 
 log = logging.getLogger("momentscan.daemon")
 

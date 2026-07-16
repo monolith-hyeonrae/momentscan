@@ -1,5 +1,5 @@
 """Pipeline runner — makes the analyzer registry LIVE. It sequences the stage/
-engine analyzers in dependency order (`analyzers.topo_order`) and runs each,
+engine analyzers in dependency order (`registry.topo_order`) and runs each,
 SKIPPING any whose artifact already exists (resumable). The registry stops being
 only a catalog and becomes the execution plan — add an analyzer + a STEP entry,
 and it runs in the right place automatically.
@@ -14,8 +14,8 @@ import logging
 import time
 from pathlib import Path
 
-from momentscan.engine import analyzers
-from momentscan.engine import freshness
+from momentscan.pipeline import freshness
+from momentscan.pipeline import registry
 from momentscan.store.stash import clip_dir, provenance_path, write_manifest, write_provenance, write_run
 
 log = logging.getLogger("momentscan.pipeline")
@@ -76,7 +76,7 @@ def _emotion(out, clip, src, fps):
 
 
 def _gates(out, clip, src, fps):
-    from momentscan.engine.gates import run_gates
+    from momentscan.pipeline.gates import run_gates
     return run_gates(out, clip, fps=fps)
 
 
@@ -131,7 +131,7 @@ RUNNERS = {
 
 
 def _upstream_probes(name: str) -> tuple[str, ...]:
-    """R5 artifact-edge: 직접 선언 상류(analyzers.depends)의 대표 산출물 경로.
+    """R5 artifact-edge: 직접 선언 상류(registry.depends)의 대표 산출물 경로.
 
     RUNNERS 상류 → 그 probe (공유 candidates.jsonl이 아니라 자기-산출물 —
     sibling-write 거짓-stale 가드) · UPSTREAM_OF_RUNNER(detect/landmarks) →
@@ -139,7 +139,7 @@ def _upstream_probes(name: str) -> tuple[str, ...]:
     topo 순서가 자연 전파한다(상류가 재실행되면 산출물이 새로워져 다음
     소비자가 같은 런에서 stale로 판정)."""
     try:
-        a = analyzers.get(name)
+        a = registry.get(name)
     except KeyError:
         return ()
     out: list[str] = []
@@ -148,7 +148,7 @@ def _upstream_probes(name: str) -> tuple[str, ...]:
             out.append(RUNNERS[d][0])
         else:
             try:
-                art = analyzers.get(d).artifact
+                art = registry.get(d).artifact
             except KeyError:
                 continue
             if art and art != "inline":
@@ -189,18 +189,18 @@ def _stage_health(name: str, r) -> str:
 
 def _scoped_order(order, only, products):
     """Restrict the DAG order to a stage set (`only`) or the union of the requested
-    products' closures (`products`, R11 — analyzers.product_closure). No scope → unchanged."""
+    products' closures (`products`, R11 — registry.product_closure). No scope → unchanged."""
     if only:
         return [a for a in order if a.name in only]
     if not products:
         return order
 
-    known = {p.name for p in analyzers.products()}
+    known = {p.name for p in registry.products()}
     bad = [p for p in products if p not in known]
     if bad:
         raise ValueError(f"run_pipeline: unknown products {bad} (known: {sorted(known)})")
 
-    want = set().union(*(analyzers.product_closure(p) for p in products))
+    want = set().union(*(registry.product_closure(p) for p in products))
     return [a for a in order if a.name in want]
 
 
@@ -210,7 +210,7 @@ def run_pipeline(out_root, clip_id: str, *, source=None, fps: int = 6,
     """Run post-detect stages in registry DAG order; skip existing artifacts.
 
     `only` restricts to named stages; `products` restricts to the union of the named
-    products' closures (analyzers.product_closure — R11). The two are mutually exclusive
+    products' closures (registry.product_closure — R11). The two are mutually exclusive
     (fail-fast: a run is either stage-scoped or product-scoped, never both)."""
     if only and products:
         raise ValueError(
@@ -242,7 +242,7 @@ def run_pipeline(out_root, clip_id: str, *, source=None, fps: int = 6,
     # No hand-kept membership list — a new analyzer with a RUNNERS entry runs
     # automatically; one without a runner is caught by `momentscan verify registry`, never
     # silently dropped.
-    order = [a for a in analyzers.topo_order()
+    order = [a for a in registry.topo_order()
              if a.kind in ("stage", "engine") and a.name not in UPSTREAM_OF_RUNNER]
     order = _scoped_order(order, only, products)
     # CASCADE ORDER (the big-frame you watch run): all FEATURE-EXTRACTION (kind 'stage')
@@ -329,5 +329,5 @@ def run_pipeline(out_root, clip_id: str, *, source=None, fps: int = 6,
     # R12 — 산출물 tier 지도. report·운영이 "이 파일은 무엇인가"를 선언으로 답한다.
     write_manifest(out_root, clip_id, {
         "schema": "momentscan.manifest/v0",
-        "tiers": analyzers.classify_clip_files(cdir)})
+        "tiers": registry.classify_clip_files(cdir)})
     return result

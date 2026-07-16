@@ -7,5 +7,5 @@
   telemetry.py  후보 로그 등 관측 흔적 계약
 
 freshness INFRA 제외 대상 — IO 배관 수정이 전 산출물을 stale시키지 않게
-(engine/freshness.py INFRA={"store"}가 이 패키지를 가리킨다).
+(pipeline/freshness.py INFRA={"store"}가 이 패키지를 가리킨다).
 """

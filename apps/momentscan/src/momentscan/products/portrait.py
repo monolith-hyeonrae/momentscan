@@ -29,7 +29,7 @@ import cv2
 import numpy as np
 import polars as pl
 
-from momentscan.engine.gates import BLINK_MAX, QUERY_DIST_MAX
+from momentscan.pipeline.gates import BLINK_MAX, QUERY_DIST_MAX
 from momentscan.readings.pose import FRONTAL_DEG, POSE_MAX_DEG, SIDE_DEG
 from momentscan.store.stash import (
     append_candidate, candidates_path, clip_dir, headpose_path, parse_path,

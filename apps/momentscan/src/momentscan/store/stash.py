@@ -608,7 +608,7 @@ def write_manifest(stash_root: Path, clip_id: str, record: dict) -> Path:
 def write_run(stash_root: Path, clip_id: str, record: dict) -> Path:
     """Per-clip RUN trace — OBSERVABILITY of run behaviour: what ran, how long, what
     failed (the operational complement to provenance.json's run-IDENTITY; the
-    openpilot rlog/loggerd analogue). Each stage row's `name` is an analyzers.ANALYZERS
+    openpilot rlog/loggerd analogue). Each stage row's `name` is a registry.ANALYZERS
     node, so the declared graph keys it. Per-clip, last-run-wins (nothing accumulates,
     same rule as provenance)."""
     p = run_path(stash_root, clip_id)

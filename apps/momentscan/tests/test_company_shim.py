@@ -10,7 +10,7 @@ import threading
 
 import pytest
 
-import momentscan.engine.pipeline as pipeline
+import momentscan.pipeline.runner as pipeline
 from momentscan.serve.company import BUSY, GROUP, OK, CompanyShim, resolve_source
 from momentscan.serve.service import JobRunner, build_server
 from momentscan.store.stash import clip_dir, write_result
@@ -145,7 +145,7 @@ def test_detect_receives_job_clip_id(tmp_path, monkeypatch):
         return {}
 
     stub = types.SimpleNamespace(warm_init=lambda: object(), process_clip=fake_process_clip)
-    monkeypatch.setitem(sys.modules, "momentscan.extraction.detect", stub)
+    monkeypatch.setitem(sys.modules, "momentscan.subjects.detect", stub)
 
     src = tmp_path / "some_video_name.mp4"              # stem ≠ clip_id
     src.write_bytes(b"\x00")

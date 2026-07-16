@@ -1,10 +1,10 @@
-"""Gate catalog — the DECISION layer, declared as data (sibling to analyzers.py).
+"""Gate catalog — the DECISION layer, declared as data (sibling to registry.py).
 
-Lives in engine/ next to analyzers.py (Q3, struct-s2): the "sibling to analyzers.py"
-self-declaration is now literal — both are the S2-substrate declaration layer, one
-naming the PRODUCERS, the other the DECISIONS taken over their measurements.
+Lives in pipeline/ next to registry.py (Q3 struct-s2 → T6 rename): the "sibling to
+registry.py" self-declaration is literal — both are the S2-substrate declaration layer,
+one naming the PRODUCERS, the other the DECISIONS taken over their measurements.
 
-analyzers.py declares the PRODUCERS (what measures what). This declares the
+registry.py declares the PRODUCERS (what measures what). This declares the
 GATES: the admit / reject / route decisions taken over those measurements. The
 distinction is NOT binary-vs-continuous (a binary analyzer output like
 `face_present` is still a measurement); it is **reject/route (gate) vs measure
