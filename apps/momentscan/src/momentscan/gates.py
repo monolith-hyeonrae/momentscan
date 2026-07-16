@@ -338,6 +338,7 @@ SIGNAL_INPUTS = frozenset({
     "mp_yaw_raw", "sixd_yaw_raw",   # raw per-backend yaw → the pose_class quantizer
     "cos_self", "cos_other",        # ArcFace cos to own / nearest-rival admit-centroid → id_valid
     "em_conf",                      # HSEmotion dominant-category prob → expr_ok (coherent expression)
+    "em_vel",                       # HSEmotion L1 Δsoftmax — trace-only (read by no gate; portrait's stab tiebreak)
 })
 _DERIVED = frozenset({"have_bs", "pose_finite", "mask_valid", "pose_class", "frontal_clean"})   # computed in _derive() from signals
 
@@ -501,9 +502,13 @@ def trace_rows(sid: int, fx, s: dict, v: dict) -> list[dict]:
             "id_ok": bool(v["id_ok"][k]), "id_valid": bool(v["id_valid"][k]),
             "cos_self": _r(s["cos_self"][k]), "cos_other": _r(s["cos_other"][k]),
             "em_conf": _r(s["em_conf"][k]), "expr_ok": bool(v["expr_ok"][k]),
+            "em_vel": _r(s["em_vel"][k]),   # trace-only: HSEmotion L1 Δsoftmax (portrait's stab tiebreak)
             # EFFECTIVE (judgeability-derived) verdicts, not the raw parse booleans —
             # the trace records what the ladder DECIDED on; raw stays in parse.parquet.
             "face_present": bool(v["face_present"][k]),
+            # sunglasses_v / masked_v = the JUDGED (judgeability-derived) worn-item verdicts —
+            # portrait reads these to average its fashion dict, no longer re-deriving them.
+            "sunglasses_v": bool(v["sunglasses"][k]), "masked_v": bool(v["masked"][k]),
             "fashion": bool(v["sunglasses"][k] or v["masked"][k]), "valid": bool(v["valid"][k]),  # T0
             "have_bs": bool(v["have_bs"][k]), "pose_finite": bool(v["pose_finite"][k]),
             "eyes_ok": bool(v["eyes_ok"][k]),
@@ -757,13 +762,13 @@ def run_gates(out_root, clip_id: str, *, fps: int = 6) -> dict:
         # SIGNALS → GATES (the declared ladder). iddev is a measurement (clean_ref
         # Reference summarises it); sunglasses/masked/face_present came from parse.
         iddev = signals.identity_deviation(emb)
-        em_conf, _vel = _emo_align(emo_by_sid.get(int(sid)), fx)   # em_conf gates expr_ok (PASS 1)
+        em_conf, em_vel = _emo_align(emo_by_sid.get(int(sid)), fx)   # em_conf gates expr_ok; em_vel = trace-only
         _nan = np.full(N, np.nan)
         sig = {"fx": fx, "blink": blink, "smile": smile, "jaw": jaw, "blur": blur, "iddev": iddev,
                "yaw_f": yaw_f, "pit_f": pit_f, "rol_f": rol_f, "pose_6d": pose_6d,
                "mp_yaw_raw": yaw, "sixd_yaw_raw": yaw6,   # raw backends → gates' pose_class
                "cos_self": _nan, "cos_other": _nan.copy(),   # filled in PASS 2 (cross-subject)
-               "em_conf": em_conf,                           # → expr_ok (coherent-expression gate)
+               "em_conf": em_conf, "em_vel": em_vel,         # em_conf → expr_ok; em_vel → trace only (portrait tiebreak)
                "sunglasses": sunglasses, "masked": masked, "face_present": face_present,
                "skin_entropy": skin_entropy, "skin_frac": skin_frac}
         admit1 = evaluate(sig)["admit"]
