@@ -75,6 +75,11 @@ def _emotion(out, clip, src, fps):
     return extract_emotion(out, clip, fps=fps)
 
 
+def _gates(out, clip, src, fps):
+    from momentscan.gates import run_gates
+    return run_gates(out, clip, fps=fps)
+
+
 def _portrait(out, clip, src, fps):
     from momentscan.products.portrait import select_portrait
     return select_portrait(out, clip, fps=fps)
@@ -117,6 +122,7 @@ RUNNERS = {
     "fashion":   ("fashion.json", _fashion),
     "headpose6d": ("headpose.parquet", _headpose),
     "emotion":   ("emotion.json", _emotion),
+    "gates":     ("gate_trace.parquet", _gates),   # R10: the decision layer is a STAGE (measurement), not a step inside portrait
     "portrait":  ("portraits/portrait.json", _portrait),
     "likeness":  ("likeness.json", _likeness),
     "select":    ("select.json", _select),   # own artifact — candidates.jsonl is SHARED (portrait creates it first → false skip)
@@ -226,8 +232,8 @@ def run_pipeline(out_root, clip_id: str, *, source=None, fps: int = 6,
     for a in order:
         if watch and a.kind != phase:                     # crossed a cascade boundary
             phase = a.kind
-            print("\n═══ " + ("① FEATURE EXTRACTION" if phase == "stage"
-                              else "③ PRODUCT  (gate ② runs inside portrait)") + " ═══", flush=True)
+            print("\n═══ " + ("① FEATURE EXTRACTION  (incl. ② the gates stage)" if phase == "stage"
+                              else "③ PRODUCT  (reads the ② gate trace)") + " ═══", flush=True)
         if a.name not in RUNNERS:
             result["skipped"].append({"name": a.name, "reason": "no runner (see momentscan verify registry)"})
             if watch: print(f"  {a.name:11} — no runner", flush=True)

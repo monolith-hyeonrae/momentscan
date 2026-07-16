@@ -36,7 +36,7 @@ from momentscan.readings.pose import FRONTAL_DEG, POSE_MAX_DEG, SIDE_DEG, euler_
 from momentscan.store.stash import (
     append_candidate, candidates_path, clip_dir, read_candidates,
     read_features, read_headpose, read_landmarks, read_parse, read_tubelets,
-    write_gate_trace, write_portrait,
+    write_portrait,
 )
 from momentscan.store.telemetry import CandidateLog
 
@@ -171,7 +171,6 @@ def select_portrait(out_root, clip_id: str, *, fps: int = 6) -> dict:
 
     summary = {"clip_id": clip_id, "ok": True, "riders": {}}
     all_portraits = []
-    trace_rows = []   # gate_trace.parquet — every per-frame gate verdict as data
 
     # PASS 1 — assemble each subject's per-frame signals and the PROVISIONAL admit cohort
     # with cos_self/cos_other = NaN. id_valid then ≡ id_ok (the cos rescue floors all fail),
@@ -287,9 +286,9 @@ def select_portrait(out_root, clip_id: str, *, fps: int = 6) -> dict:
         # frames abstain, so a profile ride no longer reads as "wore a mask".
         fashion = {"sunglasses": round(float(gv["sunglasses"].mean()), 3) if N else 0.0,
                    "mask": round(float(gv["masked"].mean()), 3) if N else 0.0}
-        # gate_trace.parquet rows — the gate's own self-record (the inspector renders
-        # it instead of re-deciding). Schema owned by gates.py; written after the loop.
-        trace_rows += gates.trace_rows(sid, fx, sig, gv)
+        # NB gate_trace.parquet is now produced by the `gates` STAGE (R10), not here —
+        # this engine still re-runs evaluate() in-memory (transient dual-eval, pure/cheap)
+        # and switches to a read_gate_trace reader in the following commit.
 
         # 제품 스코프 (user 2026-07-07): portrait은 **주탑승자만** — aux는 얼굴이 작고
         # 상시 가림이라 측정 신뢰가 낮다 (P1-② 감사 실증: aux들이 coherence 최저).
@@ -423,8 +422,6 @@ def select_portrait(out_root, clip_id: str, *, fps: int = 6) -> dict:
         all_portraits.extend(extracted)
 
     write_portrait(out_root, clip_id, summary)
-    if trace_rows:
-        write_gate_trace(out_root, clip_id, trace_rows)
     summary["portraits_dir"] = str(pdir)
     summary["n_portraits"] = len(all_portraits)
     summary["ms"] = int((time.perf_counter() - t0) * 1000)

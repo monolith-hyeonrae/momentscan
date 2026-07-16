@@ -21,8 +21,11 @@ import shutil
 import tempfile
 from pathlib import Path
 
-# deterministic CPU stages re-run (their inputs are the frozen model-stage artifacts)
-REPLAY_STAGES = ("emotion", "likeness", "portrait", "select")
+# deterministic CPU stages re-run (their inputs are the frozen model-stage artifacts).
+# gates (R10) regenerates gate_trace.parquet — a CPU stage (ladder eval over frozen
+# signals, no model inference); it MUST replay or the gate_trace diff below would compare
+# the copied ref against itself (silently no coverage). It runs before the product engines.
+REPLAY_STAGES = ("gates", "emotion", "likeness", "portrait", "select")
 # volatile fields excluded from the diff (run-to-run noise, not behaviour)
 IGNORE = {"elapsed_s", "ms", "emotion", "portraits_dir", "n_portraits", "timestamp",
           "processed_at_unix", "processed_at_iso", "started_at_unix", "started_at_iso",

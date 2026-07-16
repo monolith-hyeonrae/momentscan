@@ -93,6 +93,15 @@ ANALYZERS: tuple[Analyzer, ...] = (
              ("valence_signed", "em_conf", "arousal", "per-person RIDE baseline"),
              "emotion.json", ("features", "tubelets"),
              "shared emotion reading; emotion.json = per-person baseline, emotion_frame.parquet = per-frame valence/em_conf/arousal (observability trace the inspector reads)"),
+    Analyzer("gates", "stage", "gate ladder (gates.evaluate → per-subject verdicts)",
+             ("tubelets", "landmarks", "crops", "parse", "headpose6d", "features"),
+             "categorical", ("reason", "valid", "admit", "quarter_ok", "side_ok"),
+             "gate_trace.parquet", ("tubelets", "landmarks", "crops", "parse", "headpose6d", "features"),
+             "R10: the DECISION layer as a STAGE (measurement V01~V05), no longer a step inside "
+             "portrait — un-hostages likeness/select freshness (L9/D2). Assembles per-frame signals "
+             "then runs the ladder for ALL subjects. features is an optional-DEGRADING read at "
+             "runtime (absent → em_conf NaN → expr_ok passes), but it DOES change the verdicts when "
+             "present (em_conf gates expr_ok), so it is a declared depend for freshness/closure honesty"),
 
     # ── unit analyzers: pure fns in signals.py over a stream (inline);
     #    pose graduated to its own domain module pose.py (fusion+quantizer+thresholds) ──
@@ -111,20 +120,23 @@ ANALYZERS: tuple[Analyzer, ...] = (
     Analyzer("portrait", "engine", "synthetic-criterion gate + crop-track extract",
              ("landmarks", "face_quality", "parse", "crops", "headpose6d"),
              "selection", ("portraits/*.png", "candidates(portrait)"), "portraits/",
-             ("landmarks", "parse", "crops", "headpose6d"),
-             "fashion admit; 0-axis not ranked; side via headpose6d fallback", tier="product"),
+             ("landmarks", "parse", "crops", "headpose6d", "gates"),
+             "fashion admit; 0-axis not ranked; side via headpose6d fallback. depends gates = "
+             "reads the gate verdicts from gate_trace (R10: gate production is its own stage)", tier="product"),
     Analyzer("likeness", "engine", "landmark distribution + fashion reading", ("landmarks", "parse", "fashion"),
              "aggregate", ("likeness.json (center, axes, fashion)",), "likeness.json",
-             ("landmarks", "parse", "fashion", "portrait"),
-             "visit-invariant ID; depends portrait = consumes its shared ① `valid` verdict "
-             "(face_id/geometry from valid frames). NB freshness is import-closure based, so a "
-             "gates.py change re-runs portrait but NOT likeness — close via lift-assembly (call "
-             "evaluate_validity) or an artifact-dep freshness rule; for now re-run engines together",
+             ("landmarks", "parse", "fashion", "portrait", "gates"),
+             "visit-invariant ID; depends gates = consumes the shared ① `valid` verdict from "
+             "gate_trace (face_id/geometry from valid frames). R10 resolved the old freshness "
+             "hostage: gate_trace is now a STAGE (not produced by portrait), so a gates.py change "
+             "re-runs gates → the R5 artifact-edge marks likeness stale → it re-runs. The `portrait` "
+             "edge is now redundant (likeness reads gate_trace, not portrait output) — removed in the "
+             "closure-repair commit (R11)",
              tier="product"),
     Analyzer("select", "engine", "frame_scores → candidates", ("features", "tubelets"),
-             "selection", ("candidates(likeness)",), "candidates.jsonl", ("features", "portrait"),
+             "selection", ("candidates(likeness)",), "candidates.jsonl", ("features", "portrait", "gates"),
              "공유 채점 기판(frame_scores) + likeness 후보 로그; highlight는 2026-07-03 "
-             "highlight.py로 졸업. depends portrait = WHICH가 공유 ① `valid` 소비 (freshness caveat 동일)"),
+             "highlight.py로 졸업. depends gates = WHICH가 공유 ① `valid` 소비 (gate_trace, R10 이후 stage)"),
     Analyzer("highlight", "engine", "joint WHEN phrases → segments", ("features", "tubelets", "scene"),
              "selection", ("highlight.json (segs)",), "highlight.json", ("features", "select", "portrait"),
              "합동 OR(max) WHEN 악구 + 정합성 방출(joy OR energy 축); frame_scores는 select의 "
@@ -139,7 +151,7 @@ for _a in ANALYZERS:                            # R12: 전 선언 tier 유효 �
 # artifact → tier 지도. 분석기 산출물은 선언에서 파생, 비-분석기 산출물(공유 흔적·
 # 사람용 렌더·런 기록)은 여기 명시 — per-clip manifest.json과 report 4그룹 렌더의 근거.
 EXTRA_ARTIFACT_TIERS: dict[str, str] = {
-    "gate_trace.parquet": "substrate",      # ② 게이트 사다리 판정 흔적 (portrait 실행이 기록 — R10 전까지)
+    # gate_trace.parquet tier는 gates 분석기 선언에서 파생 (R10) — 여기 명시 불필요.
     "candidates.jsonl": "substrate",        # 공유 채점 로그 (select·portrait 공동 기록)
     "emotion_frame.parquet": "substrate",   # per-frame valence 관측 흔적
     "stitch.json": "substrate",             # re-id 병합 기록

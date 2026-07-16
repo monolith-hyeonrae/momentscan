@@ -48,6 +48,7 @@ STAGE_MODULE = {
     "fashion":    "momentscan.extraction.fashion",
     "headpose6d": "momentscan.extraction.headpose",
     "emotion":    "momentscan.readings.emotion",
+    "gates":      "momentscan.gates",                   # R10: gate_trace is a stage; closure = gates + signals/emotion/pose
     "portrait":   "momentscan.products.portrait",
     "likeness":   "momentscan.products.likeness",
     "select":     "momentscan.products.select",
