@@ -125,18 +125,18 @@ ANALYZERS: tuple[Analyzer, ...] = (
              "reads the gate verdicts from gate_trace (R10: gate production is its own stage)", tier="product"),
     Analyzer("likeness", "engine", "landmark distribution + fashion reading", ("landmarks", "parse", "fashion"),
              "aggregate", ("likeness.json (center, axes, fashion)",), "likeness.json",
-             ("landmarks", "parse", "fashion", "portrait", "gates"),
+             ("landmarks", "parse", "fashion", "gates"),
              "visit-invariant ID; depends gates = consumes the shared ① `valid` verdict from "
-             "gate_trace (face_id/geometry from valid frames). R10 resolved the old freshness "
-             "hostage: gate_trace is now a STAGE (not produced by portrait), so a gates.py change "
-             "re-runs gates → the R5 artifact-edge marks likeness stale → it re-runs. The `portrait` "
-             "edge is now redundant (likeness reads gate_trace, not portrait output) — removed in the "
-             "closure-repair commit (R11)",
+             "gate_trace (face_id/geometry from valid frames). R11 declaration repair: likeness's "
+             "real dependency is gate_trace (a STAGE, R10), NOT portrait — the old `portrait` edge "
+             "was the L9 hostage and is removed (선언=정본, 실제 read와 정합). A gates.py change now "
+             "re-runs gates → the R5 artifact-edge marks likeness stale → it re-runs (no portrait needed)",
              tier="product"),
     Analyzer("select", "engine", "frame_scores → candidates", ("features", "tubelets"),
-             "selection", ("candidates(likeness)",), "candidates.jsonl", ("features", "portrait", "gates"),
+             "selection", ("candidates(likeness)",), "candidates.jsonl", ("features", "gates"),
              "공유 채점 기판(frame_scores) + likeness 후보 로그; highlight는 2026-07-03 "
-             "highlight.py로 졸업. depends gates = WHICH가 공유 ① `valid` 소비 (gate_trace, R10 이후 stage)"),
+             "highlight.py로 졸업. depends gates = WHICH가 공유 ① `valid` 소비 (gate_trace, R10 이후 stage). "
+             "R11 수리: select은 portrait 산출을 읽지 않는다(gate_trace만) — 헛(phantom) portrait 간선 제거"),
     Analyzer("highlight", "engine", "joint WHEN phrases → segments", ("features", "tubelets", "scene"),
              "selection", ("highlight.json (segs)",), "highlight.json", ("features", "select", "portrait"),
              "합동 OR(max) WHEN 악구 + 정합성 방출(joy OR energy 축); frame_scores는 select의 "
@@ -327,6 +327,22 @@ def _depends_closure() -> dict[str, set[str]]:
     for a in ANALYZERS:
         walk(a.name, frozenset({a.name}))
     return closure
+
+
+def product_closure(name: str) -> set[str]:
+    """The analyzers that must run to produce product `name`: its emitter engine(s) +
+    their transitive `depends` (R11). `run --product` restricts the run order to the
+    union of these over the requested products. NB likeness is co-emitted by BOTH the
+    `likeness` and `select` engines (Product.emitted_by), so its closure includes select
+    and select's upstream — the run produces the product's FULL output set (likeness.json
+    AND candidates.jsonl[likeness]), not only the egress artifact."""
+    p = _BY_PRODUCT[name]
+    closure = _depends_closure()
+    need: set[str] = set()
+    for eng in p.emitted_by:
+        need.add(eng)
+        need |= closure.get(eng, set())
+    return need
 
 
 def registry_drift(runner_names, upstream=()) -> list[tuple[str, str]]:

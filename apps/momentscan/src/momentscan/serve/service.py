@@ -307,7 +307,10 @@ class JobRunner:
             # 하류 전멸 (wf777 리허설 실증: detect가 test_2/로 쓰고 잡은 wf777-*)
             process_clip(self._warm, str(source), out, fps=fps, clip_id=clip_id)
 
-        run = run_pipeline(out, clip_id, source=str(source) if source else None, fps=fps)
+        # R11: restrict the run to the effective products' closure (run only what will be
+        # served). Empty effective (all requested products closed) → None = full pipeline (fallback).
+        run = run_pipeline(out, clip_id, source=str(source) if source else None, fps=fps,
+                           products=list(effective) or None)
         if run["failed"]:
             raise RuntimeError(f"stages failed: {[f['name'] for f in run['failed']]}")
 
