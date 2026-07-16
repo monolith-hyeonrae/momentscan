@@ -589,6 +589,7 @@ def _emo_align(ed, fx):
     vel = np.full(N, np.nan)
     if ed is None:
         return em_conf, vel
+
     posf = {int(f): i for i, f in enumerate(ed["fx"])}
     pmo = ed["emo"]
     for k, f in enumerate(fx):
@@ -599,6 +600,7 @@ def _emo_align(ed, fx):
         j = posf.get(int(fx[k - 1])) if k > 0 and fx[k] - fx[k - 1] == 1 else None
         if j is not None and np.isfinite(pmo[i]).all() and np.isfinite(pmo[j]).all():
             vel[k] = float(np.abs(pmo[i] - pmo[j]).sum())
+
     return em_conf, vel
 
 
@@ -613,6 +615,7 @@ def _crop_frame(cap, crop_index, sid, frame_idx):
     idx = crop_index.get(sid, {}).get(frame_idx)
     if cap is None or idx is None:
         return None
+
     cap.set(cv2.CAP_PROP_POS_FRAMES, int(idx))
     ok, img = cap.read()
     return img if ok else None
@@ -627,6 +630,7 @@ def _read_emotion_by_sid(out_root, clip_id) -> dict:
         from momentscan_features_specialist45d.registry import INDEX
         ff = read_features(out_root, clip_id, "A")
         emi = [INDEX[e] for e in EM]
+
         for s in ff["track_id"].unique().to_list():
             fs = ff.filter(pl.col("track_id") == s).sort("frame_idx")
             Ms = np.array(fs["feature"].to_list(), float)
@@ -654,6 +658,7 @@ def _frame_readings(fx, sid, lm_bs, lm_tf, hp, cap, crop_index):
     yaw6 = blink.copy()
     pit6 = blink.copy()
     rol6 = blink.copy()
+
     for k, f in enumerate(fx):
         b = lm_bs.get((sid, int(f)))
         M = lm_tf.get((sid, int(f)))
@@ -669,6 +674,7 @@ def _frame_readings(fx, sid, lm_bs, lm_tf, hp, cap, crop_index):
         img = _crop_frame(cap, crop_index, sid, int(f))
         if img is not None:
             blur[k] = signals.crop_blur(img)
+
     return blink, jaw, smile, yaw, pit, rol, blur, yaw6, pit6, rol6
 
 
@@ -685,6 +691,7 @@ def _occlusion_signals(occ, sid, fx):
     skin_frac = np.full(N, np.nan)
     if not occ:
         return sunglasses, masked, face_present, skin_entropy, skin_frac
+
     for k, f in enumerate(fx):
         v = occ.get((sid, int(f)))
         if v is None:
@@ -699,6 +706,7 @@ def _occlusion_signals(occ, sid, fx):
             skin_entropy[k] = s_ent
         if s_frac is not None:
             skin_frac[k] = s_frac
+
     return sunglasses, masked, face_present, skin_entropy, skin_frac
 
 
@@ -775,6 +783,7 @@ def run_gates(out_root, clip_id: str, *, fps: int = 6) -> dict:
                "em_conf": em_conf, "em_vel": em_vel,         # em_conf → expr_ok; em_vel → trace only (portrait tiebreak)
                "sunglasses": sunglasses, "masked": masked, "face_present": face_present,
                "skin_entropy": skin_entropy, "skin_frac": skin_frac}
+
         admit1 = evaluate(sig)["admit"]
         ctxs.append({"sid": sid, "fx": fx, "emb": emb, "N": N, "sig": sig, "admit1": admit1})
 
@@ -800,6 +809,7 @@ def run_gates(out_root, clip_id: str, *, fps: int = 6) -> dict:
         others = [v for s2, v in cents.items() if s2 != sid]
         cos_other = np.max([en @ v for v in others], axis=0) if others else np.full(N, np.nan)
         sig["cos_self"], sig["cos_other"] = cos_self, cos_other
+
         gv = evaluate(sig)
         rows += trace_rows(sid, fx, sig, gv)
 
