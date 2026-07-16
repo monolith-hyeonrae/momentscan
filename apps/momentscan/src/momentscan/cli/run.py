@@ -34,7 +34,7 @@ def _cmd_run(args: argparse.Namespace) -> int:
     # accepted residue: ~8 absl C++ init lines from mediapipe (pre-InitializeLog);
     # suppressing those needs fd-level stderr redirection — more invasive than the noise.
 
-    from momentscan.engine.pipeline import run_pipeline
+    from momentscan.pipeline.runner import run_pipeline
     from momentscan.store.stash import detections_path
 
     # ONE-COMMAND happy path: `run <video-or-clip>` — a video PATH as clip_id means
@@ -46,7 +46,7 @@ def _cmd_run(args: argparse.Namespace) -> int:
     if p.suffix.lower() in (".mp4", ".mov", ".mkv", ".avi") and p.exists():
         args.source, args.clip_id = str(p), p.stem
     if args.source and not detections_path(args.out, args.clip_id).exists():
-        from momentscan.extraction.detect import process_clip, warm_init
+        from momentscan.subjects.detect import process_clip, warm_init
         try:
             import onnxruntime as _ort
             _ort.set_default_logger_severity(3)

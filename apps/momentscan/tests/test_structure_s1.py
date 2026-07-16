@@ -4,8 +4,8 @@ fail-fast 원칙(code-style §3): 선언이 어긋나면 import에서 지참물�
 이 핀들은 그 가드 자체가 살아 있음을 고정한다."""
 from pathlib import Path
 
-from momentscan.engine import analyzers
-from momentscan.engine import freshness
+from momentscan.pipeline import freshness
+from momentscan.pipeline import registry
 
 
 def test_stage_module_paths_all_resolve():
@@ -17,24 +17,24 @@ def test_stage_module_paths_all_resolve():
 
 
 def test_every_analyzer_has_valid_tier():
-    for a in analyzers.ANALYZERS:
-        assert a.tier in analyzers.TIERS, (a.name, a.tier)
+    for a in registry.ANALYZERS:
+        assert a.tier in registry.TIERS, (a.name, a.tier)
 
 
 def test_tier_honesty_pins():
     """D5 정직화: select는 engine이지만 공유 채점 기판 = substrate.
     제품 엔진 3종만 product."""
-    assert analyzers.get("select").tier == "substrate"
+    assert registry.get("select").tier == "substrate"
     for name in ("portrait", "likeness", "highlight"):
-        assert analyzers.get(name).tier == "product", name
+        assert registry.get(name).tier == "product", name
     for name in ("detect", "landmarks", "tubelets", "features", "emotion"):
-        assert analyzers.get(name).tier == "substrate", name
+        assert registry.get(name).tier == "substrate", name
 
 
 def test_artifact_tiers_cover_shared_traces():
     for art in ("gate_trace.parquet", "candidates.jsonl", "detections.parquet",
                 "likeness.json", "detect.mp4", "run.json"):
-        assert art in analyzers.ARTIFACT_TIERS, art
+        assert art in registry.ARTIFACT_TIERS, art
 
 
 def test_classify_clip_files(tmp_path):
@@ -43,7 +43,7 @@ def test_classify_clip_files(tmp_path):
     (tmp_path / "detect.mp4").write_bytes(b"")
     (tmp_path / "crops").mkdir()
     (tmp_path / "mystery.bin").write_bytes(b"")
-    got = analyzers.classify_clip_files(tmp_path)
+    got = registry.classify_clip_files(tmp_path)
     assert got["likeness.json"] == "product"
     assert got["run.json"] == "ops"
     assert got["detect.mp4"] == "surface"

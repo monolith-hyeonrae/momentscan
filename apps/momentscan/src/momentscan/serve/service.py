@@ -16,7 +16,7 @@ daemon.py(UDS, warm 제어면 — 운영자용)와 별개의 **외부 경계**: 
   warm detect는 워커에 캐시(첫 잡만 모델 로드).
 - **멱등 = 파이프라인 resumability 재활용**: 같은 clip_id → 같은 stash 경로,
   존재하는 산출물은 stage-probe로 skip. result.json 있으면 그 경로들 즉시 반환.
-- **egress = 선언에서 파생**: 어떤 파일이 밖으로 나가는가는 analyzers.PRODUCTS
+- **egress = 선언에서 파생**: 어떤 파일이 밖으로 나가는가는 registry.PRODUCTS
   의 egress 선언 ∩ 열린 제품(단계 배포 스위치) — 코드에 목록 중복 없음.
 - 입력 video: 로컬 경로 · file:// · s3:// (s3는 boto3 lazy import — 로컬 알파는
   boto3 없이 동작). 출력: output_uri 생략=stash 경로 반환 / 로컬 dir=복사 /
@@ -36,7 +36,7 @@ from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
-from momentscan.engine.analyzers import PRODUCTS
+from momentscan.pipeline.registry import PRODUCTS
 from momentscan.store.stash import clip_dir, detections_path, read_result, write_job, write_result
 
 log = logging.getLogger("momentscan.service")
@@ -262,7 +262,7 @@ class JobRunner:
                     log.exception("service.job.on_complete", extra={"clip_id": clip_id})
 
     def _run(self, job: dict) -> dict:
-        from momentscan.engine.pipeline import run_pipeline
+        from momentscan.pipeline.runner import run_pipeline
 
         t0 = time.perf_counter()
         clip_id = job["clip_id"]
@@ -300,9 +300,9 @@ class JobRunner:
             if source is None:
                 raise FileNotFoundError(f"no detections for {clip_id} and no source_uri to run detect")
             if self._warm is None:
-                from momentscan.extraction.detect import warm_init
+                from momentscan.subjects.detect import warm_init
                 self._warm = warm_init()
-            from momentscan.extraction.detect import process_clip
+            from momentscan.subjects.detect import process_clip
             # clip_id 명시 필수 — 파일명-파생에 맡기면 잡 clip_id와 갈라져
             # 하류 전멸 (wf777 리허설 실증: detect가 test_2/로 쓰고 잡은 wf777-*)
             process_clip(self._warm, str(source), out, fps=fps, clip_id=clip_id)

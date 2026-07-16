@@ -129,7 +129,7 @@ def render_report(out_root, clip_id: str) -> dict:
     B.append(_section("likeness", "LIKENESS — 방문-스코프 외형 ID", sec))
 
     # ── 산출물 tier 지도 (R12) — 이 디렉토리의 각 파일은 무엇인가, 선언이 답한다 ──
-    from momentscan.engine.analyzers import TIERS, classify_clip_files
+    from momentscan.pipeline.registry import TIERS, classify_clip_files
     tiers_map = classify_clip_files(cdir)
     sec = []
     for tier in (*TIERS, "unclassified"):

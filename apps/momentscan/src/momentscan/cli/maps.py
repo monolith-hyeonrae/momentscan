@@ -7,7 +7,7 @@ import json
 
 
 def _cmd_analyzers(args: argparse.Namespace) -> int:
-    from momentscan.engine.analyzers import ANALYZERS, topo_order
+    from momentscan.pipeline.registry import ANALYZERS, topo_order
 
     if args.json:
         from dataclasses import asdict
@@ -28,7 +28,7 @@ def _cmd_analyzers(args: argparse.Namespace) -> int:
 
 
 def _cmd_products(args: argparse.Namespace) -> int:
-    from momentscan.engine import analyzers as A
+    from momentscan.pipeline import registry as A
 
     if args.json:
         from dataclasses import asdict
@@ -55,8 +55,8 @@ def _cmd_cascade(args: argparse.Namespace) -> int:
     """The data lineage stated plainly: INPUT → ①FEATURE/②GATE (intermediate, stash)
     → ③PRODUCT (FINAL, egress). DERIVED from ANALYZERS (.artifact) + PRODUCTS (.egress),
     so it cannot drift from what actually runs. Same ①②③ as the run-watch banners."""
-    from momentscan.engine import analyzers as A
-    from momentscan.engine.analyzers import topo_order
+    from momentscan.pipeline import registry as A
+    from momentscan.pipeline.registry import topo_order
 
     stages = [a for a in topo_order() if a.kind == "stage"]
     gate = A.get("gates")                       # R10: the ② GATE is its own stage now
@@ -133,7 +133,7 @@ def _cmd_frame(args: argparse.Namespace) -> int:
 
 
 def _cmd_graph(args: argparse.Namespace) -> int:
-    from momentscan.engine import graph
+    from momentscan.pipeline import graph
 
     if args.json:
         from dataclasses import asdict

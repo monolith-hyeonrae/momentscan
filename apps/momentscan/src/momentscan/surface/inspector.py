@@ -14,7 +14,7 @@ from pathlib import Path
 import cv2
 import polars as pl
 
-from momentscan.engine import gates
+from momentscan.pipeline import gates
 from momentscan.readings import geometry, pose, signals
 from momentscan.surface._inspector_html import _TUBELET_INSPECT_HTML
 from momentscan.store.stash import (
@@ -210,7 +210,7 @@ def render_tubelet_inspect(out_root: str | Path, clip_id: str, *,
     hl_lang = _json.loads(_hlp.read_text(encoding="utf-8")) if _hlp.exists() else None
     # the QUERY CRITERION each product was selected AGAINST (what we were looking for) —
     # portrait's authored expression query (gates preset), highlight's attraction expectation.
-    from momentscan.engine.gates import PORTRAIT_QUERY as _PQ, QUERY_DIST_MAX as _PTAU
+    from momentscan.pipeline.gates import PORTRAIT_QUERY as _PQ, QUERY_DIST_MAX as _PTAU
     portrait_qlabel = (f"따뜻한 PFP · 눈뜸(blink≈{_PQ['blink']}) · 미소(smile≈{_PQ['smile']}) · "
                        f"입다뭄(jaw≈{_PQ['jaw']}) · 근접 τ≤{_PTAU}")
 
@@ -553,8 +553,8 @@ def render_tubelet_inspect(out_root: str | Path, clip_id: str, *,
     # freshness: displayed artifacts that PREDATE their producing source — the
     # algorithm was edited but this clip was not re-run, so what's shown is the OLD
     # algorithm's result. Surfaced so the researcher never trusts a stale read.
-    from momentscan.engine import freshness
-    from momentscan.engine.pipeline import RUNNERS as _RUNNERS
+    from momentscan.pipeline import freshness
+    from momentscan.pipeline.runner import RUNNERS as _RUNNERS
     _cd = clip_dir(out_root, clip_id)
     obs["stale"] = [st for st in _RUNNERS
                     if (_cd / _RUNNERS[st][0]).exists()

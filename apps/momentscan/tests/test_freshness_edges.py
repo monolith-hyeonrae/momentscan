@@ -1,6 +1,6 @@
 """R5 artifact-edge freshness — 순수 함수 + 선언-파생 간선 해석 테스트."""
-from momentscan.engine.pipeline import RUNNERS, _upstream_probes
-from momentscan.engine.freshness import artifact_stale
+from momentscan.pipeline.runner import RUNNERS, _upstream_probes
+from momentscan.pipeline.freshness import artifact_stale
 
 
 def test_artifact_stale_pure_cases():
