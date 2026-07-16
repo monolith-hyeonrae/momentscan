@@ -1,6 +1,6 @@
 """R9 — ruff 검사만, baseline 비율제 (code-style.md enforcement).
 
-baseline(2026-07-15) = 75건 (E702 48 · C901 7 · E701 7 · F401 5 · F541 4 ·
+baseline(2026-07-16 갱신, struct-s2가 75→58로 감소) = 58건 (E702 48 · C901 7 · E701 7 · F401 5 · F541 4 ·
 E402 2 · E741 1 · F841 1 — F821 1건은 실버그로 즉시 수리: inspector read_scene
 임포트 누락). 소급 리포맷 금지 — 이 테스트는 **신규 위반**만 막는다:
 카운트가 baseline을 넘으면 실패, 줄이는 것은 언제나 환영(줄면 baseline도 갱신)."""
@@ -11,7 +11,7 @@ from pathlib import Path
 
 import pytest
 
-BASELINE = 75
+BASELINE = 58
 
 SRC = Path(__file__).resolve().parents[1] / "src" / "momentscan"
 
