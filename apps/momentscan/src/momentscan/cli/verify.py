@@ -13,8 +13,8 @@ def _cmd_doctor(args: argparse.Namespace) -> int:
 
 
 def _cmd_check(args: argparse.Namespace) -> int:
-    from momentscan import gates
     from momentscan.engine import analyzers as A
+    from momentscan.engine import gates
     from momentscan.engine.pipeline import RUNNERS, UPSTREAM_OF_RUNNER
 
     problems = A.registry_drift(RUNNERS.keys(), UPSTREAM_OF_RUNNER) + gates.gate_drift()

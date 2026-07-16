@@ -1,5 +1,9 @@
 """Gate catalog — the DECISION layer, declared as data (sibling to analyzers.py).
 
+Lives in engine/ next to analyzers.py (Q3, struct-s2): the "sibling to analyzers.py"
+self-declaration is now literal — both are the S2-substrate declaration layer, one
+naming the PRODUCERS, the other the DECISIONS taken over their measurements.
+
 analyzers.py declares the PRODUCERS (what measures what). This declares the
 GATES: the admit / reject / route decisions taken over those measurements. The
 distinction is NOT binary-vs-continuous (a binary analyzer output like
@@ -29,12 +33,26 @@ TIERS (the staging — only T3 is per-view, which is why gating is non-uniform):
 """
 from __future__ import annotations
 
+import json
+import logging
+import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
+from pathlib import Path
 
+import cv2
 import numpy as np
+import polars as pl
 
-from momentscan.readings.pose import POSE_MAX_DEG, pose_class
+from momentscan.readings import signals
+from momentscan.readings.emotion import EM_ALL as EM, fused_valence
+from momentscan.readings.pose import POSE_MAX_DEG, euler_from_transform, fuse_pose, pose_class
+from momentscan.store.stash import (
+    clip_dir, read_features, read_headpose, read_landmarks, read_parse,
+    read_tubelets, write_gate_trace,
+)
+
+log = logging.getLogger("momentscan.gates")
 
 # ── gate parameters (the calibrated thresholds the predicates read) ──────────
 # pose thresholds (POSE_MAX/FRONTAL/SIDE/CORROB) + the view quantizer now live in
@@ -324,6 +342,7 @@ SIGNAL_INPUTS = frozenset({
     "mp_yaw_raw", "sixd_yaw_raw",   # raw per-backend yaw → the pose_class quantizer
     "cos_self", "cos_other",        # ArcFace cos to own / nearest-rival admit-centroid → id_valid
     "em_conf",                      # HSEmotion dominant-category prob → expr_ok (coherent expression)
+    "em_vel",                       # HSEmotion L1 Δsoftmax — trace-only (read by no gate; portrait's stab tiebreak)
 })
 _DERIVED = frozenset({"have_bs", "pose_finite", "mask_valid", "pose_class", "frontal_clean"})   # computed in _derive() from signals
 
@@ -487,9 +506,13 @@ def trace_rows(sid: int, fx, s: dict, v: dict) -> list[dict]:
             "id_ok": bool(v["id_ok"][k]), "id_valid": bool(v["id_valid"][k]),
             "cos_self": _r(s["cos_self"][k]), "cos_other": _r(s["cos_other"][k]),
             "em_conf": _r(s["em_conf"][k]), "expr_ok": bool(v["expr_ok"][k]),
+            "em_vel": _r(s["em_vel"][k]),   # trace-only: HSEmotion L1 Δsoftmax (portrait's stab tiebreak)
             # EFFECTIVE (judgeability-derived) verdicts, not the raw parse booleans —
             # the trace records what the ladder DECIDED on; raw stays in parse.parquet.
             "face_present": bool(v["face_present"][k]),
+            # sunglasses_v / masked_v = the JUDGED (judgeability-derived) worn-item verdicts —
+            # portrait reads these to average its fashion dict, no longer re-deriving them.
+            "sunglasses_v": bool(v["sunglasses"][k]), "masked_v": bool(v["masked"][k]),
             "fashion": bool(v["sunglasses"][k] or v["masked"][k]), "valid": bool(v["valid"][k]),  # T0
             "have_bs": bool(v["have_bs"][k]), "pose_finite": bool(v["pose_finite"][k]),
             "eyes_ok": bool(v["eyes_ok"][k]),
@@ -535,3 +558,252 @@ def _sustained(mask: np.ndarray, fx: np.ndarray, min_run: int, max_gap: int = 2)
     if len(run) >= min_run:
         out[run] = True
     return out
+
+
+# ── the gates STAGE — run_gates (R10) ─────────────────────────────────────────
+# gate_trace.parquet production is a STAGE (measurement), not a step inside the
+# portrait engine. It used to live in products/portrait.py, which made
+# likeness/select freshness a hostage to portrait re-running (L9/D2: the inspector
+# and likeness read the gate's `valid` verdict, but only portrait produced it). This
+# entry assembles each subject's per-frame SIGNALS from the upstream artifacts
+# (tubelets/landmarks/crops-blur/parse/headpose6d/features-em_conf), runs the ladder
+# (evaluate), and writes the trace — for ALL subjects (aux included: the shared ①
+# validity + the aux centroids as cos_other rivals are needed downstream even though
+# no product exposes aux). The signal-assembly here is the SAME code portrait used;
+# portrait becomes a read_gate_trace reader (R11 commit B).
+#
+# occlusion (parse.parquet): eye region darker than skin → sunglasses (clear glasses
+# ≈ skin); mouth region absent → mask. Preset policy, calibrated on cap_1.
+EYE_LUM_MIN, MOUTH_VIS_MIN = 0.7, 0.01
+ID_MIN_CENTROID = 10   # a subject needs ≥ this many admit frames for a trustworthy ArcFace
+                       # centroid (the nearest-subject id_valid anchor); fewer → no rescue/rival
+
+
+def _emo_align(ed, fx):
+    """Align a subject's emotion to its tubelet frames → (em_conf, vel). em_conf = HSEmotion
+    dominant-category prob (the expr_ok gate + the obj anti-ambiguity tiebreak); vel = L1
+    Δsoftmax between time-contiguous frames (obj anti-transition tiebreak). NaN where features
+    are absent / frame-gap → gate passes, factor 1.0 = no penalty."""
+    N = len(fx)
+    em_conf = np.full(N, np.nan)
+    vel = np.full(N, np.nan)
+    if ed is None:
+        return em_conf, vel
+    posf = {int(f): i for i, f in enumerate(ed["fx"])}
+    pmo = ed["emo"]
+    for k, f in enumerate(fx):
+        i = posf.get(int(f))
+        if i is None:
+            continue
+        em_conf[k] = ed["conf"][i]
+        j = posf.get(int(fx[k - 1])) if k > 0 and fx[k] - fx[k - 1] == 1 else None
+        if j is not None and np.isfinite(pmo[i]).all() and np.isfinite(pmo[j]).all():
+            vel[k] = float(np.abs(pmo[i] - pmo[j]).sum())
+    return em_conf, vel
+
+
+def _open_crop(crops_dir: Path, manifest, sid):
+    """VideoCapture for a subject's clean crop track (blur source), or None if absent."""
+    f = crops_dir / f"s{sid}.mp4"
+    return cv2.VideoCapture(str(f)) if (manifest and f.exists()) else None
+
+
+def _crop_frame(cap, crop_index, sid, frame_idx):
+    """Decode one crop-track frame by its manifest index (None if unavailable)."""
+    idx = crop_index.get(sid, {}).get(frame_idx)
+    if cap is None or idx is None:
+        return None
+    cap.set(cv2.CAP_PROP_POS_FRAMES, int(idx))
+    ok, img = cap.read()
+    return img if ok else None
+
+
+def _read_emotion_by_sid(out_root, clip_id) -> dict:
+    """Per-subject HSEmotion softmax + em_conf, keyed by track_id → {fx, conf, emo}.
+    Empty when the features stage did not run (read_features RAISES) → em_conf NaN
+    downstream → expr_ok passes (byte-identical to emotion-blind behaviour)."""
+    out: dict = {}
+    try:
+        from momentscan_features_specialist45d.registry import INDEX
+        ff = read_features(out_root, clip_id, "A")
+        emi = [INDEX[e] for e in EM]
+        for s in ff["track_id"].unique().to_list():
+            fs = ff.filter(pl.col("track_id") == s).sort("frame_idx")
+            Ms = np.array(fs["feature"].to_list(), float)
+            out[int(s)] = {"fx": fs["frame_idx"].to_numpy(),
+                           "conf": fused_valence(Ms, INDEX)["em_conf"],
+                           "emo": Ms[:, emi]}
+    except Exception as e:   # noqa: BLE001 — optional-dependency degrade (features stage / specialist pkg)
+        log.debug("gates.emotion.absent", extra={"clip_id": clip_id, "reason": str(e)})
+        return {}
+    return out
+
+
+def _frame_readings(fx, sid, lm_bs, lm_tf, hp, cap, crop_index):
+    """One subject's per-frame blendshape (blink/jaw/smile), dual-backend pose
+    (MediaPipe euler yaw/pit/rol + 6DRepNet yaw6/pit6/rol6), and crop blur. NaN where
+    a reading is absent. Returns (blink, jaw, smile, yaw, pit, rol, blur, yaw6, pit6, rol6)."""
+    N = len(fx)
+    blink = np.full(N, np.nan)
+    jaw = blink.copy()
+    smile = blink.copy()
+    yaw = blink.copy()
+    pit = blink.copy()
+    rol = blink.copy()
+    blur = blink.copy()
+    yaw6 = blink.copy()
+    pit6 = blink.copy()
+    rol6 = blink.copy()
+    for k, f in enumerate(fx):
+        b = lm_bs.get((sid, int(f)))
+        M = lm_tf.get((sid, int(f)))
+        if b is not None:
+            blink[k] = signals.blink(b)
+            jaw[k] = signals.jaw(b)
+            smile[k] = signals.smile(b)
+        if M is not None:
+            yaw[k], pit[k], rol[k] = euler_from_transform(M)
+        h = hp.get((sid, int(f)))
+        if h is not None:
+            yaw6[k], pit6[k], rol6[k] = h
+        img = _crop_frame(cap, crop_index, sid, int(f))
+        if img is not None:
+            blur[k] = signals.crop_blur(img)
+    return blink, jaw, smile, yaw, pit, rol, blur, yaw6, pit6, rol6
+
+
+def _occlusion_signals(occ, sid, fx):
+    """parse-derived per-frame worn-item (sunglasses/mask) + face-presence + exposure
+    (skin entropy/frac) signals for one subject. These are WORN items, not occlusion to
+    reject. Empty occ → all-abstain defaults. Returns (sunglasses, masked, face_present,
+    skin_entropy, skin_frac)."""
+    N = len(fx)
+    sunglasses = np.zeros(N, bool)
+    masked = np.zeros(N, bool)
+    face_present = np.ones(N, bool)   # parse found SOME facial structure (eyes|mouth>0)
+    skin_entropy = np.full(N, np.nan)   # exposure-gate signals
+    skin_frac = np.full(N, np.nan)
+    if not occ:
+        return sunglasses, masked, face_present, skin_entropy, skin_frac
+    for k, f in enumerate(fx):
+        v = occ.get((sid, int(f)))
+        if v is None:
+            continue
+        eye_rel, mouth_vis, eyes_vis, s_ent, s_frac = v
+        if eye_rel is not None and eye_rel < EYE_LUM_MIN:
+            sunglasses[k] = True
+        if mouth_vis is not None and mouth_vis < MOUTH_VIS_MIN:
+            masked[k] = True
+        face_present[k] = bool((eyes_vis or 0) > 0 or (mouth_vis or 0) > 0)
+        if s_ent is not None:
+            skin_entropy[k] = s_ent
+        if s_frac is not None:
+            skin_frac[k] = s_frac
+    return sunglasses, masked, face_present, skin_entropy, skin_frac
+
+
+def run_gates(out_root, clip_id: str, *, fps: int = 6) -> dict:
+    """gates STAGE entry — assemble per-frame signals, evaluate the ladder for every
+    subject, write gate_trace.parquet. Behaviour-identical to the block that used to
+    run inside portrait.select_portrait (the byte-identical gate_trace is the guard).
+    Returns {clip_id, ok, n_rows, n_subjects, ms}."""
+    t0 = time.perf_counter()
+    cdir = clip_dir(Path(out_root), clip_id)
+    tub = read_tubelets(out_root, clip_id).sort(["track_id", "frame_idx"])
+    lm = read_landmarks(out_root, clip_id)
+    lm_bs = {(r["track_id"], r["frame_idx"]): np.array(r["blendshapes"], float)
+             for r in lm.iter_rows(named=True) if r["blendshapes"] is not None}
+    lm_tf = {(r["track_id"], r["frame_idx"]): np.array(r["transform"], float).reshape(4, 4)
+             for r in lm.iter_rows(named=True) if r["transform"] is not None}
+
+    # crop track (clean container) — blur source. None → degrade.
+    crops_dir = cdir / "crops"
+    manifest = None
+    if (crops_dir / "manifest.json").exists():
+        manifest = json.loads((crops_dir / "manifest.json").read_text(encoding="utf-8"))
+    crop_index = {s["subject_id"]: {f: i for i, f in enumerate(s["frames"])}
+                  for s in (manifest["subjects"] if manifest else [])}
+
+    # occlusion signal (parse.parquet) — optional; gate skips it if absent.
+    occ = {}
+    pq = read_parse(out_root, clip_id)
+    if pq is not None:
+        occ = {(r["track_id"], r["frame_idx"]): (r["eye_lum_rel"], r["mouth_vis"], r["eyes_vis"],
+                                                 r.get("skin_entropy"), r.get("skin_frac"))
+               for r in pq.iter_rows(named=True)}   # .get: tolerate parse.parquet predating skin_entropy
+
+    # full-range pose (6DRepNet) — fills MediaPipe's profile NaN so SIDE faces get a
+    # real yaw (adapter already sign-aligned). Optional; absent → frontal-only.
+    hp = {}
+    hq = read_headpose(out_root, clip_id)
+    if hq is not None:
+        hp = {(r["track_id"], r["frame_idx"]): (r["yaw"], r["pitch"], r["roll"])
+              for r in hq.iter_rows(named=True)}
+
+    emo_by_sid = _read_emotion_by_sid(out_root, clip_id)   # em_conf → expr_ok gate
+
+    # PASS 1 — per-frame signals + PROVISIONAL admit cohort (cos_self/cos_other = NaN).
+    # id_valid then ≡ id_ok, and admit = frontal_pose & valid via have_bs, so the admit
+    # set is FINAL here (independent of the cos signals it seeds). Those admit frames are
+    # the clean cohort each subject's ArcFace centroid is built from.
+    ctxs = []
+    for sid in sorted(tub["track_id"].unique().to_list()):
+        df = tub.filter(pl.col("track_id") == sid).sort("frame_idx")
+        fx = df["frame_idx"].to_numpy()
+        emb = np.array(df["embedding"].to_list(), float)   # ArcFace — occlusion guard
+        N = len(fx)
+
+        cap = _open_crop(crops_dir, manifest, sid)
+        blink, jaw, smile, yaw, pit, rol, blur, yaw6, pit6, rol6 = \
+            _frame_readings(fx, sid, lm_bs, lm_tf, hp, cap, crop_index)
+        if cap is not None:
+            cap.release()
+
+        # fused pose + 6D-rescue mask — single home pose.fuse_pose.
+        yaw_f, pit_f, rol_f, pose_6d = fuse_pose(yaw, pit, rol, yaw6, pit6, rol6)
+        sunglasses, masked, face_present, skin_entropy, skin_frac = _occlusion_signals(occ, sid, fx)
+
+        # SIGNALS → GATES (the declared ladder). iddev is a measurement (clean_ref
+        # Reference summarises it); sunglasses/masked/face_present came from parse.
+        iddev = signals.identity_deviation(emb)
+        em_conf, em_vel = _emo_align(emo_by_sid.get(int(sid)), fx)   # em_conf gates expr_ok; em_vel = trace-only
+        _nan = np.full(N, np.nan)
+        sig = {"fx": fx, "blink": blink, "smile": smile, "jaw": jaw, "blur": blur, "iddev": iddev,
+               "yaw_f": yaw_f, "pit_f": pit_f, "rol_f": rol_f, "pose_6d": pose_6d,
+               "mp_yaw_raw": yaw, "sixd_yaw_raw": yaw6,   # raw backends → gates' pose_class
+               "cos_self": _nan, "cos_other": _nan.copy(),   # filled in PASS 2 (cross-subject)
+               "em_conf": em_conf, "em_vel": em_vel,         # em_conf → expr_ok; em_vel → trace only (portrait tiebreak)
+               "sunglasses": sunglasses, "masked": masked, "face_present": face_present,
+               "skin_entropy": skin_entropy, "skin_frac": skin_frac}
+        admit1 = evaluate(sig)["admit"]
+        ctxs.append({"sid": sid, "fx": fx, "emb": emb, "N": N, "sig": sig, "admit1": admit1})
+
+    # CENTROIDS — each subject's clean ArcFace anchor = L2-normalised mean of its admit-frame
+    # (L2-normalised) embeddings. < ID_MIN_CENTROID admits → no centroid (no rescue, no rival).
+    cents = {}
+    for c in ctxs:
+        a = c["admit1"]
+        if int(a.sum()) >= ID_MIN_CENTROID:
+            e = c["emb"][a]
+            e = e / (np.linalg.norm(e, axis=1, keepdims=True) + 1e-9)
+            m = e.mean(0)
+            cents[c["sid"]] = m / (np.linalg.norm(m) + 1e-9)
+
+    # PASS 2 — cos_self / cos_other → final gate verdicts → gate_trace rows (ALL subjects).
+    # evaluate() is pure/cheap; re-running it keeps the admit cohort gate-owned.
+    rows: list[dict] = []
+    for c in ctxs:
+        sid, fx, emb, N, sig = c["sid"], c["fx"], c["emb"], c["N"], c["sig"]
+        en = emb / (np.linalg.norm(emb, axis=1, keepdims=True) + 1e-9)
+        own = cents.get(sid)
+        cos_self = en @ own if own is not None else np.full(N, np.nan)
+        others = [v for s2, v in cents.items() if s2 != sid]
+        cos_other = np.max([en @ v for v in others], axis=0) if others else np.full(N, np.nan)
+        sig["cos_self"], sig["cos_other"] = cos_self, cos_other
+        gv = evaluate(sig)
+        rows += trace_rows(sid, fx, sig, gv)
+
+    write_gate_trace(out_root, clip_id, rows)
+    ms = int((time.perf_counter() - t0) * 1000)
+    log.info("gates.done", extra={"clip_id": clip_id, "n_rows": len(rows), "n_subjects": len(ctxs)})
+    return {"clip_id": clip_id, "ok": True, "n_rows": len(rows), "n_subjects": len(ctxs), "ms": ms}

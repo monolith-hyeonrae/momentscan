@@ -59,12 +59,14 @@ def _cmd_cascade(args: argparse.Namespace) -> int:
     from momentscan.engine.analyzers import topo_order
 
     stages = [a for a in topo_order() if a.kind == "stage"]
+    gate = A.get("gates")                       # R10: the ② GATE is its own stage now
+    feature_stages = [a for a in stages if a.name != "gates"]
     if args.json:
         # the machine view = the Storage port contract: what to fetch (input), what
         # is scratch (intermediate), what to upload (final/egress).
         print(json.dumps({
-            "input": {"source": "video → frames", "weights": sorted({a.model for a in stages})},
-            "intermediate": {a.name: a.artifact for a in stages} | {"gate": "gate_trace.parquet"},
+            "input": {"source": "video → frames", "weights": sorted({a.model for a in feature_stages})},
+            "intermediate": {a.name: a.artifact for a in stages},   # includes gates → gate_trace.parquet
             "final": {p.name: list(p.egress) for p in A.PRODUCTS},
             "tiers": A.ARTIFACT_TIERS,          # R12 — 산출물→tier (manifest.json과 동일 근거)
         }, ensure_ascii=False, indent=2))
@@ -76,11 +78,11 @@ def _cmd_cascade(args: argparse.Namespace) -> int:
     print(f"  {'frozen weights':<13}   per-stage models   (see `momentscan map analyzers`; tracked by freshness)")
 
     print("\n① FEATURE EXTRACTION   (intermediate — stays in the stash · tier=substrate)")
-    for a in stages:
+    for a in feature_stages:
         print(f"  {a.name:<12} → {a.artifact:<22} ({a.model})")
 
     print("\n② GATE   (intermediate — the decision trace · tier=substrate)")
-    print(f"  {'portrait':<12} → {'gate_trace.parquet':<22} (gates.evaluate ladder · T0 valid · T1 sharp · T2 view)")
+    print(f"  {gate.name:<12} → {gate.artifact:<22} (gates.evaluate ladder · T0 valid · T1 sharp · T2 view)")
 
     print("\n③ PRODUCT   (FINAL — crosses the boundary outward · S3-out / Result · tier=product)")
     for p in A.PRODUCTS:

@@ -75,6 +75,11 @@ def _emotion(out, clip, src, fps):
     return extract_emotion(out, clip, fps=fps)
 
 
+def _gates(out, clip, src, fps):
+    from momentscan.engine.gates import run_gates
+    return run_gates(out, clip, fps=fps)
+
+
 def _portrait(out, clip, src, fps):
     from momentscan.products.portrait import select_portrait
     return select_portrait(out, clip, fps=fps)
@@ -117,6 +122,7 @@ RUNNERS = {
     "fashion":   ("fashion.json", _fashion),
     "headpose6d": ("headpose.parquet", _headpose),
     "emotion":   ("emotion.json", _emotion),
+    "gates":     ("gate_trace.parquet", _gates),   # R10: the decision layer is a STAGE (measurement), not a step inside portrait
     "portrait":  ("portraits/portrait.json", _portrait),
     "likeness":  ("likeness.json", _likeness),
     "select":    ("select.json", _select),   # own artifact — candidates.jsonl is SHARED (portrait creates it first → false skip)
@@ -181,10 +187,33 @@ def _stage_health(name: str, r) -> str:
     return ""
 
 
+def _scoped_order(order, only, products):
+    """Restrict the DAG order to a stage set (`only`) or the union of the requested
+    products' closures (`products`, R11 — analyzers.product_closure). No scope → unchanged."""
+    if only:
+        return [a for a in order if a.name in only]
+    if not products:
+        return order
+    known = {p.name for p in analyzers.products()}
+    bad = [p for p in products if p not in known]
+    if bad:
+        raise ValueError(f"run_pipeline: unknown products {bad} (known: {sorted(known)})")
+    want = set().union(*(analyzers.product_closure(p) for p in products))
+    return [a for a in order if a.name in want]
+
+
 def run_pipeline(out_root, clip_id: str, *, source=None, fps: int = 6,
-                 force: bool = False, only=None, watch: bool = True,
+                 force: bool = False, only=None, products=None, watch: bool = True,
                  subject_query: str | None = None) -> dict:
-    """Run post-detect stages in registry DAG order; skip existing artifacts."""
+    """Run post-detect stages in registry DAG order; skip existing artifacts.
+
+    `only` restricts to named stages; `products` restricts to the union of the named
+    products' closures (analyzers.product_closure — R11). The two are mutually exclusive
+    (fail-fast: a run is either stage-scoped or product-scoped, never both)."""
+    if only and products:
+        raise ValueError(
+            f"run_pipeline: --only and --product are mutually exclusive "
+            f"(only={sorted(only)}, products={sorted(products)})")
     cdir = clip_dir(Path(out_root), clip_id)
     if subject_query:   # the REQUEST record (C1 Job) — attribute dispatches on it
         from momentscan.store.stash import write_job
@@ -213,8 +242,7 @@ def run_pipeline(out_root, clip_id: str, *, source=None, fps: int = 6,
     # silently dropped.
     order = [a for a in analyzers.topo_order()
              if a.kind in ("stage", "engine") and a.name not in UPSTREAM_OF_RUNNER]
-    if only:
-        order = [a for a in order if a.name in only]
+    order = _scoped_order(order, only, products)
     # CASCADE ORDER (the big-frame you watch run): all FEATURE-EXTRACTION (kind 'stage')
     # before PRODUCT engines (kind 'engine'), so execution AND the watch-log read as the
     # ①FEATURE → ③PRODUCT cascade — not the dependency-topo interleave (select used to run
@@ -226,8 +254,8 @@ def run_pipeline(out_root, clip_id: str, *, source=None, fps: int = 6,
     for a in order:
         if watch and a.kind != phase:                     # crossed a cascade boundary
             phase = a.kind
-            print("\n═══ " + ("① FEATURE EXTRACTION" if phase == "stage"
-                              else "③ PRODUCT  (gate ② runs inside portrait)") + " ═══", flush=True)
+            print("\n═══ " + ("① FEATURE EXTRACTION  (incl. ② the gates stage)" if phase == "stage"
+                              else "③ PRODUCT  (reads the ② gate trace)") + " ═══", flush=True)
         if a.name not in RUNNERS:
             result["skipped"].append({"name": a.name, "reason": "no runner (see momentscan verify registry)"})
             if watch: print(f"  {a.name:11} — no runner", flush=True)
@@ -290,6 +318,7 @@ def run_pipeline(out_root, clip_id: str, *, source=None, fps: int = 6,
                                "reason": e.get("reason") or e.get("error")}
     write_run(out_root, clip_id, {
         "clip_id": clip_id, "fps": fps, "force": force, "only": sorted(only) if only else None,
+        "products": sorted(products) if products else None,
         "started_at_unix": _started_unix, "started_at_iso": _started_iso,
         "elapsed_ms": int((time.perf_counter() - _t_start) * 1000),
         "stages": [_outcome[a.name] for a in order if a.name in _outcome],
