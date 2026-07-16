@@ -130,3 +130,10 @@ momentscan/  (apps/momentscan/src/momentscan/)
 ---
 
 **한 문장 요약**: 안A의 골격(신규 홈 2개 — preset/과 WHEN 명명 함수, gates 이동 1건, 나머지는 선언·문서) 위에, 양 심사가 공통 권고한 enforcement 4종(G2·G3·G4·G8)과 B의 절단 문법(G5·G6), C의 계약 실체화(G9)를 접목하고, 유일한 심사 간 충돌(scores.parquet)은 "형태는 C, 시점은 gate_trace 전례"로 중재했다 — 모든 트랙이 값-불변·byte-identical 가드를 갖고, likeness는 4번 트랙에서 대기 없이 열린다.
+---
+
+## 결정 기록 (user, 2026-07-16): D1~D4 전부 권고안 채택
+
+D1=(a) when-home은 struct-s2 직후 즉시 · D2=(a) r6-egress는 likeness 병렬,
+회사-소비 전 착지 · D3=(a) molten∧scorer-empty warn 즉시 활성 ·
+D4=(a) 질문-패키지화는 R16/17 시점 재평가. → §5 트랙 테이블 순서로 실행 개시.
