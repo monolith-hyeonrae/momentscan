@@ -247,3 +247,21 @@ maps 174·surfaces 116)+조립 __init__ 67. ingest→extraction/ (소비자 1건
 readings/·evals/·cli/·verify/(가드만)·extraction/(+media·ingest)·subjects/·
 products/·surface/ + __main__ 스텁. 루트 평면 파일 14→1(스텁). 다음=struct-s2
 (R10 gates 독립→R11 --product closure) → likeness 트랙.
+
+
+**접수 #6~#9 (2026-07-16, 청사진 실행 중 수집)**: #6 engine/→**pipeline/**
+(runtime/orchestration 모호 + "engine" 낱말이 제품 엔진(=질문)과 충돌 — 개명
+확정, 내부 pipeline.py→runner.py) · #7 analyzers.py→**registry.py**(자기소개·
+verify registry 동사와 정합; 내부 혼재는 **(a) 시점**=decl-guards에서 registry
+패키지 분할[analyzers/products/tiers + __init__ 교차 assert]) · #8 **선언
+키워드화**(위치 인자가 가독성 주범 — kw_only=True로 언어-강제, decl-guards
+편입) · #9 **detect.py→subjects/**(대상 확립 사슬=한 연구 경계인데 물리가
+한가운데를 갈랐음 — 심사의 extraction⇄subjects 양방향이 그 상처; T6 동승,
+단방향 해소). 중앙 등록 유지 확정(자체-등록=레거시 붕괴 원인·import-light
+카탈로그 사망; 지역성은 enforcement+분할이 봉사).
+
+**struct-s2 착지 (2026-07-16, 111310e — 6번째)**: R10 gates 독립 스테이지
+(byte-identical 증명)+portrait 순수 독자(스키마 +3 additive)+gates→engine/+
+R11 --product closure(emitted_by 기반 — select 포함이 선언-정직)+likeness/
+select 선언 수리(phantom portrait 간선 제거). 코퍼스 gate_trace 15클립 재생산
+(스키마 43컬럼). ruff 75→58 래칫. 노출 축 K·D3 폐쇄.

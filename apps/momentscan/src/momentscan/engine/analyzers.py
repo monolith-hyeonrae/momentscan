@@ -339,9 +339,11 @@ def product_closure(name: str) -> set[str]:
     p = _BY_PRODUCT[name]
     closure = _depends_closure()
     need: set[str] = set()
+
     for eng in p.emitted_by:
         need.add(eng)
         need |= closure.get(eng, set())
+
     return need
 
 

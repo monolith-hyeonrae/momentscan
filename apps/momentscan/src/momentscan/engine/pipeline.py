@@ -194,10 +194,12 @@ def _scoped_order(order, only, products):
         return [a for a in order if a.name in only]
     if not products:
         return order
+
     known = {p.name for p in analyzers.products()}
     bad = [p for p in products if p not in known]
     if bad:
         raise ValueError(f"run_pipeline: unknown products {bad} (known: {sorted(known)})")
+
     want = set().union(*(analyzers.product_closure(p) for p in products))
     return [a for a in order if a.name in want]
 

@@ -164,6 +164,7 @@ def select_portrait(out_root, clip_id: str, *, fps: int = 6) -> dict:
         role = df["rider_role"][0]
         if role != "main":
             continue
+
         ts = {r["frame_idx"]: r["timestamp_ms"] for r in df.iter_rows(named=True)}
 
         # per-frame GATE VERDICTS + SIGNALS read straight from the trace (frame_idx order
@@ -190,6 +191,7 @@ def select_portrait(out_root, clip_id: str, *, fps: int = 6) -> dict:
         qd = g["query_dist"].to_numpy()
         qd = np.where(np.isfinite(qd), qd, np.inf)   # profiles → inf → warm falls back to eyes-open
         n_admit = int(admit.sum())
+
         # judged worn-item fractions (off-frontal frames abstained in the gate) — averaged here.
         fashion = {"sunglasses": round(float(sunglasses_v.mean()), 3) if N else 0.0,
                    "mask": round(float(masked_v.mean()), 3) if N else 0.0}
