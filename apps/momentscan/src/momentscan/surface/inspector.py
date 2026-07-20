@@ -14,8 +14,8 @@ from pathlib import Path
 import cv2
 import polars as pl
 
-from momentscan.infra.pipeline import gates
-from momentscan.readings import geometry, pose, signals
+from momentscan.perception import gates
+from momentscan.perception.readings import geometry, pose, signals
 from momentscan.surface._inspector_html import _TUBELET_INSPECT_HTML
 from momentscan.infra.store.stash import (
     read_candidates, read_detections, read_gate_trace, read_headpose,
@@ -210,7 +210,7 @@ def render_tubelet_inspect(out_root: str | Path, clip_id: str, *,
     hl_lang = _json.loads(_hlp.read_text(encoding="utf-8")) if _hlp.exists() else None
     # the QUERY CRITERION each product was selected AGAINST (what we were looking for) —
     # portrait's authored expression query (gates preset), highlight's attraction expectation.
-    from momentscan.infra.pipeline.gates import PORTRAIT_QUERY as _PQ, QUERY_DIST_MAX as _PTAU
+    from momentscan.perception.gates import PORTRAIT_QUERY as _PQ, QUERY_DIST_MAX as _PTAU
     portrait_qlabel = (f"따뜻한 PFP · 눈뜸(blink≈{_PQ['blink']}) · 미소(smile≈{_PQ['smile']}) · "
                        f"입다뭄(jaw≈{_PQ['jaw']}) · 근접 τ≤{_PTAU}")
 
@@ -382,7 +382,7 @@ def render_tubelet_inspect(out_root: str | Path, clip_id: str, *,
                         _f = int(_r["frame_idx"])
                         ev[_f] = _r["valence"]; ec[_f] = _r["em_conf"]; ea[_f] = _r["arousal"]
             else:
-                from momentscan.readings.emotion import reading as _emo_reading
+                from momentscan.perception.readings.emotion import reading as _emo_reading
                 efx, er, emo_base = _emo_reading(out_root, clip_id, int(sid))
                 ev = {int(f): er["valence_signed"][i] for i, f in enumerate(efx)}
                 ec = {int(f): er["em_conf"][i] for i, f in enumerate(efx)}

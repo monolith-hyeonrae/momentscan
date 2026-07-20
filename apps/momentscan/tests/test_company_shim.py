@@ -145,7 +145,7 @@ def test_detect_receives_job_clip_id(tmp_path, monkeypatch):
         return {}
 
     stub = types.SimpleNamespace(warm_init=lambda: object(), process_clip=fake_process_clip)
-    monkeypatch.setitem(sys.modules, "momentscan.subjects.detect", stub)
+    monkeypatch.setitem(sys.modules, "momentscan.perception.subjects.detect", stub)
 
     src = tmp_path / "some_video_name.mp4"              # stem ≠ clip_id
     src.write_bytes(b"\x00")

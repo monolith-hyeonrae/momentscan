@@ -7,7 +7,7 @@ from pathlib import Path
 
 
 def _cmd_ingest(args: argparse.Namespace) -> int:
-    from momentscan.extraction.ingest import ingest_paths
+    from momentscan.perception.extraction.ingest import ingest_paths
 
     results = ingest_paths(args.path, args.out, fps=args.fps, trace=not args.no_trace)
     return 0 if all(r.ok for r in results) else 1
@@ -46,7 +46,7 @@ def _cmd_run(args: argparse.Namespace) -> int:
     if p.suffix.lower() in (".mp4", ".mov", ".mkv", ".avi") and p.exists():
         args.source, args.clip_id = str(p), p.stem
     if args.source and not detections_path(args.out, args.clip_id).exists():
-        from momentscan.subjects.detect import process_clip, warm_init
+        from momentscan.perception.subjects.detect import process_clip, warm_init
         try:
             import onnxruntime as _ort
             _ort.set_default_logger_severity(3)

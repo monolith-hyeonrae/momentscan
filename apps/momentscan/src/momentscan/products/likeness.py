@@ -32,8 +32,8 @@ from momentscan.infra.store.stash import (
     read_features, read_gate_trace, read_landmarks, read_parse, read_tubelets,
     read_fashion, write_appearance,
 )
-from momentscan.readings.pose import CAMERA_FRONTAL_DEG
-from momentscan.readings.geometry import canonicalize, norm468, template
+from momentscan.perception.readings.pose import CAMERA_FRONTAL_DEG
+from momentscan.perception.readings.geometry import canonicalize, norm468, template
 
 log = logging.getLogger("momentscan.appearance")
 

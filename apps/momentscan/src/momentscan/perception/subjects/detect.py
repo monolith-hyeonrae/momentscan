@@ -38,7 +38,7 @@ from visualpath.core import Pipeline
 from visualpath.plugins.face_detect import FaceDetect, IoUTracker
 
 from momentscan.infra.store.stash import write_detections, write_process_trace, write_stitch
-from momentscan.subjects.stitch import stitch_tracks, track_purity
+from momentscan.perception.subjects.stitch import stitch_tracks, track_purity
 
 log = logging.getLogger("momentscan.detect")
 

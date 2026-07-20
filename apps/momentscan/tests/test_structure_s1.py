@@ -66,6 +66,6 @@ def test_infra_exclusion_covers_store_package():
     깨지면 stash 한 줄 수정이 전 산출물을 stale로 만든다(A″ 지뢰: INFRA 접두 매칭이
     infra.store 만 집고 infra.media/pipeline 은 남겨야 한다).
     crops는 infra.store.stash와 infra.media를 둘 다 임포트하는 실측 표본."""
-    closure = freshness._closure_modules("momentscan.subjects.crops")
+    closure = freshness._closure_modules("momentscan.perception.subjects.crops")
     assert not any(m.startswith("momentscan.infra.store") for m in closure), closure
     assert "momentscan.infra.media" in closure       # 픽셀 규약은 추적 유지

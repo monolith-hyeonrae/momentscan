@@ -15,7 +15,7 @@ def _cmd_serve(args: argparse.Namespace) -> int:
     --daemon = UDS 웜 detect 제어면(연구/운영자 도구)."""
     if args.daemon:
         from momentscan.infra.serve.daemon import DEFAULT_SOCKET, serve
-        from momentscan.subjects.detect import DEFAULT_MODEL_ROOT
+        from momentscan.perception.subjects.detect import DEFAULT_MODEL_ROOT
 
         return serve(
             socket_path=args.socket or DEFAULT_SOCKET,

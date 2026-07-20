@@ -42,16 +42,16 @@ INFRA = ("momentscan.infra.store",)   # infra/store/ 전체(stash·ports·teleme
 # live in the sibling features package. Kept in lockstep with RUNNERS by an
 # import-time assert in pipeline.py.
 STAGE_MODULE = {
-    "attribute":  "momentscan.subjects.attribute",
-    "tubelets":   "momentscan.subjects.tubelets",
-    "scene":      "momentscan.extraction.scene",        # thin adapter; closure follows into
-    "features":   "momentscan.extraction.features",     # the specialist45d backend it imports
-    "crops":      "momentscan.subjects.crops",
-    "parse":      "momentscan.extraction.parse",
-    "fashion":    "momentscan.extraction.fashion",
-    "headpose6d": "momentscan.extraction.headpose",
-    "emotion":    "momentscan.readings.emotion",
-    "gates":      "momentscan.infra.pipeline.gates",           # R10: gate_trace is a stage; closure = gates + signals/emotion/pose
+    "attribute":  "momentscan.perception.subjects.attribute",
+    "tubelets":   "momentscan.perception.subjects.tubelets",
+    "scene":      "momentscan.perception.extraction.scene",        # thin adapter; closure follows into
+    "features":   "momentscan.perception.extraction.features",     # the specialist45d backend it imports
+    "crops":      "momentscan.perception.subjects.crops",
+    "parse":      "momentscan.perception.extraction.parse",
+    "fashion":    "momentscan.perception.extraction.fashion",
+    "headpose6d": "momentscan.perception.extraction.headpose",
+    "emotion":    "momentscan.perception.readings.emotion",
+    "gates":      "momentscan.perception.gates",           # R10: gate_trace is a stage; closure = gates + signals/emotion/pose
     "portrait":   "momentscan.products.portrait",
     "likeness":   "momentscan.products.likeness",
     "select":     "momentscan.products.select",
@@ -154,13 +154,13 @@ def _external_deps() -> dict[str, tuple[Path, ...]]:
     """
     deps: dict[str, tuple[Path, ...]] = {}
     try:
-        from momentscan.extraction.headpose import DEFAULT_ONNX            # 6DRepNet weights
-        deps["momentscan.extraction.headpose"] = (Path(DEFAULT_ONNX),)
+        from momentscan.perception.extraction.headpose import DEFAULT_ONNX            # 6DRepNet weights
+        deps["momentscan.perception.extraction.headpose"] = (Path(DEFAULT_ONNX),)
     except Exception:
         pass
     try:
-        from momentscan.readings.geometry import CANONICAL_OBJ            # MediaPipe canonical mesh
-        deps["momentscan.readings.geometry"] = (Path(CANONICAL_OBJ),)
+        from momentscan.perception.readings.geometry import CANONICAL_OBJ            # MediaPipe canonical mesh
+        deps["momentscan.perception.readings.geometry"] = (Path(CANONICAL_OBJ),)
     except Exception:
         pass
     return deps

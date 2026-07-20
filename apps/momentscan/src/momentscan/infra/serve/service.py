@@ -300,9 +300,9 @@ class JobRunner:
             if source is None:
                 raise FileNotFoundError(f"no detections for {clip_id} and no source_uri to run detect")
             if self._warm is None:
-                from momentscan.subjects.detect import warm_init
+                from momentscan.perception.subjects.detect import warm_init
                 self._warm = warm_init()
-            from momentscan.subjects.detect import process_clip
+            from momentscan.perception.subjects.detect import process_clip
             # clip_id 명시 필수 — 파일명-파생에 맡기면 잡 clip_id와 갈라져
             # 하류 전멸 (wf777 리허설 실증: detect가 test_2/로 쓰고 잡은 wf777-*)
             process_clip(self._warm, str(source), out, fps=fps, clip_id=clip_id)

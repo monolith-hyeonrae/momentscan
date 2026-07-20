@@ -105,8 +105,8 @@ def _cmd_frame(args: argparse.Namespace) -> int:
     + provenance. The coordinate analogue of gates.py / `momentscan map products`: ONE
     declared frame every consumer (appearance/portrait/select/inspector/eval) reads
     via signals.py (verified single home)."""
-    from momentscan.readings.geometry import CANONICAL_FRAME as F
-    from momentscan.readings.geometry import frame_provenance
+    from momentscan.perception.readings.geometry import CANONICAL_FRAME as F
+    from momentscan.perception.readings.geometry import frame_provenance
 
     pv = frame_provenance()
     if args.json:

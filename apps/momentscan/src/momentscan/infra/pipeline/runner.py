@@ -26,57 +26,57 @@ def _attribute(out, clip, src, fps):
     # about. seat_rule = the depth-vote default; reference_face = a photo. Every
     # strategy emits the SAME attribution.json shape → downstream unchanged (C3).
     from momentscan.infra.store.stash import read_job
-    from momentscan.subjects.query import parse_subject_query
+    from momentscan.perception.subjects.query import parse_subject_query
     q = parse_subject_query(((read_job(out, clip) or {}).get("subject_query")))
     if q["strategy"] == "reference_face":
-        from momentscan.subjects.query import resolve_reference_face
+        from momentscan.perception.subjects.query import resolve_reference_face
         return resolve_reference_face(out, clip, q["params"]["ref"])
-    from momentscan.subjects.attribute import attribute_clip
+    from momentscan.perception.subjects.attribute import attribute_clip
     return attribute_clip(src, out, fps=fps)
 
 
 def _tubelets(out, clip, src, fps):
-    from momentscan.subjects.tubelets import synthesize_tubelets
+    from momentscan.perception.subjects.tubelets import synthesize_tubelets
     return synthesize_tubelets(src, out, fps=fps)
 
 
 def _scene(out, clip, src, fps):
-    from momentscan.extraction.scene import extract_scene
+    from momentscan.perception.extraction.scene import extract_scene
     return extract_scene(src, out, fps=fps)
 
 
 def _features(out, clip, src, fps):
-    from momentscan.extraction.features import extract_features
+    from momentscan.perception.extraction.features import extract_features
     return extract_features(src, out, fps=fps)
 
 
 def _crops(out, clip, src, fps):
-    from momentscan.subjects.crops import extract_crops
+    from momentscan.perception.subjects.crops import extract_crops
     return extract_crops(src, out, clip, fps=fps)
 
 
 def _parse(out, clip, src, fps):
-    from momentscan.extraction.parse import extract_parse
+    from momentscan.perception.extraction.parse import extract_parse
     return extract_parse(out, clip, fps=fps)
 
 
 def _fashion(out, clip, src, fps):
-    from momentscan.extraction.fashion import extract_fashion
+    from momentscan.perception.extraction.fashion import extract_fashion
     return extract_fashion(out, clip, fps=fps)
 
 
 def _headpose(out, clip, src, fps):
-    from momentscan.extraction.headpose import extract_headpose
+    from momentscan.perception.extraction.headpose import extract_headpose
     return extract_headpose(out, clip, fps=fps)
 
 
 def _emotion(out, clip, src, fps):
-    from momentscan.readings.emotion import extract_emotion
+    from momentscan.perception.readings.emotion import extract_emotion
     return extract_emotion(out, clip, fps=fps)
 
 
 def _gates(out, clip, src, fps):
-    from momentscan.infra.pipeline.gates import run_gates
+    from momentscan.perception.gates import run_gates
     return run_gates(out, clip, fps=fps)
 
 

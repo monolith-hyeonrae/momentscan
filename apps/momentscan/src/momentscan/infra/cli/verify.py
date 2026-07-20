@@ -13,7 +13,7 @@ def _cmd_doctor(args: argparse.Namespace) -> int:
 
 
 def _cmd_check(args: argparse.Namespace) -> int:
-    from momentscan.infra.pipeline import gates
+    from momentscan.perception import gates
     from momentscan.infra.pipeline import registry as A
     from momentscan.infra.pipeline.runner import RUNNERS, UPSTREAM_OF_RUNNER
 
