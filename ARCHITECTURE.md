@@ -100,11 +100,12 @@ infra 자식은 **관문(inbound)** 과 **배관(outbound)** 이 **잡(job) 계�
 | `surface/` | 사람에게 어떻게 **보여주나** | 렌더 형태 (구독자; 재계산 잔존 2곳=G10 어음) | — | 눈 (replay 밖) |
 | `verify/` | 스스로를 어떻게 **믿나** | green의 정의 (tolerance·IGNORE·REPLAY 스테이지) | G · L | 스스로 |
 | **preset/** (신설 예정) | 시설/카메라/기구 **의존 값** | ~60개 정책 임계 + fps (C9의 물리 실체) | B · E | test_preset 값 핀 |
-| **contracts.py** (미구축, r6-egress) | wire 계약의 **형태 검증** | C1/C11 msgspec (LikenessV1·ResultV1) | L | missing-field raise |
+| `infra/contracts.py` | wire 계약의 **형태 검증** (egress 경계) | C1/C11 msgspec (LikenessV1·ResultV1) | L | 코퍼스 decode + missing-field raise |
 
-> **preset/·contracts.py는 아직 없다** — B(정책 값)와 L(계약 검증) 축의 **예약된
-> 은닉처**다. preset/은 likeness 트랙이, contracts.py는 r6-egress 트랙이 첫 지불자로
-> 짓는다(§⑤·§⑨). 이 지도가 그 자리를 미리 선언해 둔다.
+> **preset/는 아직 없다** — B(정책 값) 축의 예약된 은닉처로, likeness 트랙이 첫
+> 지불자로 짓는다(§⑤). **contracts.py 는 r6-egress 트랙이 지었다**(2026-07-20, 축 L
+> 폐쇄): LikenessV1·ResultV1 이 egress를 산출 지점에서 검증한다(PresetV1 없음 — preset은
+> 경계를 안 넘는다). 이 지도가 지어진 것과 예약된 것을 함께 정직하게 표시한다.
 
 **extraction의 이중 멤버십 자백**: 상위 축 `extraction→subjects→readings→products`는
 **데이터흐름 단계 절단이기도** 하다 — 정확히 Parnas가 경고한 모양이다. 이 레포가

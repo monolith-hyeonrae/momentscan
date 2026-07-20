@@ -36,6 +36,7 @@ from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
+from momentscan.infra.contracts import validate_result
 from momentscan.infra.pipeline.registry import PRODUCTS
 from momentscan.infra.store.stash import clip_dir, detections_path, read_result, write_job, write_result
 
@@ -338,6 +339,7 @@ class JobRunner:
             "elapsed_s": round(time.perf_counter() - t0, 1),
             "finished_at_iso": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         }
+        validate_result(result, clip_id=clip_id)        # C1 형태 검증 — 배송/영속 전 fail-fast (R6/L3)
         write_result(Path(out), clip_id, result)        # 멱등 단락 + 재시작-후 조회의 근거
         log.info("service.job.done", extra={k: result[k] for k in
                                             ("clip_id", "output_prefix", "elapsed_s")})
