@@ -278,6 +278,18 @@ artifact='features.parquet' vs 실제 산출 `features/{track}.parquet` 디렉�
 선언-실제 불일치(D4 계열). classify는 G3 등재로 커버, **선언 수정은 별도 소형
 트랙**(freshness probe·ARTIFACT_TIERS 파생 영향 검토 동반).
 
+**접수 #11 (오케스트레이터 발견, 2026-07-20 lk-preview 렌더 실증 중)**: `viz-recipe`의
+`--preview-out` 기본값이 `"preview_recipe"`(cwd 상대) — 인자 없이 실행 시 repo 루트에
+산출물을 떨궈 워킹트리 오염(실증: `?? preview_recipe/`). 즉시 가드=`.gitignore`에
+`/preview_recipe/` 등재(8f8c544). **더 나은 기본값=별도 소형 조정**: preview_out 을
+stash 루트(`output/` 하위, 이미 ignored) 기준으로 — 다른 표면 산출물(portraits·cards)과
+동거. surfaces.py:131 default 한 줄 + recipe_preview 경로 해석.
+
+**접수 #12 (lk-preview 남긴 판단 2, 2026-07-20)**: `viz-recipe`가 `viz`의 서브가
+아닌 **하이픈 최상위**(`viz recipe` 불가 — `viz`가 bare positional `path`를 써서
+서브파서 충돌). highlight-lang 선례 따름. `viz` positional 을 옵션화하면 `viz recipe`
+서브 구조로 흡수 가능하나 기존 `viz <path>` 호출 호환 깨짐 — 별도 CLI 조정 트랙 후보.
+
 **when-home·T7·decl-guards 착지 (2026-07-20)**: fc80717(WHEN 단일홈)·556e89e
 (A″: infra/perception/products+evals — user 그림의 시공)·decl-guards 머지
 (registry 패키지 분할·kw_only·question/scorer·G2 warn 활성[likeness 노랑=E1
