@@ -90,6 +90,11 @@ def _likeness(out, clip, src, fps):
     return appearance_clip(out, clip)
 
 
+def _recipe(out, clip, src, fps):
+    from momentscan.products.recipe import recipe_clip
+    return recipe_clip(out, clip)
+
+
 def _select(out, clip, src, fps):
     from momentscan.products.select import select_clip
     return select_clip(out, clip, fps=fps)
@@ -125,6 +130,7 @@ RUNNERS = {
     "gates":     ("gate_trace.parquet", _gates),   # R10: the decision layer is a STAGE (measurement), not a step inside portrait
     "portrait":  ("portraits/portrait.json", _portrait),
     "likeness":  ("likeness.json", _likeness),
+    "recipe":    ("recipe/manifest.json", _recipe),   # per-rider recipe.json + manifest (probe); likeness.json → face recipe 사상
     "select":    ("select.json", _select),   # own artifact — candidates.jsonl is SHARED (portrait creates it first → false skip)
     "highlight": ("highlight.json", _highlight),   # 2026-07-03 졸업 — 제품 파일 + 자기 산출물
 }

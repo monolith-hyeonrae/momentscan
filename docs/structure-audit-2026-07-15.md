@@ -98,6 +98,14 @@
 
 배열 원리: **코드-단독으로 프리뷰 사슬과 입력 품질을 먼저 복구·개선 → user-동행 판정을 한 세션에 묶는다**(판정 입력을 바꾸는 ⑦을 판정 앞에 두어 재판정 이중작업 방지; likeness 확신 단독 확정 금지 원칙 준수).
 
+> **⚠ 방향 반전 (2026-07-20, user 결정 · track lk-recipe)**: 아래 1·2의 "appearance-engine에
+> 정식 착지"·"adapters/momentscan.py" 방향은 **뒤집혔다** — 프리뷰=momentscan 소관,
+> appearance-engine=배울 것 소진 시 삭제(absorption-plan). face_recipe 어댑터는
+> momentscan `products/recipe.py` 스테이지 + `perception/readings/face_axes.py` 공식으로
+> **흡수 완료**(track lk-recipe). 브리지(②)는 MPFB 재도입 없이 bpy+디자이너 blend 로
+> lk-preview 에서 재구성(track lk-preview). 원장 ④ 소비 확장은 recipe 스테이지에서
+> additive 패스스루로 착지. 아래 문장은 이력 보존을 위해 남긴다.
+
 **Phase L-A: 코드-단독 (순차, 일부 병렬 가능)**
 1. **② 브리지 재구성** — mpfb_recipe.py가 scratchpad 소실로 디스크에 없음(전역 탐색 0건). 잔존 몽타주(output/l2/preview_mpfb_*.png)를 참조해 appearance-engine에 정식 착지. **최우선인 이유: ①③⑤의 판정 수단(recipe→Blender 프리뷰)이 전부 이 사슬에 의존.**
 2. **④ 어댑터 unfilled 채우기** — adapters/momentscan.py가 center/neutral/blendshapes만 읽음; momentscan이 이미 방출 중인 color_identity·fashion·samples.hair를 소비(C11 additive 소비 확장, 계약 무변). stale docstring(:18-20) 동시 수정. 프리뷰가 풍부해져 user 세션의 판정 가치 상승.

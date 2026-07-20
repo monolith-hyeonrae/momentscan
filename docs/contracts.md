@@ -20,7 +20,7 @@
 | C8 | 제품 → 배달물 | egress (Result에 실리는 산출물 부분집합) | `analyzers.Product.egress` · `momentscan map cascade` | check |
 | C9 | 도메인 지식 ↔ 코어 | **domain profile (preset)** — 빈 슬롯 | 미정 (두 번째 도메인이 지불) | — |
 | C10 | 저장 서술 | 스테이지 분리·stash 레이아웃 | [`data-contract.md`](data-contract.md) | — |
-| C11 | likeness → face_recipe | **likeness.json 스키마 v1 (동결)** — 아래 | `products/likeness.py` + 이 문서 §C11 | schema 필드 + verify replay |
+| C11 | likeness → face_recipe (recipe 스테이지) | **likeness.json 스키마 v1 (동결)** — 아래 | `products/likeness.py`(생산) → `products/recipe.py`(소비, 2026-07-20 내부화) + 이 문서 §C11 | schema 필드 + verify replay + recipe 특성화 |
 | C12 | momentscan ↔ visualstack | **substrate 사용 경계** (임포트 화이트리스트) — 아래 | 이 문서 §C12 | R15 경계 테스트 (refactor-exec-plan) |
 
 ## C1 — Job/Result (초안 v1 — 알파 요구 반영 2026-07-03)
@@ -216,6 +216,16 @@ highlight만 aux first-class). 스키마 형태는 riders 맵 유지 (다좌석 
 face_id.low_confidence(희석이지 오염 아님 — P1-② 육안) · samples.hair.observable.
 P1-④(2026-07-07)에서 additive로 추가된 필드 = face_id.low_confidence ·
 fashion.mask_override · samples.hair — v1 유지.
+
+**소비자 내부화 (2026-07-20, track lk-recipe · additive)**: face_recipe 어댑터가
+appearance-engine(별도 레포)에서 momentscan `products/recipe.py` **스테이지**로 흡수됐다
+(absorption-plan A1). 소비는 **읽기 전용**(`infra.contracts.validate_likeness` 로 형태
+확인 후 `read_appearance` 로 읽기만 — likeness.json 쓰기 없음). 위 표의 소비자 열
+그대로가 recipe 스테이지의 읽기다. C11 형태는 무변(additive 문서 갱신). recipe 는
+`center`/`neutral` 기하로 Cat G 37축을 채우고, **원장 ④ 동승**으로 `face_id`·`fashion`·
+`color_identity`·`samples` 를 recipe.json 의 additive `"likeness"` 블록으로 패스스루한다
+(H/A/W 축을 실제 채우는 enum 사상은 별도 후속). recipe.json 은 likeness Product 의
+additive output 이자 **egress 제외**(반출·Result 계약·채점기 무접촉).
 
 ## C12 — momentscan ↔ visualstack 사용 경계 (2026-07-07)
 

@@ -259,6 +259,21 @@ ANALYZERS: tuple[Analyzer, ...] = (
         tier='product',
     ),
     Analyzer(
+        name='recipe',
+        kind='engine',
+        model='face_axes 기하 공식 + 캘리 레지스트리 (recipe_axes)',
+        inputs=('likeness',),
+        output_kind='aggregate',
+        produces=('recipe/{image_id}.recipe.json',),
+        artifact='recipe/',
+        depends=('likeness',),
+        note="likeness.json 답의 사상(88축 recipe, 오늘 Cat G 37축). Product 신설 아님 —"
+             " likeness Product 의 additive output(egress 제외). kind='engine' 은 질문이라서가"
+             " 아니라 cascade(stage→engine) 상 likeness 뒤에 서려면 필요(select 의 substrate-engine"
+             " 전례). likeness.json 을 validate_likeness 로 읽기 전용 소비(쓰지 않음). absorption-plan A1",
+        tier='substrate',
+    ),
+    Analyzer(
         name='select',
         kind='engine',
         model='frame_scores → candidates',
