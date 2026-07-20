@@ -40,7 +40,9 @@ log = logging.getLogger("momentscan.recipe_preview")
 # 관리 에셋 홈(~/repo/p981/assets/blender/, 개인정보 blend 와 동거·접근 통제)으로
 # 이동 예정 — 이동 시 이 상수만 교체하면 된다(freshness 가 blend 를 external dep 로
 # 추적하므로 교체가 프리뷰 stale 로 인지된다). 어느 git 에도 없어 D0 즉시 위험(B2).
-_DEFAULT_BLEND: Path = Path.home() / "Downloads" / "body+basic_260527.blend"
+# D0 완료(2026-07-20): 정본 = 우산 에셋 홈(sha256 매니페스트 = ~/repo/p981/assets/
+# blend/MANIFEST.md). Downloads 사본은 2차 백업으로 잔존.
+_DEFAULT_BLEND: Path = Path.home() / "repo" / "p981" / "assets" / "blend" / "body+basic_260527.blend"
 
 # blender-내부에서 도는 apply/render 스크립트(bpy 사용, momentscan 은 절대 import
 # 하지 않고 subprocess 로만 실행). recipe_preview 옆에 둔다.
@@ -112,8 +114,8 @@ PROPOSED_SHAPE_KEY_MAP: dict[str, tuple[str, ...]] = {
     "Nose_Length":       ("G16",),         # nose_length_ratio 코 길이
     "Nose_Tip_Angle":    ("G18",),         # nose_tip_angle_deg 코끝 각도
     # 눈썹 (아치 풀링 · 눈썹-눈 거리):
-    "Brow_Arch":         ("G30", "G31"),   # brow_arch_height L/R 눈썹 아치 높이
-    "Brow_Eye_Distance": ("G34",),         # brow_eye_distance_ratio 눈썹-눈 거리
+    "Eyebrow_Arch":         ("G30", "G31"),   # brow_arch_height L/R 눈썹 아치 높이
+    "Eyebrow_Eye_Distance": ("G34",),         # brow_eye_distance_ratio 눈썹-눈 거리
 }
 
 SHAPE_KEY_MESH_GROUP: str = "head+base"
@@ -388,7 +390,7 @@ def render_recipe_montage(
     blend_path = Path(blend) if blend is not None else _DEFAULT_BLEND
 
     if not blend_path.exists():
-        raise RuntimeError(f"blend 파일 없음: {blend_path} (D0 이관 후 _DEFAULT_BLEND 교체)")
+        raise RuntimeError(f"blend 파일 없음: {blend_path} (정본=우산 assets/blend, MANIFEST.md 참조)")
 
     rows = _build_rows(out_root, clip_ids, variants, preview_out)
     if not rows:
