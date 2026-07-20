@@ -88,30 +88,30 @@ def test_lr_guard_fires_in_corpus():
     assert got in (l, r) and got != pytest.approx((l + r) / 2)  # 평균 아님 = 한 쪽 택함
 
 
-def test_calib_override_legacy_matches_baked_and_race981_desaturates():
-    """--ab calib 배선 봉인(원장 ①). ranges=legacy 는 recipe.json 에 구워진 range 와
-    비트-동일(= calib 몽타주의 legacy 열이 현 파이프 산출과 일치). race981 override 는
-    정규화 창만 갈아끼워 [0,1] 안에 머물며, legacy 에서 하단 포화하던 Eyebrow_Thickness
-    를 창 안으로 되돌린다(가장자리 포화 해소의 단위-수준 증거)."""
+def test_calib_override_race981_matches_baked_and_legacy_saturates():
+    """--ab calib 배선 봉인(원장 ① — L-B 판정 후 세계). 기본 캘리 = race981 이므로
+    ranges=race981 이 recipe.json 에 구워진 range 와 비트-동일(= calib 몽타주의
+    race981 열이 현 파이프 산출과 일치). legacy override 는 posed-편향 창이라
+    Eyebrow_Thickness 를 하단 포화(≈0)시킨다 — 전환 근거의 단위-수준 증거."""
     legacy = CALIB_TABLES["legacy-sample1"]
     race981 = CALIB_TABLES["race981-20260720"]
 
-    # legacy-explicit == baked-in(ranges=None) — 전 골든에서 비트-동일.
+    # race981-explicit == baked-in(ranges=None) — 전 골든에서 비트-동일.
     for image_id in sorted(_GOLDEN):
         r = _recipe(image_id)
         baked = project_shape_keys(r, gain=1.0)
-        leg = project_shape_keys(r, gain=1.0, ranges=legacy)
-        assert set(baked) == set(leg)
+        rc = project_shape_keys(r, gain=1.0, ranges=race981)
+        assert set(baked) == set(rc)
         for sk in baked:
-            assert abs(baked[sk] - leg[sk]) <= _ATOL, f"{image_id}/{sk}"
+            assert abs(baked[sk] - rc[sk]) <= _ATOL, f"{image_id}/{sk}"
 
-    # race981 override: 전부 [0,1]·테이블 교체가 실제로 투영을 바꾼다.
+    # legacy override: 테이블 교체가 실제로 투영을 바꾸고, posed-편향 포화를 재현.
     r = _recipe("test_3_t0")
     leg = project_shape_keys(r, ranges=legacy)
     rc = project_shape_keys(r, ranges=race981)
     assert all(0.0 <= v <= 1.0 for v in rc.values())
     assert rc != leg
-    # Eyebrow_Thickness: legacy 하단 포화(≈0) → race981 에서 창 안 복귀.
+    # Eyebrow_Thickness: legacy 하단 포화(≈0) ↔ race981 창 안(전환 근거).
     assert leg["Eyebrow_Thickness"] < 0.05
     assert 0.1 < rc["Eyebrow_Thickness"] < 0.95
 
