@@ -60,14 +60,14 @@ def _cmd_replay_check(args: argparse.Namespace) -> int:
 
 
 def _cmd_eval(args: argparse.Namespace) -> int:
-    from momentscan.evals.harness import make_template, score
+    from momentscan.products.evals.harness import make_template, score
 
-    from momentscan.evals.harness import score_pairs
+    from momentscan.products.evals.harness import score_pairs
 
     if args.template:
         result = make_template(args.out, args.template)
     elif args.rescore:
-        from momentscan.evals.harness import rescore_pairs
+        from momentscan.products.evals.harness import rescore_pairs
         result = rescore_pairs(args.out)
     elif (Path(args.out) / "eval" / "pair_verdicts.jsonl").exists():
         result = score_pairs(args.out)     # pairwise = the eval of record

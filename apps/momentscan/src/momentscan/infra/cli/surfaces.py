@@ -68,7 +68,7 @@ def _cmd_viz(args: argparse.Namespace) -> int:
 
 
 def _cmd_label(args: argparse.Namespace) -> int:
-    from momentscan.evals.label_server import serve_labels
+    from momentscan.products.evals.label_server import serve_labels
 
     serve_labels(args.out, port=args.port, lane=args.lane)
     return 0
