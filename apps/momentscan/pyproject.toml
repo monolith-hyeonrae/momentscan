@@ -12,11 +12,12 @@ license = { text = "TBD" }
 # Track A, torch for Track B) live in the isolated FeatureSource packages under
 # plugins/, never here — that is what keeps the venvs from colliding.
 dependencies = [
+    "msgspec>=0.21.1",
     "numpy",
     "polars",
-    "visualbus",                       # bus, FileSource, VideoFileSink, control plane, structured log
-    "visualpath-core",                 # Module/Pipeline runtime (wires FaceDetect onto the bus)
-    "visualpath-plugin-face-detect",   # buffalo_l detector (Layer 1, warm)
+    "visualbus", # bus, FileSource, VideoFileSink, control plane, structured log
+    "visualpath-core", # Module/Pipeline runtime (wires FaceDetect onto the bus)
+    "visualpath-plugin-face-detect", # buffalo_l detector (Layer 1, warm)
 ]
 
 [project.optional-dependencies]

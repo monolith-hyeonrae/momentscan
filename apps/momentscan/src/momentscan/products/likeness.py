@@ -28,6 +28,7 @@ import time
 import numpy as np
 import polars as pl
 
+from momentscan.infra.contracts import validate_likeness
 from momentscan.infra.store.stash import (
     read_fashion,
     read_features,
@@ -471,6 +472,7 @@ def appearance_clip(out_root, clip_id: str) -> dict:
         "elapsed_s": round(time.perf_counter() - t0, 3),
         "ok": bool(riders),
     }
+    validate_likeness(record, clip_id=clip_id)   # C11 형태 검증 — write 직전 fail-fast (R6/L3)
     path = write_appearance(out_root, clip_id, record)
     shown = {**record, "riders": {k: {kk: vv for kk, vv in v.items() if kk != "center"}
                                   for k, v in record["riders"].items()},

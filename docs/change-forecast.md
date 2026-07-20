@@ -24,7 +24,7 @@
 | I | 배치→라이브 전환 | ○ | 클립-스코프 가정이 **알고리즘 정의에 내재** (stitch 전역병합·클립분포 rarity·클립 baseline) | 노출(승인) | **숨기지 않는다** — 은닉 불가 축, 시점 오면 재작성 (visualpath topic-flow 예약석) |
 | J | 스토리지 형태 (S3 이행) | ◐ | 쓰기=stash 1곳 ✓ / 읽기 우회 14곳+무소유 산출물 4족 | **샘(악화 중)** | fold-store = 마찰 낮추는 레지스트리 + 무소유 4족 편입 명시 |
 | K | gates 독립·제품 closure | ● | gate_trace 생산이 portrait 안 | 노출 | **R10/R11 = 바로 다음 트랙** |
-| L | 계약 진화 (C1/C11 semver) | ◐ | 도장 2곳, 검증 기계 0 | 샘 | R6 msgspec |
+| L | 계약 진화 (C1/C11 semver) | ◐ | 도장 2곳 + **검증 기계=infra/contracts.py**(R6 착지 2026-07-20) | 숨겨짐 | R6 msgspec ✓ (LikenessV1·ResultV1, PresetV1 없음) |
 
 **구조적 판독**: 외부-강제 축(A·F·G·H)은 전부 숨겨졌고 내부-연구 축(B·D·K·I)일수록
 노출 — 몰튼 정책의 의도적 이연이었으나 **B와 D는 6개월 시계 안에 만기가 왔다**.
