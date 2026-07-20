@@ -161,7 +161,9 @@ fashion·samples.hair 방출됨) ⑤test_12 hair 세그 오검출 조사(user �
 > H/A/W 축을 실제 *채우는* enum 사상(D4 아카이브 어휘 필요 + unfilled 변경 → 골든
 > 재동결 동반). ① 캘리 양안 구현은 흡수 후 momentscan 좌표에서(순서 제약).
 ⑥P1-⑤~⑥(알파 피드백 계기[→E1과 병합]·S3 스모크·회사 Eureka)
-⑦**hair/pose_bins 수집의 boarding-phase 선호**(user 2026-07-14, test_3 라벨 중 발견: 활강 전=바람에 헤어 안 망가짐·얼굴 일그러짐 덜함 — samples.pose_bins/hair_match 입력을 pre-ride 프레임 우선으로; phase-conditioned readings의 likeness 적용).
+⑦**hair/pose_bins 수집의 boarding-phase 선호**(user 2026-07-14, test_3 라벨 중 발견: 활강 전=바람에 헤어 안 망가짐·얼굴 일그러짐 덜함 — samples.pose_bins/hair_match 입력을 pre-ride 프레임 우선으로; phase-conditioned readings의 likeness 적용). → **착지 2026-07-20** (b) 빈-내 소프트: 3뷰 보존+빈별 boarding 선호.
+⑧**랜드마크 정준화 = 정면 전용**(user 2026-07-20, appearance card A/B 판독 중 방향 확정): 측면 얼굴은 랜드마크 정준화(neutral/center 집계)에 쓰지 않는다 — 측면의 직무는 **헤어스타일 추론 향상**(hair_match 입력)뿐. 정준 기하는 가급적 정면 빈에서만 추론. ⚠값-변경 트랙(likeness 특성화 핀 이동 예상, 델타 설명 문법; recipe 골든은 입력-고정 fixture라 무영향). **원장 ① 캘리 양안보다 선행해야**(캘리는 정면-전용 기하 위에서).
+⑨**표본 스크리닝 2종**(user 2026-07-20, 카드 육안 판독: 어두운 크롭·눈감은 크롭이 표본에 선택됨): (a) 밝기 — exposure 게이트는 entropy-only **유지**(validity 판정, 어두움=recoverable 결정 불변), 대신 **표본/정준화 선발 랭킹**에 face_micro(parse DESCRIPTIVE 보존분) 투입 — exposure-gate 결정 때 예약해둔 자리 그대로. (b) 눈감음 — blink 신호(blendshape eyeBlink/EAR)로 표본 선발에서 제외. 둘 다 게이트 신설 아님 = selection 정책.
 
 ### (완료 기록) P1-④까지의 트랙 — ③ 동결 완료, P1-④ 실패 모드
 
