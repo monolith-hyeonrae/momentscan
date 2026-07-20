@@ -10,10 +10,10 @@ import threading
 
 import pytest
 
-import momentscan.pipeline.runner as pipeline
-from momentscan.serve.company import BUSY, GROUP, OK, CompanyShim, resolve_source
-from momentscan.serve.service import JobRunner, build_server
-from momentscan.store.stash import clip_dir, write_result
+import momentscan.infra.pipeline.runner as pipeline
+from momentscan.infra.serve.company import BUSY, GROUP, OK, CompanyShim, resolve_source
+from momentscan.infra.serve.service import JobRunner, build_server
+from momentscan.infra.store.stash import clip_dir, write_result
 
 
 def test_resolve_source_rules():

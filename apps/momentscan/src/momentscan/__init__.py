@@ -11,7 +11,7 @@ isolation ladder and graduation rules live in ARCHITECTURE.md (repo root) —
 the single truth this docstring only points to.
 """
 
-from momentscan.store.ports import FeatureSource, TrackFeatures, Tubelet
-from momentscan.store.telemetry import CandidateLog
+from momentscan.infra.store.ports import FeatureSource, TrackFeatures, Tubelet
+from momentscan.infra.store.telemetry import CandidateLog
 
 __all__ = ["FeatureSource", "Tubelet", "TrackFeatures", "CandidateLog"]

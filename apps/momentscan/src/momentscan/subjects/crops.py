@@ -23,8 +23,8 @@ from pathlib import Path
 
 import cv2
 
-from momentscan.extraction.media import h264_writer, letterbox, transcode_h264
-from momentscan.store.stash import clip_dir, read_tubelets
+from momentscan.infra.media import h264_writer, letterbox, transcode_h264
+from momentscan.infra.store.stash import clip_dir, read_tubelets
 
 log = logging.getLogger("momentscan.crops")
 

@@ -36,8 +36,8 @@ from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
-from momentscan.pipeline.registry import PRODUCTS
-from momentscan.store.stash import clip_dir, detections_path, read_result, write_job, write_result
+from momentscan.infra.pipeline.registry import PRODUCTS
+from momentscan.infra.store.stash import clip_dir, detections_path, read_result, write_job, write_result
 
 log = logging.getLogger("momentscan.service")
 
@@ -262,7 +262,7 @@ class JobRunner:
                     log.exception("service.job.on_complete", extra={"clip_id": clip_id})
 
     def _run(self, job: dict) -> dict:
-        from momentscan.pipeline.runner import run_pipeline
+        from momentscan.infra.pipeline.runner import run_pipeline
 
         t0 = time.perf_counter()
         clip_id = job["clip_id"]
@@ -477,7 +477,7 @@ HEALTH_LOG_S = 30      # 큐 깊이 같은 게이지를 Loki에서도 읽게 하
 def node_identity(advertise_host: str | None, port: int) -> str:
     """"host:port" — 이 프로세스의 노드 정체성 (Eureka 광고 주소와 같은 근거).
     CLI가 로그 constants에, serve_http가 Result/health에 같은 값을 도장 찍는다."""
-    from momentscan.serve.eureka import _local_ip
+    from momentscan.infra.serve.eureka import _local_ip
     return f"{advertise_host or _local_ip()}:{port}"
 
 
@@ -496,14 +496,14 @@ def serve_http(out_root: str, *, port: int = 8080, fps: int = 6,
     cid = os.environ.get("EUREKA_CLIENT_ID", "")
     sec = os.environ.get("EUREKA_CLIENT_SECRET", "")
     if tok_uri and cid and sec:
-        from momentscan.serve.eureka import TokenProvider
+        from momentscan.infra.serve.eureka import TokenProvider
         tp = TokenProvider(tok_uri, cid, sec,
                            scope=os.environ.get("EUREKA_TOKEN_SCOPE", "api.write api.read"))
         log.info("eureka.auth", extra={"token_uri": tok_uri})
 
     shim = None
     if control_url:                                     # 회사 디스패치 방언 어댑터 (company.py)
-        from momentscan.serve.company import CompanyShim
+        from momentscan.infra.serve.company import CompanyShim
         shim = CompanyShim(runner, control_url, s3_bucket=s3_bucket, token_provider=tp)
         log.info("company.shim", extra={"control_url": control_url, "s3_bucket": s3_bucket})
 
@@ -518,7 +518,7 @@ def serve_http(out_root: str, *, port: int = 8080, fps: int = 6,
 
     eureka = None
     if eureka_url:                                      # 등록은 서버가 실제로 열린 뒤
-        from momentscan.serve.eureka import EurekaClient
+        from momentscan.infra.serve.eureka import EurekaClient
         eureka = EurekaClient(eureka_url, app_name, port=port, host=advertise_host,
                               token_provider=tp)
         eureka.start()

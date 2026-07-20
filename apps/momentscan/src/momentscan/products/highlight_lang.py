@@ -29,7 +29,7 @@ from pathlib import Path
 
 import numpy as np
 
-from momentscan.store.stash import clip_dir
+from momentscan.infra.store.stash import clip_dir
 
 # ── the authored attraction EXPECTATIONS — the CONTEXT control ────────────────
 # Edit / add per attraction. A different attraction = a different sentence here, no

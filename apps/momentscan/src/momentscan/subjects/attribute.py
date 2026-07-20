@@ -35,7 +35,7 @@ import polars as pl
 from visualbus import FileSource
 from visualbus.structured_log import log_context
 
-from momentscan.store.stash import read_detections, write_attribution
+from momentscan.infra.store.stash import read_detections, write_attribution
 
 log = logging.getLogger("momentscan.attribute")
 

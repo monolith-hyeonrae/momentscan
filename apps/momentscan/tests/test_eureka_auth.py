@@ -3,7 +3,7 @@ _call의 Authorization 부착, 401→강제갱신 1회 재시도."""
 import json
 from unittest import mock
 
-from momentscan.serve.eureka import EurekaClient, TokenProvider
+from momentscan.infra.serve.eureka import EurekaClient, TokenProvider
 
 
 def _provider_with(monkeypatch_target, responses):
@@ -27,7 +27,7 @@ def _provider_with(monkeypatch_target, responses):
 
 def test_token_cached_within_margin():
     tp, fake, calls = _provider_with(None, [{"access_token": "T1", "expires_in": 3600}])
-    with mock.patch("momentscan.serve.eureka.urllib.request.urlopen", fake):
+    with mock.patch("momentscan.infra.serve.eureka.urllib.request.urlopen", fake):
         assert tp.token() == "T1"
         assert tp.token() == "T1"          # 캐시 — 재발급 없음
     assert calls["n"] == 1
@@ -38,7 +38,7 @@ def test_token_refresh_near_expiry():
         {"access_token": "T1", "expires_in": 30},   # TOKEN_MARGIN_S(60) 안 → 즉시 만료 취급
         {"access_token": "T2", "expires_in": 3600},
     ])
-    with mock.patch("momentscan.serve.eureka.urllib.request.urlopen", fake):
+    with mock.patch("momentscan.infra.serve.eureka.urllib.request.urlopen", fake):
         assert tp.token() == "T1"
         assert tp.token() == "T2"          # 마진 규칙이 재발급 강제
     assert calls["n"] == 2

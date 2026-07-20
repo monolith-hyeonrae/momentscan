@@ -39,7 +39,7 @@ def _cmd_viz(args: argparse.Namespace) -> int:
     """렌더 애그리게이터 — 제품/스테이지별 렌더 커맨드를 하나로 흡수 (CLI 정리 2026-07-06).
     인자 = 비디오 경로(소스-기반 렌더 포함) 또는 clip_id(stash-순수 렌더만:
     타임라인·카드·highlight mp4[detect.mp4 폴백])."""
-    from momentscan.store.stash import candidates_path, process_trace_path
+    from momentscan.infra.store.stash import candidates_path, process_trace_path
     from momentscan.surface.cards import (
         render_appearance_card, render_attribution, render_highlight_clips,
         render_identity_strip, render_portrait_card, render_process_timeline,

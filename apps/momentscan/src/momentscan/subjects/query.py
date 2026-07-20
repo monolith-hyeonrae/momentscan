@@ -21,7 +21,7 @@ from pathlib import Path
 import numpy as np
 import polars as pl
 
-from momentscan.store.stash import read_detections, write_attribution
+from momentscan.infra.store.stash import read_detections, write_attribution
 
 log = logging.getLogger("momentscan.subjects.query")
 

@@ -34,8 +34,8 @@ def _cmd_run(args: argparse.Namespace) -> int:
     # accepted residue: ~8 absl C++ init lines from mediapipe (pre-InitializeLog);
     # suppressing those needs fd-level stderr redirection — more invasive than the noise.
 
-    from momentscan.pipeline.runner import run_pipeline
-    from momentscan.store.stash import detections_path
+    from momentscan.infra.pipeline.runner import run_pipeline
+    from momentscan.infra.store.stash import detections_path
 
     # ONE-COMMAND happy path: `run <video-or-clip>` — a video PATH as clip_id means
     # source=itself; when detections are missing and a source is known, run detect

@@ -14,9 +14,9 @@ import logging
 import time
 from pathlib import Path
 
-from momentscan.pipeline import freshness
-from momentscan.pipeline import registry
-from momentscan.store.stash import clip_dir, provenance_path, write_manifest, write_provenance, write_run
+from momentscan.infra.pipeline import freshness
+from momentscan.infra.pipeline import registry
+from momentscan.infra.store.stash import clip_dir, provenance_path, write_manifest, write_provenance, write_run
 
 log = logging.getLogger("momentscan.pipeline")
 
@@ -25,7 +25,7 @@ def _attribute(out, clip, src, fps):
     # SubjectQuery dispatch (contracts C2): the Job's query picks WHO this run is
     # about. seat_rule = the depth-vote default; reference_face = a photo. Every
     # strategy emits the SAME attribution.json shape → downstream unchanged (C3).
-    from momentscan.store.stash import read_job
+    from momentscan.infra.store.stash import read_job
     from momentscan.subjects.query import parse_subject_query
     q = parse_subject_query(((read_job(out, clip) or {}).get("subject_query")))
     if q["strategy"] == "reference_face":
@@ -76,7 +76,7 @@ def _emotion(out, clip, src, fps):
 
 
 def _gates(out, clip, src, fps):
-    from momentscan.pipeline.gates import run_gates
+    from momentscan.infra.pipeline.gates import run_gates
     return run_gates(out, clip, fps=fps)
 
 
@@ -218,7 +218,7 @@ def run_pipeline(out_root, clip_id: str, *, source=None, fps: int = 6,
             f"(only={sorted(only)}, products={sorted(products)})")
     cdir = clip_dir(Path(out_root), clip_id)
     if subject_query:   # the REQUEST record (C1 Job) — attribute dispatches on it
-        from momentscan.store.stash import write_job
+        from momentscan.infra.store.stash import write_job
         write_job(out_root, clip_id, {"clip_id": clip_id, "subject_query": subject_query,
                                       "fps": fps, "source": str(source) if source else None})
     _t_start, _started_unix = time.perf_counter(), round(time.time(), 3)

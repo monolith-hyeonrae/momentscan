@@ -14,7 +14,7 @@ def _cmd_serve(args: argparse.Namespace) -> int:
     """한 동사, 두 면: 기본 = 외부 HTTP 면(C1 실행기 — 배포·관측 단위),
     --daemon = UDS 웜 detect 제어면(연구/운영자 도구)."""
     if args.daemon:
-        from momentscan.serve.daemon import DEFAULT_SOCKET, serve
+        from momentscan.infra.serve.daemon import DEFAULT_SOCKET, serve
         from momentscan.subjects.detect import DEFAULT_MODEL_ROOT
 
         return serve(
@@ -24,7 +24,7 @@ def _cmd_serve(args: argparse.Namespace) -> int:
             model_root=args.model_root or DEFAULT_MODEL_ROOT,
         )
 
-    from momentscan.serve.service import node_identity, serve_http
+    from momentscan.infra.serve.service import node_identity, serve_http
 
     # 서버의 로그는 기본으로 파일(~/logs/momentscan-{port}.log, JSON)에 떨어진다 —
     # 관측 레인(promtail→Loki)의 수집 지점이 파일이라, 셸 리다이렉트를 잊으면
@@ -64,7 +64,7 @@ def _cmd_serve(args: argparse.Namespace) -> int:
 def _call_daemon(args: argparse.Namespace, cmd: str, *, timeout: float | None = 5.0, **kw):
     from visualbus.control import call
 
-    from momentscan.serve.daemon import DEFAULT_SOCKET
+    from momentscan.infra.serve.daemon import DEFAULT_SOCKET
 
     sock = Path(args.socket).expanduser() if args.socket else DEFAULT_SOCKET
     try:
@@ -98,7 +98,7 @@ def _cmd_status(args: argparse.Namespace) -> int:
 
     from visualbus.control import call
 
-    from momentscan.serve.daemon import DEFAULT_SOCKET
+    from momentscan.infra.serve.daemon import DEFAULT_SOCKET
 
     ok_any = False
     sock = Path(args.socket).expanduser() if args.socket else DEFAULT_SOCKET
@@ -144,7 +144,7 @@ def _cmd_shutdown(args: argparse.Namespace) -> int:
         return 0
     if not args.port:
         # 모호성 검사: HTTP 레코드 수 + 데몬 sock 존재
-        from momentscan.serve.daemon import DEFAULT_SOCKET
+        from momentscan.infra.serve.daemon import DEFAULT_SOCKET
         recs = sorted((Path.home() / ".cache" / "momentscan").glob("http-*.json"))
         sock = Path(args.socket).expanduser() if args.socket else DEFAULT_SOCKET
         alive = [f"--port {json.loads(r.read_text(encoding='utf-8'))['port']}" for r in recs] \

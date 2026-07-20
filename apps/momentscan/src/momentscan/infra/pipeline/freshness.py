@@ -32,7 +32,10 @@ FIRST_PARTY = ("momentscan", "momentscan_features_specialist45d")
 # stale (the signal would always fire = useless). Excluded from closures so staleness
 # tracks ALGORITHM change. Honest gap: a stash change that alters VALUES is not caught
 # here — re-run with --force after an I/O-layer format/value change.
-INFRA = frozenset({"store"})   # store/ 패키지 전체(stash·ports·telemetry) — IO 배관은 클로저 제외
+# dotted-prefix (NOT a bare segment): A″ 이동 후 store 는 infra/store 밑이라 parts[1]
+# 매칭("store")이 깨졌다 — infra 전체를 뺄 수는 없다(media=픽셀 규약·pipeline 은
+# 추적 유지). 정확히 이 서브패키지(+telemetry=store 내부)만 접두-매칭으로 제외한다.
+INFRA = ("momentscan.infra.store",)   # infra/store/ 전체(stash·ports·telemetry) — IO 배관만 클로저 제외
 
 # stage name → its primary algorithm module (what the pipeline wrapper invokes).
 # Not always identity: headpose6d→headpose, emotion→readings.emotion, and scene/features
@@ -48,7 +51,7 @@ STAGE_MODULE = {
     "fashion":    "momentscan.extraction.fashion",
     "headpose6d": "momentscan.extraction.headpose",
     "emotion":    "momentscan.readings.emotion",
-    "gates":      "momentscan.pipeline.gates",           # R10: gate_trace is a stage; closure = gates + signals/emotion/pose
+    "gates":      "momentscan.infra.pipeline.gates",           # R10: gate_trace is a stage; closure = gates + signals/emotion/pose
     "portrait":   "momentscan.products.portrait",
     "likeness":   "momentscan.products.likeness",
     "select":     "momentscan.products.select",
@@ -68,7 +71,7 @@ def _pkg_dir(top: str) -> Path | None:
     package is located via find_spec once (its __init__ runs at most once/process).
     """
     if top == "momentscan":
-        base = Path(__file__).resolve().parents[1]   # this file: momentscan/verify/freshness.py
+        base = Path(__file__).resolve().parents[2]   # this file: momentscan/infra/pipeline/freshness.py
         assert base.name == "momentscan", base       # guards the NEXT file move of this module
         return base
     try:
@@ -113,8 +116,7 @@ def _direct_imports(py_path: str) -> frozenset[str]:
             for a in node.names:
                 out.add(a.name)                           # import momentscan.gates
     def keep(m: str) -> bool:
-        parts = m.split(".")
-        return _is_first_party(m) and not (len(parts) >= 2 and parts[1] in INFRA)
+        return _is_first_party(m) and not any(m == pre or m.startswith(pre + ".") for pre in INFRA)
     return frozenset(m for m in out if keep(m))
 
 

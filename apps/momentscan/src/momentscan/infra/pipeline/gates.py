@@ -47,7 +47,7 @@ import polars as pl
 from momentscan.readings import signals
 from momentscan.readings.emotion import EM_ALL as EM, fused_valence
 from momentscan.readings.pose import POSE_MAX_DEG, euler_from_transform, fuse_pose, pose_class
-from momentscan.store.stash import (
+from momentscan.infra.store.stash import (
     clip_dir, read_features, read_headpose, read_landmarks, read_parse,
     read_tubelets, write_gate_trace,
 )

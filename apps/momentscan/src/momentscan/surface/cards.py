@@ -17,7 +17,7 @@ from visualbus import BBox, DrawBBox, DrawText, FileSource, apply_hint
 from visualbus.structured_log import log_context
 from visualbus.timestamp import ns_to_seconds
 
-from momentscan.store.stash import (
+from momentscan.infra.store.stash import (
     read_attribution, read_candidates, read_detections, read_features,
     read_landmarks, read_process_trace, read_stitch, read_tubelets,
 )
@@ -614,7 +614,7 @@ def render_select_timeline(out_root: str | Path, clip_id: str, *, fps: int = 6, 
                 # low-energy region this lane exists to show.
                 return int(np.sqrt(min(v / ymax, 1.0)) * (hl_h - 14))
             # 2026-07-03 졸업: 세그먼트는 highlight.json이 authoritative (main_track 귀속)
-            from momentscan.store.stash import read_highlight
+            from momentscan.infra.store.stash import read_highlight
             hl_rec = read_highlight(Path(out_root), clip_id) or {}
             segs = hl_rec.get("segs") or [] if tid == hl_rec.get("main_track") else []
             iterms = s["impact_terms"]
@@ -1062,7 +1062,7 @@ def render_highlight_clips(out_root: str | Path, clip_id: str, *,
     video when given (native fps), else the stash's detect.mp4 (processing
     fps, correct duration) — stash-pure fallback.
     """
-    from momentscan.store.stash import read_highlight
+    from momentscan.infra.store.stash import read_highlight
 
     out_dir = Path(out_root) / clip_id
     src = Path(video_path) if video_path else out_dir / "detect.mp4"

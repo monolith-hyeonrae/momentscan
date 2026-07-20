@@ -4,8 +4,8 @@ fail-fast 원칙(code-style §3): 선언이 어긋나면 import에서 지참물�
 이 핀들은 그 가드 자체가 살아 있음을 고정한다."""
 from pathlib import Path
 
-from momentscan.pipeline import freshness
-from momentscan.pipeline import registry
+from momentscan.infra.pipeline import freshness
+from momentscan.infra.pipeline import registry
 
 
 def test_stage_module_paths_all_resolve():
@@ -52,7 +52,7 @@ def test_classify_clip_files(tmp_path):
 
 
 def test_manifest_writer(tmp_path):
-    from momentscan.store.stash import write_manifest
+    from momentscan.infra.store.stash import write_manifest
     p = write_manifest(tmp_path, "clipX", {"schema": "momentscan.manifest/v0",
                                            "tiers": {"likeness.json": "product"}})
     import json
@@ -62,9 +62,10 @@ def test_manifest_writer(tmp_path):
 
 
 def test_infra_exclusion_covers_store_package():
-    """T4 가드: store/(IO 배관)는 스테이지 임포트 클로저에서 제외 — 제외가 깨지면
-    stash 한 줄 수정이 전 산출물을 stale로 만든다(감사 지뢰: INFRA parts[1] 매칭).
-    crops는 store.stash와 extraction.media를 둘 다 임포트하는 실측 표본."""
+    """T4 가드: infra/store/(IO 배관)는 스테이지 임포트 클로저에서 제외 — 제외가
+    깨지면 stash 한 줄 수정이 전 산출물을 stale로 만든다(A″ 지뢰: INFRA 접두 매칭이
+    infra.store 만 집고 infra.media/pipeline 은 남겨야 한다).
+    crops는 infra.store.stash와 infra.media를 둘 다 임포트하는 실측 표본."""
     closure = freshness._closure_modules("momentscan.subjects.crops")
-    assert not any(m.startswith("momentscan.store") for m in closure), closure
-    assert "momentscan.extraction.media" in closure       # 픽셀 규약은 추적 유지
+    assert not any(m.startswith("momentscan.infra.store") for m in closure), closure
+    assert "momentscan.infra.media" in closure       # 픽셀 규약은 추적 유지

@@ -30,7 +30,7 @@ from pathlib import Path
 
 import cv2
 
-from momentscan.store.stash import read_candidates
+from momentscan.infra.store.stash import read_candidates
 
 log = logging.getLogger("momentscan.eval")
 
@@ -62,7 +62,7 @@ def _highlight_as_candidates(out_root, clip_id: str) -> list[dict]:
     """highlight.json → candidate-shaped rows (2026-07-03 졸업: highlight는 더는
     candidates.jsonl에 없다). 라벨/쌍 기계는 pick/alternatives 모양을 소비하므로
     여기서 한 번만 어댑트한다 — 동결 라벨의 product:"highlight" 문자열은 그대로."""
-    from momentscan.store.stash import read_highlight
+    from momentscan.infra.store.stash import read_highlight
 
     rec = read_highlight(Path(out_root), clip_id)
     if not rec or not rec.get("segs"):
