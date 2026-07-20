@@ -89,6 +89,38 @@ def rolling_median(x: np.ndarray, win: int) -> np.ndarray:
     return out
 
 
+def when_from_channels(
+    impact: np.ndarray, rarity: np.ndarray, scene: np.ndarray, valence: np.ndarray,
+) -> tuple[np.ndarray, dict]:
+    """Synthesize the highlight WHEN line from its four channels → (when, drivers).
+
+    owner = highlight engine; resident in select.py until R16/17 — 물리 이전은
+    energy 재편 트랙이 지불할 수 있다. WHEN 공식의 유일한 정본: 이 함수 밖에서
+    공식(리터럴 포함)을 재정의하지 말 것.
+
+    WHEN = max(강렬함 impact, 드묾 rarity, 장면변화 scene, 3·valence⁺) — anomaly
+    쌍둥이 OR (recall 목표). 측정: 동결 68평결 0.676 (> E010 0.662 > E003 0.632).
+
+    valence는 3·clip(valence,0,None)로 들어간다 (STEP 3): a quiet POSITIVE-valence
+    moment is a highlight the impact/rarity/scene triggers MISS (the bright face just
+    before a cheer = high valence + low motion). The trigger is ABSOLUTE-positive
+    direction (genuinely valence>0), shared magnitude — NOT person-relative z⁺, which
+    fired on "less frowny than this frown-rider's median" (a −0.19 face is still a
+    frown, and its 6 s window is full of scowls — bad highlight). Scaled so a full
+    laugh (+1) competes with a strong impact (z⁺~3). The truly-subtle case (a rider
+    whose peak is only +0.2) stays weak here by design = open point #1 (population
+    floor), not a cross-rider-inverting z.
+
+    Element-wise over arrays or scalars. drivers = 각 채널의 WHEN 기여 (valence는
+    이미 3배 스케일) — highlight의 피크 breakdown이 여기 구독한다(공식 re-scale 금지).
+    """
+    val_when = 3.0 * np.clip(valence, 0.0, None)
+    when = np.fmax(np.fmax(np.fmax(impact, rarity), scene), val_when)
+    drivers = {"impact": impact, "rarity": rarity, "scene": scene, "valence": val_when}
+
+    return when, drivers
+
+
 def _z(x: np.ndarray) -> np.ndarray:
     med = np.nanmedian(x)
     mad = np.nanmedian(np.abs(x - med)) * 1.4826 + 1e-9
@@ -241,22 +273,15 @@ def frame_scores(out_root, clip_id: str, track_id: int, *, fps: int = 6) -> dict
         pass
 
     is_ride = np.array([phase.get(f) == "ride" for f in fx])
-    # E010/E012: WHEN = max(강렬함, 드묾, 장면변화) — recall 목표의 OR.
-    # 측정: 동결 68평결 0.676 (> E010 0.662 > E003 0.632).
-    # 드묾은 찾기(WHEN)에만 — 세그먼트 자(E011/E012)에서 랭킹 역방향이라
-    # 랭킹 신호(rank_sig)에서는 제외 (게이트형 판정: "항상 웃는 사람" 미결의
-    # 데이터 해소). 셋째 트리거 '적절함'은 코스 프로파일 도착 시.
-    # STEP 3: a quiet POSITIVE-valence moment is a highlight the impact/rarity/scene
-    # triggers MISS (the bright face just before a cheer = high valence + low motion).
-    # The trigger is ABSOLUTE-positive direction (genuinely valence>0), shared
-    # magnitude — NOT person-relative z⁺, which fired on "less frowny than this frown-
-    # rider's median" (a −0.19 face is still a frown, and its 6 s window is full of
-    # scowls — bad highlight). Scaled so a full laugh (+1) competes with a strong
-    # impact (z⁺~3). The truly-subtle case (a rider whose peak is only +0.2) stays weak
-    # here by design = open point #1 (population floor), not a cross-rider-inverting z.
-    val_when = 3.0 * np.clip(valence_signed, 0.0, None)
-    when = np.fmax(np.fmax(np.fmax(impact, rarity), scene), val_when)
-    rank_sig = np.fmax(np.fmax(impact, scene), val_when) * which
+
+    # WHEN 합성 + 채널별 driver 는 when_from_channels 가 소유한다 (공식·리터럴의
+    # 유일한 정본). 여기·highlight.py 는 그 함수를 구독할 뿐 재정의하지 않는다.
+    when, when_drivers = when_from_channels(impact, rarity, scene, valence_signed)
+
+    # rank_sig = 세그먼트-자(E011/E012)의 WHEN — rarity 를 뺀다 (게이트형 판정:
+    # "항상 웃는 사람" 미결, 세그먼트 랭킹에서 역방향), WHICH 로 게이트. valence
+    # 기여는 정본 함수의 driver 를 경유 (3.0 리터럴 재정의 금지).
+    rank_sig = np.fmax(np.fmax(impact, scene), when_drivers["valence"]) * which
     highlight = when * which
     ride_start = int(np.argmax(is_ride)) if is_ride.any() else len(fx)
     for arr in (when, rank_sig, highlight):

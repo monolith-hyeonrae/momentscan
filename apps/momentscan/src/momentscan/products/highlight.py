@@ -36,7 +36,7 @@ from pathlib import Path
 import numpy as np
 import polars as pl
 
-from momentscan.products.select import TOP_K, frame_scores, rolling_median
+from momentscan.products.select import TOP_K, frame_scores, rolling_median, when_from_channels
 from momentscan.store.stash import read_tubelets, write_highlight
 
 log = logging.getLogger("momentscan.highlight")
@@ -166,9 +166,14 @@ def _phrase_segments(s: dict, *, fps: int, top_k: int) -> list[dict]:
             continue
         picked.append(pi)
 
+    # WHEN driver arrays (per channel) from the single-home formula — indexed per
+    # peak below for the observable breakdown; valence already 3× scaled inside.
+    _, when_drivers = when_from_channels(s["impact"], s["rarity"], s["scene"], s["valence"])
+
     segs = []
     for pi in picked:
         p = phrases[pi]
+
         # E011: delivery = fixed window anchored on the WHEN peak (detection
         # keeps the arc; the boundary is a product SPEC, not an estimate).
         # WHICH picks the rep frame inside what is actually DELIVERED.
@@ -176,13 +181,11 @@ def _phrase_segments(s: dict, *, fps: int, top_k: int) -> list[dict]:
                if p["start_ms"] <= int(ts[int(fx[j])]) <= p["end_ms"]
                and np.isfinite(which[j])]
         rep = max(win, key=lambda j: float(which[j])) if win else p["rep"]
+
         # WHEN driver breakdown at the peak — WHY this window fired (which anomaly twin /
-        # scene-change / positive valence carried it). when = max(impact, rarity, scene, 3·val⁺).
+        # scene-change / positive valence carried it), read from the 정본 함수's drivers.
         pk = p["peak"]
-        drv = {"impact": float(np.nan_to_num(s["impact"][pk])),
-               "rarity": float(np.nan_to_num(s["rarity"][pk])),
-               "scene": float(np.nan_to_num(s["scene"][pk])),
-               "valence": 3.0 * max(float(np.nan_to_num(s["valence"][pk])), 0.0)}
+        drv = {k: float(np.nan_to_num(v[pk])) for k, v in when_drivers.items()}
         segs.append({
             "peak_frame": int(fx[rep]),                  # the frame humans see/label
             "when_frame": int(fx[p["peak"]]),
