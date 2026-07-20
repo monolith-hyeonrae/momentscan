@@ -52,10 +52,18 @@ _RENDER_PX: int = 512
 # blend 를 한 번만 열고 잡을 순회하므로 클립 수에 선형(넉넉히).
 _RENDER_TIMEOUT_S: int = 900
 
-# ── shape key → source axis 사상 (A4) ──────────────────────────────────────
+# ── shape key → source axis 사상 (A4) — 2계층 ──────────────────────────────
 #
 # 각 shape key = 한 개 이상 Cat G 축의 집계. 집계 = "축별 range-정규화 값의 평균"
-# (L/R 쌍은 비대칭 가드 적용). 구 blender_export.SHAPE_KEY_MAP 그대로.
+# (L/R 쌍은 비대칭 가드 적용). 두 계층으로 나뉜다:
+#   계층 1 SHAPE_KEY_MAP        = rig-현존 13키(디자이너 blend 와 1:1 불변).
+#   계층 2 PROPOSED_SHAPE_KEY_MAP = 제안 확장 12키(원장 ⑩, 미표현 축 커버).
+# project_shape_keys 는 기본 계층 1만 산출(골든 봉인 집합); include_proposed=True 면
+# 두 계층을 합쳐 산출한다. 출력 dict 에서 키의 계층은 이 두 상수 맵이 분류한다.
+
+# 계층 1: rig-현존 13키 — body+basic_260527.blend 의 shape key(head+base)와 1:1.
+# **불변** — 디자이너 저작 계약(B1)의 현 표면이자 특성화 골든이 봉인하는 집합. 구
+# blender_export.SHAPE_KEY_MAP 그대로.
 SHAPE_KEY_MAP: dict[str, tuple[str, ...]] = {
     "Eyebrow_Thickness": ("G28", "G29"),   # brow_thickness_ratio L/R
     "Eyebrow_Length":    ("G26", "G27"),   # brow_length_ratio L/R
@@ -72,6 +80,42 @@ SHAPE_KEY_MAP: dict[str, tuple[str, ...]] = {
     "Mouth_Width":       ("G21",),         # mouth_width_ratio
 }
 
+# 계층 2: 제안 확장 키 (원장 ⑩ · B1 계약 진화) ──────────────────────────────
+#
+# user 관찰(2026-07-20, race981 A/B): "개인 특성[얼굴형·눈 쳐짐·눈 간격]이 두드러지지
+# 않아 재미없다 — 쉐입키 한계인가?" 실측 = 측정 37축 중 rig 13키가 소비하는 축은 19,
+# **미표현 18축**(특히 얼굴형 5축 전멸 — 13키의 윤곽 몰프는 Chin_Length 하나뿐).
+#
+# 처방 (b) = 디자이너 키셋 확장 협의 = **B1 계약 진화**: 우리(scan)가 미표현 축의 값을
+# 공급하고, 디자인팀이 대응 리그 몰프를 저작한다(키당 변위 폭 = 리그 저작 영역, 처방 c).
+# 아래 12키가 미표현 18축 중 몰프-저작 가능한 15축을 커버한다. blend 에 아직 없으므로
+# include_proposed=True 렌더 경로에서 렌더러(_recipe_blender)가 미매칭으로 자백한다 —
+# 자백 목록에 오르는 게 정상(정직 열화). 명명=rig 관례(Title_Case_밑줄), 값 문법=13키와
+# 동일(range-정규화·L/R 풀링·gain). 한글 라벨/방향/range 는 디자이너 문서(docs/shape-
+# keys-proposal-2026-07-20.md)가 정본 — 여기 주석은 소스 축만.
+#
+# **제외 3축(+근거)**: G24 face_thirds_balance·G25 face_symmetry = 파생 *품질* 지표지
+# 저작 몰프가 아니다(대칭·3등분은 다른 키들의 결과). G37 mouth_corner_class = 범주형
+# (G22 파생 3-class) — 연속 변위 슬라이더로 매핑할 대상이 아니다.
+PROPOSED_SHAPE_KEY_MAP: dict[str, tuple[str, ...]] = {
+    # 얼굴형 5축 (원장 ⑩ "전멸"):
+    "Face_Aspect":       ("G01",),         # face_width_height_ratio 얼굴 가로/세로 비율
+    "Jaw_Width":         ("G02",),         # jaw_face_width_ratio 하관 폭 / 얼굴 폭
+    "Chin_Angle":        ("G03",),         # chin_angle_deg 턱 끝 각도
+    "Cheekbone_Width":   ("G04",),         # cheekbone_face_width_ratio 광대 폭
+    "Forehead_Height":   ("G05",),         # forehead_face_height_ratio 이마 높이
+    # 눈 개방형태 (L/R 풀링 — _aggregate_normed 재사용):
+    "Eye_Height":        ("G08", "G09"),   # eye_height_ratio L/R 눈 세로
+    "Eye_Aspect":        ("G10", "G11"),   # eye_aspect L/R 눈 종횡비
+    # 코 3축:
+    "Nose_Width":        ("G15",),         # nose_width_ratio 코 폭
+    "Nose_Length":       ("G16",),         # nose_length_ratio 코 길이
+    "Nose_Tip_Angle":    ("G18",),         # nose_tip_angle_deg 코끝 각도
+    # 눈썹 (아치 풀링 · 눈썹-눈 거리):
+    "Brow_Arch":         ("G30", "G31"),   # brow_arch_height L/R 눈썹 아치 높이
+    "Brow_Eye_Distance": ("G34",),         # brow_eye_distance_ratio 눈썹-눈 거리
+}
+
 SHAPE_KEY_MESH_GROUP: str = "head+base"
 
 # L/R 비대칭 허용치(정규화 [0,1] 스케일). 이 간극을 넘으면 랜드마크 노이즈로 의심해
@@ -81,6 +125,13 @@ _LR_ASYMMETRY_THRESHOLD: float = 0.55
 # gain 상단(×배). 미세 개성을 과장해 육안 판정을 돕는 A/B 상단값 — 구 프리뷰
 # preview_recipe_gain_ab.png 관례(1.0 vs 2.2). L-B user-동행 판정의 재료.
 GAIN_HI: float = 2.2
+
+# 프리뷰 기본 gain(정책). L-B ③ user 판정(2026-07-20): ×1.0 은 개인차 미약(원장 ⑩ —
+# 미표현 축 + 좁은 편차), ×2.2 판정 채택 — A/B=scratchpad calib_ab 몽타주. CLI `--gain`
+# 기본값이 이 상수를 소비한다. **정책 기본 ≠ 함수 기본**: 순수 함수 project_shape_keys
+# 의 gain 기본은 1.0(수학적 항등)으로 남긴다 — 특성화 골든이 raw 투영을 그 값에서 봉인
+# 하기 때문(gain 은 렌더-표시 노브지 투영 산식이 아님).
+DEFAULT_GAIN: float = 2.2
 
 
 class Variant(NamedTuple):
@@ -191,17 +242,25 @@ def _flat_axis_entries(recipe: dict) -> dict[str, dict]:
 
 
 def project_shape_keys(recipe: dict, *, gain: float = 1.0,
-                       ranges: dict[str, Any] | None = None) -> dict[str, float]:
+                       ranges: dict[str, Any] | None = None,
+                       include_proposed: bool = False) -> dict[str, float]:
     """recipe.json → {shape_key: [0,1]}. Cat G 값을 캘리 range 로 정규화 후 shape
     key 별 집계(L/R 가드) + gain. 순수 함수 — blender 불요, 특성화 골든으로 봉인.
 
     ranges = axis_id → (lo, hi) 캘리 테이블 override(원장 ① 캘리 양안). None(기본)이면
     recipe.json 에 구워진 range 를 쓴다 = 골든과 비트-동일. 주어지면 정규화 창만 그
-    테이블로 갈아끼운다(값·집계·가드·gain 불변) — 재캘리 A/B 의 한 열."""
+    테이블로 갈아끼운다(값·집계·가드·gain 불변) — 재캘리 A/B 의 한 열.
+
+    include_proposed=False(기본)이면 rig-현존 13키(SHAPE_KEY_MAP)만 산출 = 골든 봉인
+    집합·"/13" 렌더 의미론 불변. True 면 PROPOSED_SHAPE_KEY_MAP 제안 확장 키(원장 ⑩)도
+    같은 문법으로 이어 산출한다 — 13키 값은 include 여부와 무관하게 비트-동일(맵을 잇기만
+    하므로). 제안 키는 blend 에 없어 렌더러가 미매칭으로 자백한다. 출력 dict 에서 키의
+    계층 판별 = `k in SHAPE_KEY_MAP`(rig) / `k in PROPOSED_SHAPE_KEY_MAP`(제안)."""
     entries = _flat_axis_entries(recipe)
+    key_map = {**SHAPE_KEY_MAP, **PROPOSED_SHAPE_KEY_MAP} if include_proposed else SHAPE_KEY_MAP
 
     out: dict[str, float] = {}
-    for sk_name, source_ids in SHAPE_KEY_MAP.items():
+    for sk_name, source_ids in key_map.items():
         normed: list[float] = []
         for axis_id in source_ids:
             entry = entries.get(axis_id)
@@ -362,14 +421,19 @@ def _build_rows(out_root: Path, clip_ids: list[str], variants: list[Variant],
 
         cells = []
         for v in variants:
-            shape_keys = project_shape_keys(recipe, gain=v.gain, ranges=v.ranges)
+            # include_proposed=True: 제안 확장 키(원장 ⑩)도 payload 에 실어 렌더러가
+            # 미매칭으로 자백하게 한다(rig 13키만 실제 렌더 적용, 제안 키는 자백만).
+            shape_keys = project_shape_keys(recipe, gain=v.gain, ranges=v.ranges,
+                                            include_proposed=True)
             out_png = preview_out / f"{image_id}_{v.slug}.png"
             cells.append({"shape_key_values": shape_keys, "chosen_hair": chosen_hair,
                           "out_png": str(out_png), "gain": v.gain})
 
+        keys0 = cells[0]["shape_key_values"]
         rows.append({"clip_id": clip_id, "image_id": image_id,
                      "real": _real_thumbnail(clip_dir), "cells": cells,
-                     "n_mapped": len(cells[0]["shape_key_values"])})
+                     "n_mapped": sum(1 for k in keys0 if k in SHAPE_KEY_MAP),
+                     "n_proposed": sum(1 for k in keys0 if k in PROPOSED_SHAPE_KEY_MAP)})
     return rows
 
 
@@ -383,11 +447,13 @@ def _assemble_montage(rows: list[dict], variants: list[Variant],
     n_rows = len(rows)
     n_cols = 1 + len(variants)                                # real + 변형별
     n_mapped = rows[0]["n_mapped"] if rows else 0
+    n_proposed = rows[0]["n_proposed"] if rows else 0
 
     fig, axes = plt.subplots(n_rows, n_cols, figsize=(n_cols * 2.6, n_rows * 2.6),
                              squeeze=False)
-    fig.suptitle(f"likeness → face_recipe(13 shape keys) → designer rig: "
-                 f"{' vs '.join(v.title for v in variants)} ({n_mapped}/13 keys mapped)",
+    fig.suptitle(f"likeness → face_recipe → designer rig: "
+                 f"{' vs '.join(v.title for v in variants)} "
+                 f"(rig {n_mapped}/13 mapped + {n_proposed} proposed keys [ledger 10])",
                  fontsize=11, x=0.02, ha="left")
 
     col_titles = ["real"] + [v.title for v in variants]

@@ -123,6 +123,8 @@ def _cmd_label(args: argparse.Namespace) -> int:
 
 
 def register(sub, common: argparse.ArgumentParser) -> None:
+    from momentscan.surface.recipe_preview import DEFAULT_GAIN
+
     pv = sub.add_parser("viz", parents=[common],
                         help="렌더 애그리게이터 — 비디오경로(소스 렌더 포함) 또는 clip_id(타임라인·카드·highlight mp4)")
     pv.add_argument("path", help="비디오 경로 또는 clip_id (stash-순수 렌더)")
@@ -134,8 +136,9 @@ def register(sub, common: argparse.ArgumentParser) -> None:
                          help="recipe.json → 디자이너 리그 프리뷰 몽타주 (온디맨드, blender 선택-의존)")
     pvr.add_argument("clips", nargs="+", help="clip id(s) — 행 하나당 한 클립 (recipe.json 존재해야)")
     pvr.add_argument("--out", default="output", help="stash root (recipe.json 위치)")
-    pvr.add_argument("--gain", type=float, default=1.0,
-                     help="단일-변형 및 --ab calib 의 고정 gain. shape key 편차 과장 배율")
+    pvr.add_argument("--gain", type=float, default=DEFAULT_GAIN,
+                     help="단일-변형 및 --ab calib 의 고정 gain(기본 ×2.2 = L-B ③ 판정: "
+                          "×1.0 개인차 미약). shape key 편차 과장 배율")
     pvr.add_argument("--ab", choices=("gain", "calib"), default=None,
                      help="gain=×1.0 vs ×2.2 A/B 몽타주 · calib=캘리 양안(원장 ①: legacy vs race981)")
     pvr.add_argument("--preview-out", dest="preview_out", default="preview_recipe",
