@@ -137,6 +137,10 @@ def appearance_path(stash_root: Path, clip_id: str) -> Path:
     return clip_dir(stash_root, clip_id) / "likeness.json"
 
 
+def recipe_dir(stash_root: Path, clip_id: str) -> Path:
+    return clip_dir(stash_root, clip_id) / "recipe"
+
+
 def scene_path(stash_root: Path, clip_id: str) -> Path:
     """E012 — frame-grain SCENE embedding stream (clip-level, rider-free):
     the observation the highlight 장면 축 reads (전경-배경의 배경 측)."""
@@ -302,6 +306,33 @@ def read_appearance(stash_root: Path, clip_id: str) -> dict | None:
     if not p.exists():
         return None
     return json.loads(p.read_text(encoding="utf-8"))
+
+
+def write_recipes(stash_root: Path, clip_id: str, recipes: dict[str, dict]) -> Path:
+    """recipe 스테이지 출력 — rider 별 {image_id}.recipe.json + manifest.json 을
+    recipe/ 밑에 쓴다. manifest = 재개 프로브(runner)이자 read_recipes 의 인덱스.
+    manifest 경로를 반환(빈 recipes 여도 manifest 는 쓴다 → 결정적 재개)."""
+    rdir = recipe_dir(stash_root, clip_id)
+    rdir.mkdir(parents=True, exist_ok=True)
+    for image_id, rec in recipes.items():
+        (rdir / f"{image_id}.recipe.json").write_text(
+            json.dumps(rec, ensure_ascii=False, indent=2), encoding="utf-8")
+    manifest = {"schema": "momentscan.recipe.manifest/v0", "clip_id": clip_id,
+                "recipes": sorted(recipes)}
+    mp = rdir / "manifest.json"
+    mp.write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
+    return mp
+
+
+def read_recipes(stash_root: Path, clip_id: str) -> dict[str, dict] | None:
+    """image_id → recipe 레코드. manifest 부재 시 None(스테이지 미실행)."""
+    mp = recipe_dir(stash_root, clip_id) / "manifest.json"
+    if not mp.exists():
+        return None
+    manifest = json.loads(mp.read_text(encoding="utf-8"))
+    rdir = recipe_dir(stash_root, clip_id)
+    return {iid: json.loads((rdir / f"{iid}.recipe.json").read_text(encoding="utf-8"))
+            for iid in manifest.get("recipes", [])}
 
 
 def write_stitch(stash_root: Path, clip_id: str, record: dict) -> Path:

@@ -150,6 +150,16 @@ mb-r17m 내부 게이트 겸함) ∥ E1 라벨 스키마 초안(user 검토 체�
 재캘리 vs 어댑터 보정) ②recipe→MPFB 브리지 착지(scratchpad/mpfb_recipe.py →
 appearance-engine) ③프리뷰 gain(×2.2 근방) ④어댑터 unfilled 채우기(color_identity·
 fashion·samples.hair 방출됨) ⑤test_12 hair 세그 오검출 조사(user 동행)
+
+> **갱신 (2026-07-20, track lk-recipe — appearance-engine 흡수 전반부)**: 어댑터가
+> momentscan 내부로 흡수됐다 — 기하 공식=`perception/readings/face_axes.py`(Cat G 37축),
+> 스테이지=`products/recipe.py`(likeness.json 읽기 전용 소비 → recipe/*.recipe.json),
+> 캘리·정책 상수=`products/recipe_axes.py`. ②는 방향 반전(MPFB 재도입 없이 lk-preview
+> 에서 bpy+디자이너 blend 로 재구성) — 흡수 전반부(recipe)는 lk-recipe, 후반부(preview)는
+> lk-preview. ④는 **부분 착지**: face_id·fashion·color_identity·samples 를 recipe.json
+> additive `"likeness"` 블록으로 패스스루(소비 이음매 신설). **잔여 ④ 본체** = 그 필드로
+> H/A/W 축을 실제 *채우는* enum 사상(D4 아카이브 어휘 필요 + unfilled 변경 → 골든
+> 재동결 동반). ① 캘리 양안 구현은 흡수 후 momentscan 좌표에서(순서 제약).
 ⑥P1-⑤~⑥(알파 피드백 계기[→E1과 병합]·S3 스모크·회사 Eureka)
 ⑦**hair/pose_bins 수집의 boarding-phase 선호**(user 2026-07-14, test_3 라벨 중 발견: 활강 전=바람에 헤어 안 망가짐·얼굴 일그러짐 덜함 — samples.pose_bins/hair_match 입력을 pre-ride 프레임 우선으로; phase-conditioned readings의 likeness 적용).
 

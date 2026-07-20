@@ -54,6 +54,7 @@ STAGE_MODULE = {
     "gates":      "momentscan.perception.gates",           # R10: gate_trace is a stage; closure = gates + signals/emotion/pose
     "portrait":   "momentscan.products.portrait",
     "likeness":   "momentscan.products.likeness",
+    "recipe":     "momentscan.products.recipe",       # closure follows into face_axes + recipe_axes (캘리 상수)
     "select":     "momentscan.products.select",
     "highlight":  "momentscan.products.highlight",
 }

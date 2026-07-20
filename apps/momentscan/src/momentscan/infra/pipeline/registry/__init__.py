@@ -62,10 +62,10 @@ for _p in PRODUCTS:
 def product_closure(name: str) -> set[str]:
     """The analyzers that must run to produce product `name`: its emitter engine(s) +
     their transitive `depends` (R11). `run --product` restricts the run order to the
-    union of these over the requested products. NB likeness is co-emitted by BOTH the
-    `likeness` and `select` engines (Product.emitted_by), so its closure includes select
-    and select's upstream — the run produces the product's FULL output set (likeness.json
-    AND candidates.jsonl[likeness]), not only the egress artifact."""
+    union of these over the requested products. NB likeness is co-emitted by the
+    `likeness`, `select` AND `recipe` engines (Product.emitted_by), so its closure includes
+    each + their upstream — the run produces the product's FULL output set (likeness.json
+    AND candidates.jsonl[likeness] AND recipe/*.recipe.json), not only the egress artifact."""
     p = _BY_PRODUCT[name]
     closure = _depends_closure()
     need: set[str] = set()

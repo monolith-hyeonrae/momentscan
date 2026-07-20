@@ -1,0 +1,522 @@
+{
+  "image_id": "test_2_t0",
+  "n_axes": 37,
+  "registry_version": "appearance-engine-v0.1.0",
+  "source": {
+    "adapter": "momentscan-appearance-ref",
+    "ref": "/home/hyeonrae/repo/monolith/momentscan/output/l2/test_2/appearance_ref.json",
+    "geometry": "neutral",
+    "rider_role": "main",
+    "n_obs": 680,
+    "split_half_drift": 0.04295,
+    "neutral_var_explained": 0.772
+  },
+  "categories": {
+    "Face Geometry": {
+      "G01": {
+        "korean": "얼굴형 (Face_Round / Face_Long)",
+        "name": "face_width_height_ratio",
+        "value": 0.860539,
+        "type": "cont",
+        "time_scale": "invariant",
+        "range": [
+          0.763,
+          0.897
+        ],
+        "description": "얼굴 가로/세로 비율"
+      },
+      "G02": {
+        "korean": "하관 (Jaw_Wide / Jaw_Soft)",
+        "name": "jaw_face_width_ratio",
+        "value": 0.812604,
+        "type": "cont",
+        "time_scale": "invariant",
+        "range": [
+          0.74,
+          0.829
+        ],
+        "description": "턱 라인 폭 / 얼굴 폭"
+      },
+      "G03": {
+        "korean": "턱 각도",
+        "name": "chin_angle_deg",
+        "value": 114.701491,
+        "type": "cont",
+        "time_scale": "invariant",
+        "range": [
+          99.273,
+          128.528
+        ],
+        "description": "턱 끝 각도 (도)"
+      },
+      "G04": {
+        "korean": "광대",
+        "name": "cheekbone_face_width_ratio",
+        "value": 0.775524,
+        "type": "cont",
+        "time_scale": "invariant",
+        "range": [
+          0.72,
+          0.789
+        ],
+        "description": "광대(zygomatic) 폭 / 얼굴 폭"
+      },
+      "G05": {
+        "korean": "이마 높이",
+        "name": "forehead_face_height_ratio",
+        "value": 0.245705,
+        "type": "cont",
+        "time_scale": "invariant",
+        "range": [
+          0.26,
+          0.307
+        ],
+        "description": "이마 높이 / 얼굴 높이"
+      },
+      "G06": {
+        "korean": "눈 크기 L (Eye_Size)",
+        "name": "eye_width_ratio_L",
+        "value": 0.165398,
+        "type": "cont",
+        "time_scale": "invariant",
+        "range": [
+          0.164,
+          0.209
+        ],
+        "description": "왼눈 가로 / 얼굴 폭"
+      },
+      "G07": {
+        "korean": "눈 크기 R (Eye_Size)",
+        "name": "eye_width_ratio_R",
+        "value": 0.179734,
+        "type": "cont",
+        "time_scale": "invariant",
+        "range": [
+          0.164,
+          0.209
+        ],
+        "description": "오른눈 가로 / 얼굴 폭"
+      },
+      "G08": {
+        "korean": "눈 세로 L",
+        "name": "eye_height_ratio_L",
+        "value": 0.382009,
+        "type": "cont",
+        "time_scale": "invariant",
+        "range": [
+          0.121,
+          0.367
+        ],
+        "description": "왼눈 세로 / 가로"
+      },
+      "G09": {
+        "korean": "눈 세로 R",
+        "name": "eye_height_ratio_R",
+        "value": 0.359012,
+        "type": "cont",
+        "time_scale": "invariant",
+        "range": [
+          0.121,
+          0.367
+        ],
+        "description": "오른눈 세로 / 가로"
+      },
+      "G10": {
+        "korean": "눈 종횡비 L",
+        "name": "eye_aspect_L",
+        "value": 0.382009,
+        "type": "cont",
+        "time_scale": "invariant",
+        "range": [
+          0.121,
+          0.367
+        ],
+        "description": "왼눈 aspect (= G08과 동일, spec 호환용)"
+      },
+      "G11": {
+        "korean": "눈 종횡비 R",
+        "name": "eye_aspect_R",
+        "value": 0.359012,
+        "type": "cont",
+        "time_scale": "invariant",
+        "range": [
+          0.121,
+          0.367
+        ],
+        "description": "오른눈 aspect"
+      },
+      "G12": {
+        "korean": "눈 거리 (Eye_Spacing)",
+        "name": "inter_eye_face_width_ratio",
+        "value": 0.451288,
+        "type": "cont",
+        "time_scale": "invariant",
+        "range": [
+          0.412,
+          0.499
+        ],
+        "description": "양쪽 눈 중심 간 거리 / 얼굴 폭"
+      },
+      "G13": {
+        "korean": "눈매 L (Eye_Slant)",
+        "name": "eye_tilt_L_deg",
+        "value": 7.054306,
+        "type": "cont",
+        "time_scale": "invariant",
+        "range": [
+          -1.165,
+          8.652
+        ],
+        "description": "왼눈 꼬리-앞머리 기울기 (도)"
+      },
+      "G14": {
+        "korean": "눈매 R (Eye_Slant)",
+        "name": "eye_tilt_R_deg",
+        "value": 4.98905,
+        "type": "cont",
+        "time_scale": "invariant",
+        "range": [
+          -1.165,
+          8.652
+        ],
+        "description": "오른눈 꼬리-앞머리 기울기 (도)"
+      },
+      "G15": {
+        "korean": "코 폭",
+        "name": "nose_width_ratio",
+        "value": 0.25772,
+        "type": "cont",
+        "time_scale": "invariant",
+        "range": [
+          0.254,
+          0.304
+        ],
+        "description": "코 폭 / 얼굴 폭"
+      },
+      "G16": {
+        "korean": "코 길이",
+        "name": "nose_length_ratio",
+        "value": 0.211992,
+        "type": "cont",
+        "time_scale": "invariant",
+        "range": [
+          0.2,
+          0.239
+        ],
+        "description": "코 길이 / 얼굴 높이"
+      },
+      "G17": {
+        "korean": "코등 길이",
+        "name": "nose_bridge_length_ratio",
+        "value": 0.190692,
+        "type": "cont",
+        "time_scale": "invariant",
+        "range": [
+          0.172,
+          0.197
+        ],
+        "description": "코등 길이 / 얼굴 높이"
+      },
+      "G18": {
+        "korean": "코끝 각도",
+        "name": "nose_tip_angle_deg",
+        "value": 158.270598,
+        "type": "cont",
+        "time_scale": "invariant",
+        "range": [
+          124.702,
+          157.606
+        ],
+        "description": "코끝 뾰족함 각도"
+      },
+      "G19": {
+        "korean": "윗입술 두께",
+        "name": "upper_lip_thickness_ratio",
+        "value": 0.048638,
+        "type": "cont",
+        "time_scale": "invariant",
+        "range": [
+          0.027,
+          0.049
+        ],
+        "description": "윗입술 두께 / 얼굴 높이"
+      },
+      "G20": {
+        "korean": "아랫입술 두께",
+        "name": "lower_lip_thickness_ratio",
+        "value": 0.066301,
+        "type": "cont",
+        "time_scale": "invariant",
+        "range": [
+          0.038,
+          0.072
+        ],
+        "description": "아랫입술 두께 / 얼굴 높이"
+      },
+      "G21": {
+        "korean": "입 (Mouth_Width)",
+        "name": "mouth_width_ratio",
+        "value": 0.394896,
+        "type": "cont",
+        "time_scale": "invariant",
+        "range": [
+          0.324,
+          0.455
+        ],
+        "description": "입꼬리 간 거리 / 얼굴 폭"
+      },
+      "G22": {
+        "korean": "입꼬리 각도",
+        "name": "mouth_corner_angle_deg",
+        "value": -9.171863,
+        "type": "cont",
+        "time_scale": "invariant",
+        "range": [
+          -17.955,
+          53.107
+        ],
+        "description": "입 중심선 대비 입꼬리 기울기 (도)"
+      },
+      "G23": {
+        "korean": "인중 길이",
+        "name": "philtrum_length_ratio",
+        "value": 0.081237,
+        "type": "cont",
+        "time_scale": "invariant",
+        "range": [
+          0.077,
+          0.113
+        ],
+        "description": "코 아래 → 윗입술 / 얼굴 높이"
+      },
+      "G24": {
+        "korean": "얼굴 3등분 균형",
+        "name": "face_thirds_balance",
+        "value": 0.861735,
+        "type": "cont",
+        "time_scale": "invariant",
+        "range": [
+          0.828,
+          0.935
+        ],
+        "description": "이마/중간/턱 3분할 균형도"
+      },
+      "G25": {
+        "korean": "얼굴 대칭도",
+        "name": "face_symmetry_score",
+        "value": 0.929161,
+        "type": "cont",
+        "time_scale": "invariant",
+        "range": [
+          0.336,
+          0.971
+        ],
+        "description": "L/R landmark 대칭"
+      },
+      "G27": {
+        "korean": "눈썹 길이 R",
+        "name": "brow_length_ratio_R",
+        "value": 1.195843,
+        "type": "cont",
+        "time_scale": "invariant",
+        "range": [
+          0.987,
+          1.54
+        ],
+        "description": "오른눈썹 길이 / interocular"
+      },
+      "G26": {
+        "korean": "눈썹 길이 L",
+        "name": "brow_length_ratio_L",
+        "value": 1.058134,
+        "type": "cont",
+        "time_scale": "invariant",
+        "range": [
+          0.987,
+          1.54
+        ],
+        "description": "왼눈썹 길이 / interocular"
+      },
+      "G29": {
+        "korean": "눈썹 두께 R",
+        "name": "brow_thickness_ratio_R",
+        "value": 0.319547,
+        "type": "cont",
+        "time_scale": "invariant",
+        "range": [
+          0.301,
+          0.473
+        ],
+        "description": "오른눈썹 세로 두께 / interocular"
+      },
+      "G28": {
+        "korean": "눈썹 두께 L",
+        "name": "brow_thickness_ratio_L",
+        "value": 0.2895,
+        "type": "cont",
+        "time_scale": "invariant",
+        "range": [
+          0.301,
+          0.473
+        ],
+        "description": "왼눈썹 세로 두께 / interocular"
+      },
+      "G31": {
+        "korean": "눈썹 아치 R",
+        "name": "brow_arch_height_R",
+        "value": 0.221921,
+        "type": "cont",
+        "time_scale": "invariant",
+        "range": [
+          0.179,
+          0.289
+        ],
+        "description": "오른눈썹 아치 높이 / 길이"
+      },
+      "G30": {
+        "korean": "눈썹 아치 L",
+        "name": "brow_arch_height_L",
+        "value": 0.227454,
+        "type": "cont",
+        "time_scale": "invariant",
+        "range": [
+          0.179,
+          0.289
+        ],
+        "description": "왼눈썹 아치 높이 / 길이"
+      },
+      "G33": {
+        "korean": "눈썹 기울기 R",
+        "name": "brow_slope_R_deg",
+        "value": 2.358455,
+        "type": "cont",
+        "time_scale": "invariant",
+        "range": [
+          -4.976,
+          6.095
+        ],
+        "description": "오른눈썹 기울기 (도)"
+      },
+      "G32": {
+        "korean": "눈썹 기울기 L",
+        "name": "brow_slope_L_deg",
+        "value": 4.130695,
+        "type": "cont",
+        "time_scale": "invariant",
+        "range": [
+          -4.976,
+          6.095
+        ],
+        "description": "왼눈썹 inner→outer 기울기 (도)"
+      },
+      "G34": {
+        "korean": "눈썹-눈 거리",
+        "name": "brow_eye_distance_ratio",
+        "value": 0.039408,
+        "type": "cont",
+        "time_scale": "invariant",
+        "range": [
+          0.038,
+          0.072
+        ],
+        "description": "(L/R 평균) brow → eye / face_height"
+      },
+      "G35": {
+        "korean": "미간",
+        "name": "inter_brow_distance_ratio",
+        "value": 0.181617,
+        "type": "cont",
+        "time_scale": "invariant",
+        "range": [
+          0.166,
+          0.209
+        ],
+        "description": "양 눈썹 inner 사이 거리 / 얼굴 폭"
+      },
+      "G36": {
+        "korean": "턱 길이 (Chin_Length)",
+        "name": "chin_length_ratio",
+        "value": 0.286613,
+        "type": "cont",
+        "time_scale": "invariant",
+        "range": [
+          0.227,
+          0.301
+        ],
+        "description": "입 중심 → 턱 끝 / 얼굴 높이"
+      },
+      "G37": {
+        "korean": "입꼬리 분류 (Mouth_Corner)",
+        "name": "mouth_corner_class",
+        "value": "low",
+        "type": "cat",
+        "time_scale": "invariant",
+        "range": null,
+        "description": "G22 기반 3-class (low<-3°, mid -3~+5°, high>+5°)"
+      }
+    }
+  },
+  "unfilled": {
+    "Color/Texture Body": [
+      "C01",
+      "C02",
+      "C03",
+      "C04",
+      "C05",
+      "C06",
+      "C07",
+      "C08",
+      "C09",
+      "C10"
+    ],
+    "Hair": [
+      "H01",
+      "H02",
+      "H03",
+      "H04",
+      "H05",
+      "H06",
+      "H07",
+      "H08",
+      "H09",
+      "H10",
+      "H11",
+      "H12",
+      "H13",
+      "H14",
+      "H15"
+    ],
+    "Accessories": [
+      "A01",
+      "A02",
+      "A03",
+      "A04",
+      "A05",
+      "A06"
+    ],
+    "Semantic (privacy-sensitive)": [
+      "S01",
+      "S02",
+      "S03",
+      "S04",
+      "S05",
+      "S06",
+      "S07",
+      "S08",
+      "S09",
+      "S10"
+    ],
+    "Wear (Clothing & Color Identity)": [
+      "W01",
+      "W02",
+      "W03",
+      "W04",
+      "W05",
+      "W06",
+      "W07",
+      "W08",
+      "W09",
+      "W10"
+    ]
+  }
+}
