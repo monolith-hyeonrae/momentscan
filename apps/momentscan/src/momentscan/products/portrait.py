@@ -29,13 +29,13 @@ import cv2
 import numpy as np
 import polars as pl
 
-from momentscan.pipeline.gates import BLINK_MAX, QUERY_DIST_MAX
-from momentscan.readings.pose import FRONTAL_DEG, POSE_MAX_DEG, SIDE_DEG
-from momentscan.store.stash import (
+from momentscan.perception.gates import BLINK_MAX, QUERY_DIST_MAX
+from momentscan.perception.readings.pose import FRONTAL_DEG, POSE_MAX_DEG, SIDE_DEG
+from momentscan.infra.store.stash import (
     append_candidate, candidates_path, clip_dir, headpose_path, parse_path,
     read_candidates, read_gate_trace, read_tubelets, write_portrait,
 )
-from momentscan.store.telemetry import CandidateLog
+from momentscan.infra.store.telemetry import CandidateLog
 
 log = logging.getLogger("momentscan.portrait")
 

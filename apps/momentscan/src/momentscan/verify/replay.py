@@ -99,8 +99,8 @@ def replay_check(out_root, clip_id: str, *, fps: int = 6) -> tuple[bool, dict]:
     Returns (ok, {artifact: [diffs]}). Pure: nothing on the real stash is touched."""
     import logging
 
-    from momentscan.pipeline.runner import run_pipeline
-    from momentscan.store.stash import clip_dir
+    from momentscan.infra.pipeline.runner import run_pipeline
+    from momentscan.infra.store.stash import clip_dir
 
     src = clip_dir(Path(out_root), clip_id)
     tmp_root = Path(tempfile.mkdtemp(prefix="msreplay_"))

@@ -20,8 +20,8 @@ def _hf(repo: str) -> bool:
 
 def checks() -> list[dict]:
     """→ [{name, ok, serves, hint}] — the full external-dependency census."""
-    from momentscan.readings.geometry import CANONICAL_OBJ
-    from momentscan.extraction.headpose import DEFAULT_ONNX
+    from momentscan.perception.readings.geometry import CANONICAL_OBJ
+    from momentscan.perception.extraction.headpose import DEFAULT_ONNX
     ins = Path.home() / ".insightface" / "models"
     rows = [
         # binaries

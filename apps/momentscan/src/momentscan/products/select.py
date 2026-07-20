@@ -46,12 +46,12 @@ from pathlib import Path
 import numpy as np
 import polars as pl
 
-from momentscan.readings.emotion import fused_valence
-from momentscan.readings.pose import CAMERA_FRONTAL_DEG
-from momentscan.store.stash import (
+from momentscan.perception.readings.emotion import fused_valence
+from momentscan.perception.readings.pose import CAMERA_FRONTAL_DEG
+from momentscan.infra.store.stash import (
     append_candidate, candidates_path, read_features, read_gate_trace, read_tubelets, write_select,
 )
-from momentscan.store.telemetry import CandidateLog
+from momentscan.infra.store.telemetry import CandidateLog
 
 log = logging.getLogger("momentscan.select")
 
@@ -262,7 +262,7 @@ def frame_scores(out_root, clip_id: str, track_id: int, *, fps: int = 6) -> dict
     # 클립 수준 신호(라이더 무관); scene.parquet 없으면 NaN(무영향).
     scene = np.full(len(fx), np.nan)
     try:
-        from momentscan.store.stash import read_scene
+        from momentscan.infra.store.stash import read_scene
         sdf = read_scene(out_root, clip_id).sort("frame_idx")
         E = np.array(sdf["embedding"].to_list(), dtype=np.float64)
         dE = np.linalg.norm(np.diff(E, axis=0), axis=1)
@@ -314,8 +314,8 @@ def frame_scores(out_root, clip_id: str, track_id: int, *, fps: int = 6) -> dict
     smile = np.full(len(fx), np.nan)
     d_center = np.full(len(fx), np.nan)
     try:
-        from momentscan.readings.geometry import canonicalize
-        from momentscan.store.stash import read_appearance, read_landmarks
+        from momentscan.perception.readings.geometry import canonicalize
+        from momentscan.infra.store.stash import read_appearance, read_landmarks
         from momentscan_features_specialist45d.specialists import BLENDSHAPE_ORDER
 
         lmdf = read_landmarks(out_root, clip_id).filter(

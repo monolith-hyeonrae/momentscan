@@ -9,7 +9,7 @@ import numpy as np
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
-from momentscan.readings.geometry import CANONICAL_FRAME, canonicalize
+from momentscan.perception.readings.geometry import CANONICAL_FRAME, canonicalize
 
 FLIP = np.asarray(CANONICAL_FRAME.axis_flip, dtype=np.float64)
 
