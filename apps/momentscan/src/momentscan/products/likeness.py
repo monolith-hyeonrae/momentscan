@@ -258,32 +258,41 @@ def _track_reading(out_root, clip_id: str, track_id: int,
 
     # Samples FROM the distribution: center-nearest (canonical image) and
     # pose bins (hair multi-view) — sharpest frame within each bin.
-    # ⑦ phase soft-preference (원장 ⑦, user 2026-07-14): boarding(pre-ride) 얼굴이 덜
-    # 일그러지고 헤어가 안 망가져 있다. 트랙에 phase_pref 프레임이 phase_min 이상이면
-    # 대표 뷰를 그 안에서만 고른다(soft); 미달이면 전체 폴백 + 정직 열화 warning.
-    # phase_pref/phase_min 은 인자다 — 이 함수는 preset 을 모른다 (G5 첫 실증).
-    sel = np.ones(len(fx), dtype=bool)
+    # ⑦ phase soft-preference (원장 ⑦, user 2026-07-14 → (b) 빈-내 소프트 확정): boarding
+    # (pre-ride) 얼굴이 덜 일그러지고 헤어가 안 망가져 있다. 트랙에 boarding 프레임이
+    # phase_min 이상이면 boarding 선호로 대표를 고르되 뷰/샘플 수는 잃지 않는다 —
+    # pose_bins 는 **빈별**(각 뷰에서 boarding 있으면 그중 sharpest, 없으면 그 빈의 ride
+    # 폴백 → 3뷰 보존), center_nearest 는 트랙-수준(뷰 무관 canonical 샘플 → boarding 우선
+    # 3개, 부족분 nearest ride). 미달이면 전체 폴백 + 정직 열화 warning. phase_pref/
+    # phase_min 은 인자다 — 이 함수는 preset 을 모른다 (G5).
+    board = np.zeros(len(fx), dtype=bool)
+    use_phase = False
     if phase_pref:
         tb = read_tubelets(out_root, clip_id).filter(pl.col("track_id") == track_id)
         phase_of = dict(zip(tb["frame_idx"].to_list(), tb["scene_phase"].to_list()))
         board = np.array([phase_of.get(int(f)) == phase_pref for f in fx])
-        if int(board.sum()) >= phase_min:
-            sel = board
-        else:
+        use_phase = int(board.sum()) >= phase_min
+        if not use_phase:
             log.warning("likeness.degraded", extra={
                 "clip_id": clip_id, "track_id": track_id, "lane": "phase",
                 "reason": f"{phase_pref}={int(board.sum())} < min={phase_min} → 전체 폴백"})
 
     dist_c = np.sqrt(((canon - center) ** 2).sum(axis=2).mean(axis=1))
-    order = np.argsort(np.where(sel, dist_c, np.inf))
-    center_nearest = [int(fx[i]) for i in order if sel[i]][:3]
+    order = np.argsort(dist_c)
+    if use_phase:   # boarding 우선, 부족분은 nearest ride (3개 유지 — 샘플 수 손실 없음)
+        order = np.array([i for i in order if board[i]] + [i for i in order if not board[i]])
+    center_nearest = [int(fx[i]) for i in order[:3]]
+
     bins: dict[str, int] = {}
     dev = yaw_all - CAMERA_FRONTAL_DEG
     for name, mask in (("frontal", np.abs(dev) < BIN_EDGE_DEG),
                        ("left", dev <= -BIN_EDGE_DEG), ("right", dev >= BIN_EDGE_DEG)):
-        m = mask & np.isfinite(blur_all) & sel
-        if m.any():
-            bins[name] = int(fx[np.where(m)[0][np.argmax(blur_all[m])]])
+        m = mask & np.isfinite(blur_all)
+        if not m.any():
+            continue                                 # 관측 없는 뷰 = 정직한 결측(C11)
+        mb = m & board
+        pool = mb if (use_phase and mb.any()) else m   # 빈-내 boarding 선호, 없으면 그 빈의 ride
+        bins[name] = int(fx[np.where(pool)[0][np.argmax(blur_all[pool])]])
 
     return {
         "n_obs": int(len(fx)),
