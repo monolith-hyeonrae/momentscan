@@ -36,4 +36,5 @@ build/
 
 # Regenerable pipeline artifacts / external experiment clones
 /output/
+/preview_recipe/
 /experiments/IC-Light/
