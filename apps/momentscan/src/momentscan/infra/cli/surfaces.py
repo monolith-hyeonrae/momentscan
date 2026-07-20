@@ -79,7 +79,9 @@ def _cmd_viz_recipe(args: argparse.Namespace) -> int:
     하위-서브커맨드(`viz recipe`)를 달면 기존 `viz <path>` 가 깨진다. 대신 highlight-lang
     선례(하이픈 최상위 명령)를 따라 sibling `viz-recipe` 로 둔다. 13키 투영 자체는
     blender 없이 순수 동작하나(테스트가 커버), 몽타주의 목적=렌더라 부재 시 exit 2."""
-    from momentscan.surface.recipe_preview import GAIN_HI, blender_binary, render_recipe_montage
+    from momentscan.products.recipe_axes import CALIB_TABLES
+
+    from momentscan.surface.recipe_preview import GAIN_HI, Variant, blender_binary, render_recipe_montage
 
     if blender_binary() is None:
         print("momentscan: viz-recipe needs the blender binary (renders the designer rig; "
@@ -87,15 +89,23 @@ def _cmd_viz_recipe(args: argparse.Namespace) -> int:
               file=sys.stderr)
         return 2
 
+    g = args.gain
     if args.ab == "calib":
-        print("momentscan: --ab calib needs the recalibration table (원장 ①, 미구현) — "
-              "현재 캘리 출처는 어댑터 한 벌(recipe.json range)뿐. use --ab gain.", file=sys.stderr)
-        return 2
-
-    gains = (1.0, GAIN_HI) if args.ab == "gain" else (args.gain,)
+        # 캘리 양안(원장 ①): 같은 gain, 두 테이블 나란히 — legacy(구운 range와 동일)
+        # vs race981(momentscan 코퍼스 재캘리). 정규화 창만 갈아끼운다.
+        variants = [
+            Variant(title="legacy-calib", slug="legacy-sample1", gain=g,
+                    ranges=CALIB_TABLES["legacy-sample1"]),
+            Variant(title="race981-calib", slug="race981-20260720", gain=g,
+                    ranges=CALIB_TABLES["race981-20260720"]),
+        ]
+    elif args.ab == "gain":
+        variants = [Variant(title=f"×{gv:g}", slug=f"g{gv:g}", gain=gv) for gv in (1.0, GAIN_HI)]
+    else:
+        variants = [Variant(title=f"×{g:g}", slug=f"g{g:g}", gain=g)]
 
     try:
-        result = render_recipe_montage(Path(args.out), args.clips, gains=gains,
+        result = render_recipe_montage(Path(args.out), args.clips, variants=variants,
                                        preview_out=Path(args.preview_out).expanduser(),
                                        blend=args.blend)
     except RuntimeError as exc:
@@ -125,9 +135,9 @@ def register(sub, common: argparse.ArgumentParser) -> None:
     pvr.add_argument("clips", nargs="+", help="clip id(s) — 행 하나당 한 클립 (recipe.json 존재해야)")
     pvr.add_argument("--out", default="output", help="stash root (recipe.json 위치)")
     pvr.add_argument("--gain", type=float, default=1.0,
-                     help="단일-변형 gain (--ab 없을 때). shape key 편차 과장 배율")
+                     help="단일-변형 및 --ab calib 의 고정 gain. shape key 편차 과장 배율")
     pvr.add_argument("--ab", choices=("gain", "calib"), default=None,
-                     help="gain=×1.0 vs ×2.2 A/B 몽타주 · calib=캘리 양안(원장 ① 미구현)")
+                     help="gain=×1.0 vs ×2.2 A/B 몽타주 · calib=캘리 양안(원장 ①: legacy vs race981)")
     pvr.add_argument("--preview-out", dest="preview_out", default="preview_recipe",
                      help="몽타주·셀 PNG 출력 디렉토리 (output/l2 밖 — 프리뷰는 stash 불변)")
     pvr.add_argument("--blend", default=None,

@@ -70,6 +70,70 @@ _CALIBRATED_G_RANGES: dict[str, tuple[float, float]] = {
     "G36": (0.227, 0.301),
 }
 
+# 재캘리 range [p5, p95] — momentscan race981 코퍼스 기준(원장 ①, 캘리 양안).
+# blame = calibrated:race981-corpus[p5,p95]. **방법**: output/l2 15 클립의 main-rider
+# recipe.json 에서 categories["Face Geometry"][aid]["value"] 수집 → 구 테이블과 동일한
+# L/R 풀링 그룹({G06,G07}·{G08~G11}·{G13,G14}·{G26,G27}·{G28,G29}·{G30,G31}·{G32,G33})
+# 으로 풀링 → numpy percentile(linear) → round(…, 3). n = 15 (풀링 그룹 30~60). 정면-전용
+# neutral 기하 위에서 측정(원장 ⑧ 반영). 산출일 2026-07-20. 추출 스크립트는 일회성이라
+# 커밋하지 않음(방법은 이 주석이 정본).
+#
+# ⚠ n=15 → p5/p95 는 사실상 near-extremes(15점 선형보간) — A/B 판정용 시작점이지 확정
+# 분포가 아니다. **계통 오프셋**(구=지인 17명 단일-이미지 posed / 신=비디오 집계 정면
+# neutral): mouth_corner(G22) 구 p95 53° → 신 26°(posed 미소 편향 제거), brow_slope
+# (G32/G33) mid +2.3°, brow_thickness(G28/G29) mid −0.09(구 p5 아래로 포화하던 값이
+# 창 안으로), lip(G19/G20) 상향, face_symmetry(G25) 0.34–0.97 → 0.90–0.99(정면-전용의
+# 높은 대칭). 4키 가장자리 포화(Brow_Thickness≈0·Mouth_Size≈0.9·Mouse_Corner 하향·
+# Brow_Slant 상향)의 해소는 --ab calib 몽타주·포화 수치표(track/lk-calib 보고)로 실증.
+_CALIBRATED_G_RANGES_RACE981: dict[str, tuple[float, float]] = {
+    "G01": (0.837, 0.995),
+    "G02": (0.8, 0.854),
+    "G03": (113.628, 124.38),
+    "G04": (0.744, 0.799),
+    "G05": (0.246, 0.28),
+    "G06": (0.167, 0.21),
+    "G07": (0.167, 0.21),
+    "G08": (0.291, 0.395),
+    "G09": (0.291, 0.395),
+    "G10": (0.291, 0.395),
+    "G11": (0.291, 0.395),
+    "G12": (0.438, 0.481),
+    "G13": (2.619, 8.513),
+    "G14": (2.619, 8.513),
+    "G15": (0.255, 0.3),
+    "G16": (0.195, 0.219),
+    "G17": (0.17, 0.196),
+    "G18": (149.844, 165.329),
+    "G19": (0.039, 0.052),
+    "G20": (0.055, 0.071),
+    "G21": (0.353, 0.408),
+    "G22": (-22.134, 25.666),
+    "G23": (0.081, 0.118),
+    "G24": (0.847, 0.918),
+    "G25": (0.898, 0.988),
+    "G26": (1.046, 1.26),
+    "G27": (1.046, 1.26),
+    "G28": (0.252, 0.334),
+    "G29": (0.252, 0.334),
+    "G30": (0.183, 0.238),
+    "G31": (0.183, 0.238),
+    "G32": (0.863, 4.926),
+    "G33": (0.863, 4.926),
+    "G34": (0.032, 0.043),
+    "G35": (0.175, 0.202),
+    "G36": (0.22, 0.281),
+}
+
+# 캘리 테이블 레지스트리 — 이름이 출처를 읽게 한다. --ab calib(원장 ①) 이 두 테이블을
+# 나란히 투영해 양안 판정 재료를 낸다. **recipe 스테이지 기본은 legacy 유지**(recipe.py
+# 가 `_CALIBRATED_G_RANGES` 를 직접 소비) — race981 전환은 L-B user 판정 후 recipe.py 의
+# import 를 `_CALIBRATED_G_RANGES_RACE981` 로 바꾸는 별도 1줄 커밋이다(그때 recipe.json
+# range 가 바뀌어 특성화 골든 재동결 동반). 지금은 recipe.json 산출 무변 = 특성화 무영향.
+CALIB_TABLES: dict[str, dict[str, tuple[float, float]]] = {
+    "legacy-sample1": _CALIBRATED_G_RANGES,
+    "race981-20260720": _CALIBRATED_G_RANGES_RACE981,
+}
+
 # G 축 메타 (axis_id, name, korean, type, time_scale, description) — G01…G37 순서.
 # name 은 face_axes 가 내는 키와 1:1(아래 import-time 가드가 정합 강제). value 는
 # recipe 가 계산해 채우고, range 는 _CALIBRATED_G_RANGES 에서 주입한다.

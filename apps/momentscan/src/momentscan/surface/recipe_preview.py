@@ -30,7 +30,7 @@ import logging
 import shutil
 import subprocess
 from pathlib import Path
-from typing import Any
+from typing import Any, NamedTuple
 
 log = logging.getLogger("momentscan.recipe_preview")
 
@@ -81,6 +81,19 @@ _LR_ASYMMETRY_THRESHOLD: float = 0.55
 # gain 상단(×배). 미세 개성을 과장해 육안 판정을 돕는 A/B 상단값 — 구 프리뷰
 # preview_recipe_gain_ab.png 관례(1.0 vs 2.2). L-B user-동행 판정의 재료.
 GAIN_HI: float = 2.2
+
+
+class Variant(NamedTuple):
+    """몽타주 한 열(변형)의 투영 설정 + 표시. 몽타주 기계는 열이 gain-A/B 든 캘리
+    양안이든 무관하게 이 변형 목록만 순회한다(variant-제네릭).
+
+    title = 열 헤더(예 "×2.2", "race981-calib"). slug = 셀 PNG 파일명용(파일시스템
+    안전 — 같은 gain 두 테이블이 파일명 충돌하지 않게 변형별 고유). ranges =
+    axis_id→(lo,hi) 캘리 테이블 override(None=recipe.json 구운 range=legacy)."""
+    title: str
+    slug: str
+    gain: float = 1.0
+    ranges: dict[str, Any] | None = None
 
 # ── hair library (A4) ───────────────────────────────────────────────────────
 #
@@ -177,9 +190,14 @@ def _flat_axis_entries(recipe: dict) -> dict[str, dict]:
     return flat
 
 
-def project_shape_keys(recipe: dict, *, gain: float = 1.0) -> dict[str, float]:
+def project_shape_keys(recipe: dict, *, gain: float = 1.0,
+                       ranges: dict[str, Any] | None = None) -> dict[str, float]:
     """recipe.json → {shape_key: [0,1]}. Cat G 값을 캘리 range 로 정규화 후 shape
-    key 별 집계(L/R 가드) + gain. 순수 함수 — blender 불요, 특성화 골든으로 봉인."""
+    key 별 집계(L/R 가드) + gain. 순수 함수 — blender 불요, 특성화 골든으로 봉인.
+
+    ranges = axis_id → (lo, hi) 캘리 테이블 override(원장 ① 캘리 양안). None(기본)이면
+    recipe.json 에 구워진 range 를 쓴다 = 골든과 비트-동일. 주어지면 정규화 창만 그
+    테이블로 갈아끼운다(값·집계·가드·gain 불변) — 재캘리 A/B 의 한 열."""
     entries = _flat_axis_entries(recipe)
 
     out: dict[str, float] = {}
@@ -192,7 +210,7 @@ def project_shape_keys(recipe: dict, *, gain: float = 1.0) -> dict[str, float]:
             raw = entry.get("value")
             if not isinstance(raw, (int, float)) or isinstance(raw, bool):
                 continue
-            rng = entry.get("range")
+            rng = ranges.get(axis_id) if ranges is not None else entry.get("range")
             if not rng or len(rng) != 2:
                 continue
             normed.append(_normalize(float(raw), float(rng[0]), float(rng[1])))
@@ -297,14 +315,14 @@ def render_recipe_montage(
     out_root: Path | str,
     clip_ids: list[str],
     *,
-    gains: tuple[float, ...],
+    variants: list[Variant],
     preview_out: Path | str,
     blend: Path | str | None = None,
 ) -> dict:
-    """clip 들의 recipe → 디자이너 리그 프리뷰 몽타주(행=클립, 열=real + gain별 3D).
+    """clip 들의 recipe → 디자이너 리그 프리뷰 몽타주(행=클립, 열=real + 변형별 3D).
 
-    gains = 렌더할 gain 값들(예: (1.0,) 단일 / (1.0, 2.2) A/B). preview_out 에 셀
-    PNG + montage.png. blender 없으면 RuntimeError(호출 CLI 가 exit 2 로 번역)."""
+    variants = 렌더할 열들(gain-A/B 든 캘리 양안이든). preview_out 에 셀 PNG +
+    montage.png. blender 없으면 RuntimeError(호출 CLI 가 exit 2 로 번역)."""
     out_root = Path(out_root)
     preview_out = Path(preview_out)
     preview_out.mkdir(parents=True, exist_ok=True)
@@ -313,7 +331,7 @@ def render_recipe_montage(
     if not blend_path.exists():
         raise RuntimeError(f"blend 파일 없음: {blend_path} (D0 이관 후 _DEFAULT_BLEND 교체)")
 
-    rows = _build_rows(out_root, clip_ids, gains, preview_out)
+    rows = _build_rows(out_root, clip_ids, variants, preview_out)
     if not rows:
         return {"ok": False, "reason": "no recipe.json for any clip", "clip_ids": clip_ids}
 
@@ -321,17 +339,17 @@ def render_recipe_montage(
     _render_jobs(blend_path, jobs, preview_out)
 
     montage_path = preview_out / "montage.png"
-    _assemble_montage(rows, gains, montage_path, blend_path)
+    _assemble_montage(rows, variants, montage_path, blend_path)
 
-    log.info("recipe_preview.montage", extra={"n_clips": len(rows), "n_gains": len(gains),
+    log.info("recipe_preview.montage", extra={"n_clips": len(rows), "n_variants": len(variants),
                                               "montage": str(montage_path)})
     return {"ok": True, "montage": str(montage_path), "n_clips": len(rows),
-            "gains": list(gains), "blend": str(blend_path)}
+            "variants": [v.title for v in variants], "blend": str(blend_path)}
 
 
-def _build_rows(out_root: Path, clip_ids: list[str], gains: tuple[float, ...],
+def _build_rows(out_root: Path, clip_ids: list[str], variants: list[Variant],
                 preview_out: Path) -> list[dict]:
-    """클립별로 recipe 를 로드해 gain 별 렌더 잡 + real 썸네일을 담은 행 목록 구성."""
+    """클립별로 recipe 를 로드해 변형별 렌더 잡 + real 썸네일을 담은 행 목록 구성."""
     rows: list[dict] = []
     for clip_id in clip_ids:
         clip_dir = out_root / clip_id
@@ -340,14 +358,14 @@ def _build_rows(out_root: Path, clip_ids: list[str], gains: tuple[float, ...],
             log.warning("recipe_preview.skip", extra={"clip_id": clip_id, "reason": "no recipe.json"})
             continue
         image_id, recipe = loaded
-        chosen_hair, _ = select_hair(recipe)                 # gain-불변 — 루프 밖
+        chosen_hair, _ = select_hair(recipe)                 # 변형-불변 — 루프 밖
 
         cells = []
-        for gain in gains:
-            shape_keys = project_shape_keys(recipe, gain=gain)
-            out_png = preview_out / f"{image_id}_g{gain:g}.png"
+        for v in variants:
+            shape_keys = project_shape_keys(recipe, gain=v.gain, ranges=v.ranges)
+            out_png = preview_out / f"{image_id}_{v.slug}.png"
             cells.append({"shape_key_values": shape_keys, "chosen_hair": chosen_hair,
-                          "out_png": str(out_png), "gain": gain})
+                          "out_png": str(out_png), "gain": v.gain})
 
         rows.append({"clip_id": clip_id, "image_id": image_id,
                      "real": _real_thumbnail(clip_dir), "cells": cells,
@@ -355,24 +373,24 @@ def _build_rows(out_root: Path, clip_ids: list[str], gains: tuple[float, ...],
     return rows
 
 
-def _assemble_montage(rows: list[dict], gains: tuple[float, ...],
+def _assemble_montage(rows: list[dict], variants: list[Variant],
                       montage_path: Path, blend: Path) -> None:
-    """PIL 로 그리드 몽타주 조립 — 행=클립, 열=[real] + gain별 3D. 셀 라벨·헤더 포함."""
+    """PIL 로 그리드 몽타주 조립 — 행=클립, 열=[real] + 변형별 3D. 셀 라벨·헤더 포함."""
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
 
     n_rows = len(rows)
-    n_cols = 1 + len(gains)                                   # real + gain별
+    n_cols = 1 + len(variants)                                # real + 변형별
     n_mapped = rows[0]["n_mapped"] if rows else 0
 
     fig, axes = plt.subplots(n_rows, n_cols, figsize=(n_cols * 2.6, n_rows * 2.6),
                              squeeze=False)
     fig.suptitle(f"likeness → face_recipe(13 shape keys) → designer rig: "
-                 f"gain {' vs '.join(f'{g:g}' for g in gains)} ({n_mapped}/13 keys mapped)",
+                 f"{' vs '.join(v.title for v in variants)} ({n_mapped}/13 keys mapped)",
                  fontsize=11, x=0.02, ha="left")
 
-    col_titles = ["real"] + [f"3D ×{g:g}" for g in gains]
+    col_titles = ["real"] + [v.title for v in variants]
     for j, title in enumerate(col_titles):
         axes[0][j].set_title(title, fontsize=10)
 
