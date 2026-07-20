@@ -72,6 +72,39 @@ def _cmd_viz(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_viz_recipe(args: argparse.Namespace) -> int:
+    """recipe.json → 디자이너 리그 프리뷰 몽타주 (온디맨드, blender 선택-의존).
+
+    `viz` 애그리게이터에 넣지 않은 이유: viz 는 bare positional `path` 를 쓰므로
+    하위-서브커맨드(`viz recipe`)를 달면 기존 `viz <path>` 가 깨진다. 대신 highlight-lang
+    선례(하이픈 최상위 명령)를 따라 sibling `viz-recipe` 로 둔다. 13키 투영 자체는
+    blender 없이 순수 동작하나(테스트가 커버), 몽타주의 목적=렌더라 부재 시 exit 2."""
+    from momentscan.surface.recipe_preview import GAIN_HI, blender_binary, render_recipe_montage
+
+    if blender_binary() is None:
+        print("momentscan: viz-recipe needs the blender binary (renders the designer rig; "
+              "venv bpy 아님 — 바이너리 경유 설계). install: sudo snap install blender --classic",
+              file=sys.stderr)
+        return 2
+
+    if args.ab == "calib":
+        print("momentscan: --ab calib needs the recalibration table (원장 ①, 미구현) — "
+              "현재 캘리 출처는 어댑터 한 벌(recipe.json range)뿐. use --ab gain.", file=sys.stderr)
+        return 2
+
+    gains = (1.0, GAIN_HI) if args.ab == "gain" else (args.gain,)
+
+    try:
+        result = render_recipe_montage(Path(args.out), args.clips, gains=gains,
+                                       preview_out=Path(args.preview_out).expanduser(),
+                                       blend=args.blend)
+    except RuntimeError as exc:
+        print(f"momentscan: recipe preview render failed: {exc}", file=sys.stderr)
+        return 1
+    print(json.dumps(result, ensure_ascii=False, indent=2))
+    return 0 if result["ok"] else 1
+
+
 def _cmd_label(args: argparse.Namespace) -> int:
     from momentscan.products.evals.label_server import serve_labels
 
@@ -86,6 +119,20 @@ def register(sub, common: argparse.ArgumentParser) -> None:
     pv.add_argument("--out", default="output", help="stash root")
     pv.add_argument("--fps", type=int, default=None, help="MUST match the fps the detect stage used")
     pv.set_defaults(func=_cmd_viz)
+
+    pvr = sub.add_parser("viz-recipe", parents=[common],
+                         help="recipe.json → 디자이너 리그 프리뷰 몽타주 (온디맨드, blender 선택-의존)")
+    pvr.add_argument("clips", nargs="+", help="clip id(s) — 행 하나당 한 클립 (recipe.json 존재해야)")
+    pvr.add_argument("--out", default="output", help="stash root (recipe.json 위치)")
+    pvr.add_argument("--gain", type=float, default=1.0,
+                     help="단일-변형 gain (--ab 없을 때). shape key 편차 과장 배율")
+    pvr.add_argument("--ab", choices=("gain", "calib"), default=None,
+                     help="gain=×1.0 vs ×2.2 A/B 몽타주 · calib=캘리 양안(원장 ① 미구현)")
+    pvr.add_argument("--preview-out", dest="preview_out", default="preview_recipe",
+                     help="몽타주·셀 PNG 출력 디렉토리 (output/l2 밖 — 프리뷰는 stash 불변)")
+    pvr.add_argument("--blend", default=None,
+                     help="디자이너 blend override (기본=recipe_preview._DEFAULT_BLEND)")
+    pvr.set_defaults(func=_cmd_viz_recipe)
 
     prep = sub.add_parser("report", parents=[common],
                           help="render <clip>/index.html — the result-consumer front door")
