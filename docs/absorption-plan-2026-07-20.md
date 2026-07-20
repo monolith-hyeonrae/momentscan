@@ -113,3 +113,19 @@ per-subject PNG + 몽타주 (tier="surface" — tiers.py "appearance_card.png" �
 **원칙 준수 확인**: 비밀 2종(공식=readings/정책·캘리=products 상수 분리) · 엔진=질문(Product 신설 없음) · 껍질(recipe.json egress 제외 — 반출·채점기 무접촉) · 비목표 원장(13키 p981.if 격상 보류=소비자 선행 원칙; recipe 스테이지 신설 비용은 원장 ②가 지불) · C11 v1 additive-only(소비 확장·outputs 추가·문서 갱신 전부 additive).
 
 수정한 파일 없음(읽기 전용 실측·설계). 주요 좌표: `/home/hyeonrae/repo/p981/momentscan/apps/momentscan/src/momentscan/{products,surface,perception,infra/pipeline}` · `/home/hyeonrae/repo/p981/momentscan/docs/refactor-plan.md:148-156` · `/home/hyeonrae/repo/p981/ids.md:58,150-154` · `/home/hyeonrae/repo/p981/appearance-engine/src/appearance_engine/`.
+---
+
+## 개정 (user 교정, 2026-07-20): C5 파기 → 보관
+
+**지인 사진 = 테스트 픽스처.** 디자인팀이 가끔 "이 사람에 대해 출력 테스트"를
+요청 — 시스템은 비디오 타겟이지만 **이미지 수준 평가 요구가 실재**한다.
+- C5 처분 변경: design_package raw 사진 = **파기 금지, 보관** — appearance-engine
+  삭제 전에 우산 관리 에셋 홈(git 밖, blend 파일 D0과 동거 — 개인정보라 접근
+  통제)으로 이관. C6(hair 이관분)과 단일 홈 조율(사진 세트는 hair_match 입력과
+  디자인팀 테스트 요청의 이중 용도).
+- **신규 관측 (원장 후보)**: "이미지 1장 → recipe/프리뷰" 요청 레인 — 현 흡수
+  설계의 recipe 스테이지는 likeness.json(비디오 산출)을 입력으로 하므로, 이미지
+  요청에는 이미지→likeness-lite 경로(단일 프레임 랜드마크→center/blendshapes
+  유사 레코드)가 필요. **지금 짓지 않음**(가끔-요청, 소비자-선행 원칙) — 요청이
+  다시 오는 시점에 lk-preview 위에 소형 레인으로. change-forecast 비목표 원장에
+  재개 조건("디자인팀 이미지 테스트 요청 도착 시")으로 등재.
