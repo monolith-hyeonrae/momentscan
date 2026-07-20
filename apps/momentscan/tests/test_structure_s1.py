@@ -82,15 +82,24 @@ def test_classify_corpus_clip_no_unclassified():
 
 
 def test_docs_cite_live_source_paths():
-    """G4: docs 가 인용하는 apps/momentscan/src/... 경로는 실존해야 한다 — 이동(T6/T7)
-    후 죽은 경로 인용 방지(선언=주소; 주소가 거짓말하면 문서가 침식, D6). 계획/레거시
-    경로는 이 패턴 밖으로 표기(§ contracts.py 미구축 · portrait981 레거시)."""
+    """G4 (경로-실존 가드, blueprint '문서 주소록도 D1급'): docs/**/*.md + ARCHITECTURE.md
+    가 인용하는 소스 경로는 실존해야 한다 — 이동(T6/T7) 후 죽은 경로 인용 방지(선언=주소;
+    주소가 거짓말하면 문서가 침식, D6·심사 §5-4). 계획/레거시 경로는 이 패턴 밖으로
+    표기(preset/·contracts.py 미구축 · portrait981 레거시)."""
     import re
     root = Path(__file__).resolve().parents[3]
-    pat = re.compile(r"apps/momentscan/src/momentscan/[A-Za-z0-9_/]+\.py")
+    pkg = root / "apps" / "momentscan" / "src" / "momentscan"
+    full = re.compile(r"apps/momentscan/src/momentscan/[A-Za-z0-9_/]+\.py")
+    # ARCHITECTURE.md 는 패키지-상대 backtick 경로(A″ 5그룹 하위 .py)를 쓴다 → pkg root 기준 실존.
+    rel = re.compile(r"`((?:infra|perception|products|surface|verify)/[A-Za-z0-9_/]+\.py)`")
     dead: list[str] = []
-    for md in (root / "docs").rglob("*.md"):
-        for m in pat.findall(md.read_text(encoding="utf-8")):
+    for md in [*sorted((root / "docs").rglob("*.md")), root / "ARCHITECTURE.md"]:
+        text = md.read_text(encoding="utf-8")
+        for m in full.findall(text):
             if not (root / m).is_file():
                 dead.append(f"{md.relative_to(root)}: {m}")
-    assert not dead, "docs 가 죽은 소스 경로 인용:\n  " + "\n  ".join(sorted(set(dead)))
+        if md.name == "ARCHITECTURE.md":
+            for m in rel.findall(text):
+                if not (pkg / m).is_file():
+                    dead.append(f"{md.relative_to(root)}: {m} (pkg-relative)")
+    assert not dead, "문서가 죽은 소스 경로 인용:\n  " + "\n  ".join(sorted(set(dead)))
