@@ -42,6 +42,8 @@ from momentscan.infra.store.stash import (
 from momentscan.perception.readings.geometry import canonicalize, norm468, template
 from momentscan.perception.readings.pose import CAMERA_FRONTAL_DEG
 
+from momentscan.preset import RACE981
+
 log = logging.getLogger("momentscan.appearance")
 
 
@@ -73,7 +75,7 @@ def _gate_cohorts(out_root, clip_id: str) -> dict[int, dict[str, set[int]]] | No
 
 N_LM = 478
 # empirical frontal (E002) — single home: pose.CAMERA_FRONTAL_DEG (imported above)
-BIN_EDGE_DEG = 15.0      # |yaw − frontal| < edge → frontal bin, else left/right
+BIN_EDGE_DEG = RACE981.camera.bin_edge_deg   # |yaw − frontal| < edge → frontal bin (preset: race981.camera.bin_edge_deg)
 
 # Classic anthropometric ratios on well-known mesh indices (scale-free —
 # the measurement vocabulary; 황금비 is at most a reference POINT on these
@@ -280,8 +282,8 @@ def _track_reading(out_root, clip_id: str, track_id: int,
     }
 
 
-FACE_ID_MIN_FRONTAL = 10   # < this many clean-frontal frames → fall back to `valid` (don't starve a mostly-profile track)
-FACE_ID_P05_FLOOR = 0.5    # coherence_p05 < 이 값 → 저품질 프레임이 센트로이드를 희석 (P1-② 감사: aux 희석 라이더들의 자리)
+FACE_ID_MIN_FRONTAL = RACE981.likeness.face_id_min_frontal   # < this many clean-frontal frames → fall back to `valid` (preset)
+FACE_ID_P05_FLOOR = RACE981.likeness.face_id_p05_floor        # coherence_p05 < 이 값 → 저품질 희석 (P1-② 감사; preset)
 
 
 def _face_ids(out_root, clip_id: str,
@@ -340,11 +342,16 @@ def _face_ids(out_root, clip_id: str,
     return out
 
 
-# fashion/accessory thresholds (parse.parquet) — preset policy, calibrated on cap_1.
-_F_EYEWEAR, _F_SUN_LUM, _F_MASK, _F_HAT, _F_WORN = 0.03, 0.7, 0.01, 0.05, 0.5
-_F_MIN_JUDGEABLE = 10   # < this many clean-frontal frames → all-frames fallback (mostly-profile track)
-_F_FUSE_TAU = 0.75      # 두-레인 융합: typed covering이 이 신뢰 이상으로 non-mask를 지목하면 parse mask 불리언을 기각
-_HAIR_OBS_TAU = 0.1     # 소유자 hair/face 픽셀비 중앙값 < 이 값 → hair 관측불가 (후드-업; hair_match 결측 신호)
+# fashion/accessory thresholds (parse.parquet) — preset policy (cap_1 보정), preset 으로
+# 이주(race981.likeness.*). 정의부 1줄 재바인딩 = 과도기 문법(G5 종착=인자 전달).
+_F_EYEWEAR = RACE981.likeness.f_eyewear
+_F_SUN_LUM = RACE981.likeness.f_sun_lum
+_F_MASK = RACE981.likeness.f_mask
+_F_HAT = RACE981.likeness.f_hat
+_F_WORN = RACE981.likeness.f_worn
+_F_MIN_JUDGEABLE = RACE981.likeness.f_min_judgeable   # < this many clean-frontal → all-frames fallback
+_F_FUSE_TAU = RACE981.likeness.f_fuse_tau             # typed covering 신뢰 ≥ → parse mask 불리언 기각
+_HAIR_OBS_TAU = RACE981.likeness.hair_obs_tau         # hair/face 픽셀비 < → hair 관측불가(후드-업)
 
 
 def _fashion_reading(out_root, clip_id: str,
