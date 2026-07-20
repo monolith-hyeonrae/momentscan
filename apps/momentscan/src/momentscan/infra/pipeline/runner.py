@@ -87,7 +87,7 @@ def _portrait(out, clip, src, fps):
 
 def _likeness(out, clip, src, fps):
     from momentscan.products.likeness import appearance_clip
-    return appearance_clip(out, clip)
+    return appearance_clip(out, clip, fps=fps)
 
 
 def _recipe(out, clip, src, fps):

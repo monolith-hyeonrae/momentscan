@@ -48,6 +48,19 @@ def test_test3_samples_hair():
     assert hair["visible_frac"] == pytest.approx(0.881, abs=1e-3)
 
 
+def test_test3_samples_selection_policy():
+    """⑨ 표본 선발 정책 provenance (원장 ⑨, track/lk-sampling). 코퍼스가 신정책으로
+    갱신되면 활성화 — 구 코퍼스(selection 필드 부재)에서는 skip 한다(공유 코퍼스 스윕은
+    머지 후가 지불: CLAUDE.md 트랙-스코프). 로직 자체의 회귀 그물은 test_face_signals.py."""
+    smp = _likeness("test_3")["riders"]["0"]["samples"]
+    sel = smp.get("selection")
+    if sel is None:
+        pytest.skip("corpus predates ⑨ (samples.selection 부재) — 머지 후 스윕이 채운다")
+    assert sel["policy"] == "frontal-pupil-calm/v1"
+    assert len(smp["center_nearest"]) == 3 and all(isinstance(f, int) for f in smp["center_nearest"])
+    assert set(smp["pose_bins"]) <= {"frontal", "left", "right"}
+
+
 def test_test3_color_identity_palette():
     ci = _likeness("test_3")["riders"]["0"]["color_identity"]
     assert ci["primary"]["hex"] == "#140e11"

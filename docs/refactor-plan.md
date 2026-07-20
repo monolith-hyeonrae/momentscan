@@ -181,6 +181,18 @@ fashion·samples.hair 방출됨) ⑤test_12 hair 세그 오검출 조사(user �
    **한계효용 0, 도입 안 함**(모델 283MB+GPU 패스 비용 불가). MagFace 스코어러는
    scratchpad 보존 = E1 eval-baseline 후보(exposure-gate 때 예약한 자리).
 
+   → **⑧⑨ 착지 (2026-07-20, track/lk-sampling)**: 신호 홈=`perception/readings/
+   face_signals.py`(pupil_visibility·visual_frontality·eye_openness, 측정 공식만) ·
+   정책=`products/likeness.py`(사다리 상수 모듈-top + `_pick3`; face_micro=parse·
+   embedding_norm=detections raw L2 읽기 전용). ⑧=center(median)·neutral 회귀 입력을
+   frontal_clean 코호트로 제한(폴백 문턱=face_id_min_frontal 재사용), PCA·축·blendshape
+   통계·split_half_drift 는 valid 전폭 유지. **15클립 전/후 델타 = 설명 가능**: 불변
+   확인(n_obs·split_half_drift·resid_rms·evr·face_id p05·fashion·hair 전부 byte-identical
+   15/15) · ⑧ center RMS 이동 0.003~0.058·neutral 0.015~0.075(정면 제한) · ⑨ samples
+   전면 교체(dual_2·test_12 = boarding rung 발화로 ⑦ 보존 실증). replay=likeness.json
+   만 변경(gate_trace·portrait·emotion 무영향). 코퍼스 재계산·replay-ref 재동결은 머지 후
+   공유 스윕(트랙-스코프). pytest 127·registry 0err·ruff 57·recipe 골든 15 무영향.
+
 ### (완료 기록) P1-④까지의 트랙 — ③ 동결 완료, P1-④ 실패 모드
 
 ~~P1-2b color identity~~ → **DONE 5c34f2d**. ~~P1-③ 스키마 동결~~ → **DONE** —
