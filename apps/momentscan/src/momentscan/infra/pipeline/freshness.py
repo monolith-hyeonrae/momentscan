@@ -164,6 +164,11 @@ def _external_deps() -> dict[str, tuple[Path, ...]]:
         deps["momentscan.perception.readings.geometry"] = (Path(CANONICAL_OBJ),)
     except Exception:
         pass
+    try:
+        from momentscan.surface.recipe_preview import _DEFAULT_BLEND  # designer rig blend
+        deps["momentscan.surface.recipe_preview"] = (Path(_DEFAULT_BLEND),)
+    except Exception:
+        pass
     return deps
 
 

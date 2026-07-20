@@ -58,6 +58,9 @@ def checks() -> list[dict]:
         dict(name="boto3", ok=importlib.util.find_spec("boto3") is not None, optional=True,
              serves="serve(HTTP): s3:// 소스 반입·결과 반출 (선택 — AWS 배포만, 로컬 알파 불필요)",
              hint="uv pip install boto3 — AWS 노드에서만"),
+        dict(name="blender", ok=shutil.which("blender") is not None, optional=True,
+             serves="viz-recipe: 디자이너 리그 프리뷰 렌더 (선택 — likeness recipe 프리뷰만, 온디맨드)",
+             hint="sudo snap install blender --classic — venv bpy 아님, 바이너리 경유 설계"),
     ]
     return rows
 
