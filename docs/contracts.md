@@ -259,3 +259,5 @@ visualbus / visualpath / visualbind)에 대한 momentscan의 **전체 사용 표
 momentscan이 검증한 하중-표면 = 안정화 1순위 API: **FileSource · structured_log ·
 control.ControlServer · BBox convention**. 실시간 비전 에이전트 플랫폼 비전에서
 이들이 코어 계약 후보 — semver·`__all__` 공개면 선언·deprecation 정책이 다음 수.
+
+> ⚠C11 표기 정정(2026-07-20, r6 실측): center = **478×3**(iris 포함 MediaPipe 토폴로지) — 기존 표의 468×3은 오기. LikenessV1(infra/contracts.py)은 길이 미고정 list로 서술(토폴로지 변동 = 고비용 재결정 지점, change-forecast ③).
