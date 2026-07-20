@@ -20,6 +20,8 @@ from __future__ import annotations
 
 import numpy as np
 
+from momentscan.preset import RACE981
+
 # ── pose thresholds (the two same-name "frontal" facts now carry distinct names) ──
 POSE_MAX_DEG = 20.0   # frontal_pose gate band: |yaw|,|pitch|,|roll| all under this
 FRONTAL_DEG = 15.0    # frontal | three-quarter view-bin boundary (routing). The
@@ -31,11 +33,11 @@ CORROB_DEG = 30.0     # MP must independently read ≥ this (sign-matched) to co
                       # 6D≥SIDE as a real profile — excludes 6D hood/glare false-highs,
                       # which sit at |mp|<CORROB. Below admit's max |mp| guarantee, so
                       # the SIDE promote can never touch an admitted frontal.
-CAMERA_FRONTAL_DEG = 12.0   # E002: this camera's EMPIRICAL frontal (off-axis mount) —
-                            # an OFFSET (where true frontal actually sits), not a bin
-                            # boundary. Formerly duplicated as appearance.FRONTAL_DEG
-                            # and select.EMP_FRONTAL_DEG under a name colliding with
-                            # the 15° routing boundary above; distinct fact, kept apart.
+CAMERA_FRONTAL_DEG = RACE981.camera.frontal_deg   # E002: this camera's EMPIRICAL frontal
+                            # (off-axis mount) — an OFFSET (where true frontal actually sits),
+                            # not a bin boundary. 값은 preset 으로 이주(race981.camera.frontal_deg)
+                            # — 시설/카메라마다 재보정. (구 appearance.FRONTAL_DEG·select.EMP_FRONTAL_DEG
+                            # 통합; 15° 라우팅 경계와 별개 사실이라 떨어져 산다.)
 
 
 def euler_from_transform(M) -> tuple[float, float, float]:
