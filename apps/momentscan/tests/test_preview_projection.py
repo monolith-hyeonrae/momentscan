@@ -18,8 +18,12 @@ from pathlib import Path
 import pytest
 
 from momentscan.products.recipe_axes import CALIB_TABLES
+
 from momentscan.surface.recipe_preview import (
     _LR_ASYMMETRY_THRESHOLD,
+    DEFAULT_GAIN,
+    PROPOSED_SHAPE_KEY_MAP,
+    SHAPE_KEY_MAP,
     Variant,
     _aggregate_normed,
     project_shape_keys,
@@ -139,3 +143,77 @@ def test_render_raises_when_blender_absent(monkeypatch, tmp_path):
         render_recipe_montage(tmp_path, ["test_3"],
                               variants=[Variant(title="×1", slug="g1", gain=1.0)],
                               preview_out=tmp_path / "out", blend=fake_blend)
+
+
+# ── 확장 키셋 (원장 ⑩ · track lk-keyset) ─────────────────────────────────────
+
+_EXPECTED_PROPOSED_AXES = frozenset({
+    "G01", "G02", "G03", "G04", "G05",           # 얼굴형 5축
+    "G08", "G09", "G10", "G11",                   # 눈 개방형태 (2키 풀링)
+    "G15", "G16", "G18",                          # 코 3축
+    "G30", "G31", "G34",                          # 눈썹 (아치 풀링 · 눈썹-눈 거리)
+})
+
+
+def test_key_tiers_disjoint_and_cover_expected_axes():
+    """2계층 맵은 겹치지 않고, 제안 계층은 원장 ⑩ 미표현 축 중 몰프-저작 가능한 15축을
+    정확히 커버한다. 제외 3축(G24·G25 파생품질·G37 범주형)은 어느 계층에도 없다."""
+    assert not (set(SHAPE_KEY_MAP) & set(PROPOSED_SHAPE_KEY_MAP)), "계층 간 키 충돌"
+
+    proposed_axes = {a for ids in PROPOSED_SHAPE_KEY_MAP.values() for a in ids}
+    assert proposed_axes == _EXPECTED_PROPOSED_AXES
+
+    all_axes = {a for ids in {**SHAPE_KEY_MAP, **PROPOSED_SHAPE_KEY_MAP}.values() for a in ids}
+    assert not ({"G24", "G25", "G37"} & all_axes), "제외 축이 매핑됨"
+
+
+@pytest.mark.parametrize("image_id", sorted(_GOLDEN))
+def test_include_proposed_adds_exactly_proposed_keys(image_id):
+    """include_proposed=True 는 rig 13키에 제안 키만 이어 붙인다(집합 = rig ∪ 제안)."""
+    rig = project_shape_keys(_recipe(image_id), gain=1.0)
+    both = project_shape_keys(_recipe(image_id), gain=1.0, include_proposed=True)
+    assert set(rig) == set(SHAPE_KEY_MAP)
+    assert set(both) == set(SHAPE_KEY_MAP) | set(PROPOSED_SHAPE_KEY_MAP)
+
+
+@pytest.mark.parametrize("image_id", sorted(_GOLDEN))
+@pytest.mark.parametrize("gain", [1.0, 2.2])
+def test_rig_keys_bit_identical_with_or_without_proposed(image_id, gain):
+    """확장을 켜도 rig 13키 값은 비트-동일(맵을 잇기만 함) — 골든 무영향의 근거."""
+    rig = project_shape_keys(_recipe(image_id), gain=gain)
+    both = project_shape_keys(_recipe(image_id), gain=gain, include_proposed=True)
+    for sk in rig:
+        assert both[sk] == rig[sk], f"{image_id}/{sk}: rig 값이 확장으로 바뀜"
+
+
+@pytest.mark.parametrize("image_id", sorted(_GOLDEN))
+@pytest.mark.parametrize("gain", [1.0, 2.2])
+def test_proposed_values_in_unit_interval(image_id, gain):
+    both = project_shape_keys(_recipe(image_id), gain=gain, include_proposed=True)
+    for sk in PROPOSED_SHAPE_KEY_MAP:
+        if sk in both:                                       # 소스 축이 recipe 에 있을 때만 산출
+            assert 0.0 <= both[sk] <= 1.0, f"{image_id}/{sk} out of [0,1]: {both[sk]}"
+
+
+def test_function_default_gain_is_unit_identity():
+    """정책 기본(DEFAULT_GAIN)과 분리 — 순수 함수 gain 기본은 1.0(골든 봉인 항등)."""
+    r = _recipe("test_3_t0")
+    assert project_shape_keys(r) == project_shape_keys(r, gain=1.0)
+
+
+def test_default_gain_pinned_2_2():
+    """L-B ③ 판정 핀: 정책 기본 gain = 2.2."""
+    assert DEFAULT_GAIN == 2.2
+
+
+def test_cli_gain_default_wired_to_default_gain():
+    """CLI `--gain` 기본이 DEFAULT_GAIN(=2.2)에 배선됐다(단일-변형·--ab calib 기본)."""
+    import argparse
+
+    from momentscan.infra.cli import surfaces
+
+    parser = argparse.ArgumentParser()
+    common = argparse.ArgumentParser(add_help=False)
+    surfaces.register(parser.add_subparsers(), common)
+    args = parser.parse_args(["viz-recipe", "test_3"])
+    assert args.gain == DEFAULT_GAIN == 2.2
