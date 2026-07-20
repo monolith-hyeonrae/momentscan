@@ -131,6 +131,15 @@ viz=output/l2/lane_emit_congruence.png. 남은 조각: 파묻힌-입 spurious ar
   퇴출(측정으로 줄인다).
 
 **방법 연구 등록 (착수는 E1 후 — 새 신호는 측정 기판 위에서만):**
+- **SEREP**(Ubisoft La Forge, ICCV25) = 표정-정체성 semantic 분리 학습(비제어 단안,
+  cycle consistency) — 우리 이층(neutral+blendshapes.profile 습관 시그니처)의 학습판,
+  "습관 눈매=아이덴티티"(user 2026-07-20) 정식화. **MultiREX 벤치**(8 id×5뷰×극단표정,
+  GT 메쉬 10K, FLAME neutral, eval 코드) = **E1 외부 자 후보**: 정준화·neutral의
+  포즈-횡단 오차 + ⑧ 정면-전용의 정량 검증. ⚠CC-BY-NC 연구 전용(내부 eval 방어
+  가능, 상업 학습 금지). 모델 코드 미공개. 정본=[[serep-mosar-lens]] 메모리.
+- **MoSAR**(CVPR24) = 이미지 1장→릴라이터블 아바타(기하+반사율 5종) — 비목표
+  "이미지-1장 레인"의 기성 지도(재개 조건 발동 시 참조) + Cat C·relight 컨테이너화
+  원료 개념. 데이터셋 CC BY-NC-ND=관찰 전용, 모델 코드 미공개.
 - **MARLIN**(CVPR23, 자기지도 얼굴 영상 인코더) = "감정=궤적 likelihood"의 기판 후보.
   mdl 등록(ids.md, 라이선스⚠확인 1순위). 첫 실험 = 코퍼스 궤적이 이름 붙은 사건들을
   우리 46-dim/em_*보다 잘 가르는가. **동결 제약: baseline-편차를 랭킹 성분으로 쓰지
@@ -147,7 +156,10 @@ mb-r17m 내부 게이트 겸함) ∥ E1 라벨 스키마 초안(user 검토 체�
 
 **likeness 미결 원장**(재개 시 입구): ①recipe registry 캘리브레이션 불일치(4키
 가장자리: Brow_Thickness≈0·Mouth_Size≈0.9·Mouse_Corner 하향·Brow_Slant 상향 —
-재캘리 vs 어댑터 보정) ②recipe→MPFB 브리지 착지(scratchpad/mpfb_recipe.py →
+재캘리 vs 어댑터 보정) → **양안 준비 완료 2026-07-20**(머지 284cf53: race981 테이블
+[15 rider, 정면-전용 ⑧ 기하]+`viz-recipe --ab calib`; 계통 오프셋=구 캘리의 posed-
+스튜디오 편향[G22 입꼬리 p95 53°→26°] 실증, 4키 p50 재중심; **recipe 기본=legacy
+유지, 전환=L-B user 판정 후 1줄 커밋**) ②recipe→MPFB 브리지 착지(scratchpad/mpfb_recipe.py →
 appearance-engine) ③프리뷰 gain(×2.2 근방) ④어댑터 unfilled 채우기(color_identity·
 fashion·samples.hair 방출됨) ⑤test_12 hair 세그 오검출 조사(user 동행)
 
