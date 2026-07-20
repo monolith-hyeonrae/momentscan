@@ -115,7 +115,8 @@ def _split_half_drift(shapes: np.ndarray) -> float:
 
 
 def _track_reading(out_root, clip_id: str, track_id: int,
-                   cohorts: dict[int, dict[str, set[int]]] | None = None) -> dict | None:
+                   cohorts: dict[int, dict[str, set[int]]] | None = None,
+                   *, phase_pref: str = "", phase_min: int = 0) -> dict | None:
     lm = read_landmarks(out_root, clip_id).filter(
         pl.col("track_id") == track_id).sort("frame_idx")
     # ① VALIDITY: drop frames that are not a real, unoccluded face of THIS person before
@@ -257,15 +258,41 @@ def _track_reading(out_root, clip_id: str, track_id: int,
 
     # Samples FROM the distribution: center-nearest (canonical image) and
     # pose bins (hair multi-view) — sharpest frame within each bin.
+    # ⑦ phase soft-preference (원장 ⑦, user 2026-07-14 → (b) 빈-내 소프트 확정): boarding
+    # (pre-ride) 얼굴이 덜 일그러지고 헤어가 안 망가져 있다. 트랙에 boarding 프레임이
+    # phase_min 이상이면 boarding 선호로 대표를 고르되 뷰/샘플 수는 잃지 않는다 —
+    # pose_bins 는 **빈별**(각 뷰에서 boarding 있으면 그중 sharpest, 없으면 그 빈의 ride
+    # 폴백 → 3뷰 보존), center_nearest 는 트랙-수준(뷰 무관 canonical 샘플 → boarding 우선
+    # 3개, 부족분 nearest ride). 미달이면 전체 폴백 + 정직 열화 warning. phase_pref/
+    # phase_min 은 인자다 — 이 함수는 preset 을 모른다 (G5).
+    board = np.zeros(len(fx), dtype=bool)
+    use_phase = False
+    if phase_pref:
+        tb = read_tubelets(out_root, clip_id).filter(pl.col("track_id") == track_id)
+        phase_of = dict(zip(tb["frame_idx"].to_list(), tb["scene_phase"].to_list()))
+        board = np.array([phase_of.get(int(f)) == phase_pref for f in fx])
+        use_phase = int(board.sum()) >= phase_min
+        if not use_phase:
+            log.warning("likeness.degraded", extra={
+                "clip_id": clip_id, "track_id": track_id, "lane": "phase",
+                "reason": f"{phase_pref}={int(board.sum())} < min={phase_min} → 전체 폴백"})
+
     dist_c = np.sqrt(((canon - center) ** 2).sum(axis=2).mean(axis=1))
-    center_nearest = [int(fx[i]) for i in np.argsort(dist_c)[:3]]
+    order = np.argsort(dist_c)
+    if use_phase:   # boarding 우선, 부족분은 nearest ride (3개 유지 — 샘플 수 손실 없음)
+        order = np.array([i for i in order if board[i]] + [i for i in order if not board[i]])
+    center_nearest = [int(fx[i]) for i in order[:3]]
+
     bins: dict[str, int] = {}
     dev = yaw_all - CAMERA_FRONTAL_DEG
     for name, mask in (("frontal", np.abs(dev) < BIN_EDGE_DEG),
                        ("left", dev <= -BIN_EDGE_DEG), ("right", dev >= BIN_EDGE_DEG)):
         m = mask & np.isfinite(blur_all)
-        if m.any():
-            bins[name] = int(fx[np.where(m)[0][np.argmax(blur_all[m])]])
+        if not m.any():
+            continue                                 # 관측 없는 뷰 = 정직한 결측(C11)
+        mb = m & board
+        pool = mb if (use_phase and mb.any()) else m   # 빈-내 boarding 선호, 없으면 그 빈의 ride
+        bins[name] = int(fx[np.where(pool)[0][np.argmax(blur_all[pool])]])
 
     return {
         "n_obs": int(len(fx)),
@@ -440,7 +467,9 @@ def appearance_clip(out_root, clip_id: str) -> dict:
     fashion = _fashion_reading(out_root, clip_id, cohorts)   # judgeable = clean-frontal cohort
     drifts: dict[int, float] = {}
     for tid in sorted(set(lm["track_id"].to_list())):
-        r = _track_reading(out_root, clip_id, tid, cohorts)
+        r = _track_reading(out_root, clip_id, tid, cohorts,
+                           phase_pref=RACE981.likeness.hair_phase,
+                           phase_min=RACE981.likeness.phase_min_frames)   # G5: 호출부가 preset 값 전달
         if r is None:
             continue
         centers[tid] = r.pop("_center")
