@@ -38,6 +38,8 @@ def _cmd_products(args: argparse.Namespace) -> int:
     for p in A.PRODUCTS:
         print(f"\n{p.name:<11} [{p.state:<6}] {p.operation}")
         print(f"  {p.definition}")
+        print(f"  question   : {p.question}")                       # G2: 이 제품이 답하는 가치 질문
+        print(f"  scorer     : {p.scorer or '— (미구축: molten이면 registry warn)'}")
         print(f"  emitted by : {', '.join(p.emitted_by)}")
         print("  reads      :")
         for stage, keys in p.reads:

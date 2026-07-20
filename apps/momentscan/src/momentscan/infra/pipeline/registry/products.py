@@ -29,11 +29,15 @@ from dataclasses import dataclass
 class Product:
     name: str                                       # the deliverable (likeness/portrait/highlight)
     definition: str                                 # one line: what it is
+    question: str                                    # G2: the value question this product answers (change-forecast ④)
     operation: str                                  # integrate | select(static) | select(temporal)
     reads: tuple[tuple[str, tuple[str, ...]], ...]  # (analyzer name, keys) — the vertical read-chain
     emitted_by: tuple[str, ...]                     # engine analyzer name(s) that physically produce it
     outputs: tuple[str, ...]                         # artifacts / candidate products it lands
     state: str                                       # "frozen" (definition settled) | "molten" (still researched)
+    scorer: str = ""                                 # G2: coordinate of the scoring entry point ("" = 미구축, 정직).
+                                                     # molten ∧ scorer=="" → registry_drift warn: 답을 다시 쓰기
+                                                     # 전에 질문의 채점기를 세운다(change-forecast ④-①)
     note: str = ""
     egress: tuple[str, ...] = ()                     # the subset of `outputs` that CROSSES the service
                                                      # boundary OUTWARD (S3-out / the Result contract); the
@@ -47,33 +51,39 @@ PRODUCTS: tuple[Product, ...] = (
     Product(
         name='likeness',
         definition='visit-invariant ID (오늘 이 사람) — distribution + exemplar picks · 주탑승자만(2026-07-07)',
+        question='어떻게 이 고객의 외형 특성을 이해하나',
         operation='integrate',
         reads=(('landmarks', ('blendshapes', 'transform')), ('tubelets', ('embedding',)), ('features', ('em_happy', 'au12_lip_corner', 'au25_lips_part', 'head_yaw_dev', 'head_pitch', 'face_blur')), ('parse', ('glasses_frac', 'hat_frac', 'cloth_frac')), ('fashion', ('eyewear', 'headwear', 'covering'))),
         emitted_by=('likeness', 'select'),
         outputs=('likeness.json', 'candidates.jsonl[likeness]'),
         state='molten',
+        scorer='',
         note='two homes: likeness.py=distribution reading, select.py=exemplar picks (distinct readings — NOT a split to consolidate yet)',
         egress=('likeness.json',),
     ),
     Product(
         name='portrait',
         definition='query-extraction gate → clean crop-track pixels · 주탑승자만(2026-07-07)',
+        question='어떻게 좋은 얼굴을 선택하나',
         operation='select(static)',
         reads=(('tubelets', ('embedding',)), ('identity_dev', ('identity_deviation',)), ('landmarks', ('blendshapes', 'transform')), ('expression', ('blink', 'jaw')), ('pose', ('yaw', 'pitch', 'roll')), ('headpose6d', ('yaw', 'pitch', 'roll')), ('face_quality', ('crop_blur',)), ('parse', ('eye_lum_rel', 'mouth_vis')), ('crops', ('crop track',))),
         emitted_by=('portrait',),
         outputs=('portraits/*.png', 'portraits/portrait.json', 'gate_trace.parquet', 'candidates.jsonl[portrait,portrait_set]'),
         state='frozen',
+        scorer='',
         note='definition froze E008–E009, already its own module; gate verdicts via gates.evaluate → gate_trace; pose(frontal)+headpose6d(profile) fused',
         egress=('portraits/portrait.json', 'portraits/*.png'),
     ),
     Product(
         name='highlight',
         definition='WHEN×WHICH — attraction × customer reaction over a segment · aux first-class(함께한 순간)',
+        question='좋은 순간이란 무엇인가',
         operation='select(temporal)',
         reads=(('features', ('em_* (→ fused_valence)', 'head_yaw_dev', 'face_blur')), ('scene', ('scene_change',)), ('tubelets', ('Δpose / motion',))),
         emitted_by=('highlight',),
         outputs=('highlight.json', 'highlights/*.mp4'),
         state='molten',
+        scorer='momentscan.products.evals.harness:score_pairs (segment lane: pair_verdicts_segment.jsonl)',
         note="valence/arousal = emotion.fused_valence, a shared READING over features' em_* (NOT the emotion.json baseline — that is inspector-only / future portrait query); scene optional; frame_scores는 select.py 공유 기판을 소비(제품 정책만 highlight.py 소유 — 2026-07-03 졸업); 3rd WHEN + 궤적 방출 pending",
         egress=('highlight.json', 'highlights/*.mp4'),
     ),

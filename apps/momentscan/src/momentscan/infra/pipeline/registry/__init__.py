@@ -121,6 +121,13 @@ def registry_drift(runner_names, upstream=()) -> list[tuple[str, str]]:
     if len(topo_order()) != len(ANALYZERS):
         problems.append(("error", "dependency cycle: topo_order() does not cover every analyzer"))
 
+    # G2 (change-forecast ④, D3=(a) 즉시 활성): a molten product with no scorer means
+    # the answer is still being rewritten with no way to score it. warn — likeness가
+    # 여기서 우는 게 정상(의도된 E1 압력); scorer 를 세우면 무경고.
+    for p in PRODUCTS:
+        if p.state == "molten" and not p.scorer:
+            problems.append(("warn", f"product {p.name!r} is molten but has no scorer — 답을 다시 쓰기 전에 질문의 채점기를 세운다(원장 ④-①): question={p.question!r}"))
+
     # advisory: each product's STAGE reads should be covered by the (transitive)
     # depends closure of SOME emitter — else the run-order that makes the read work
     # is incidental, not guaranteed. (Optional/degrading reads legitimately trip this.)
