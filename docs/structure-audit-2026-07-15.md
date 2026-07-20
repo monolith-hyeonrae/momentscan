@@ -265,3 +265,13 @@ verify registry 동사와 정합; 내부 혼재는 **(a) 시점**=decl-guards에
 R11 --product closure(emitted_by 기반 — select 포함이 선언-정직)+likeness/
 select 선언 수리(phantom portrait 간선 제거). 코퍼스 gate_trace 15클립 재생산
 (스키마 43컬럼). ruff 75→58 래칫. 노출 축 K·D3 폐쇄.
+**접수 #10 (에이전트 발견, 2026-07-20 decl-guards 중)**: features 분석기 선언
+artifact='features.parquet' vs 실제 산출 `features/{track}.parquet` 디렉토리 —
+선언-실제 불일치(D4 계열). classify는 G3 등재로 커버, **선언 수정은 별도 소형
+트랙**(freshness probe·ARTIFACT_TIERS 파생 영향 검토 동반).
+
+**when-home·T7·decl-guards 착지 (2026-07-20)**: fc80717(WHEN 단일홈)·556e89e
+(A″: infra/perception/products+evals — user 그림의 시공)·decl-guards 머지
+(registry 패키지 분할·kw_only·question/scorer·G2 warn 활성[likeness 노랑=E1
+압력]·G3/G4·isort 4결). pytest 41·ruff 57. 잔여: ARCHITECTURE.md 재작성 →
+r6-egress → likeness 트랙.
