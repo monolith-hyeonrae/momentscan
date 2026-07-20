@@ -23,7 +23,7 @@ from __future__ import annotations
 from momentscan.perception.readings.face_axes import AXIS_NAMES
 
 # registry.json 스냅샷 버전 — recipe.registry_version 으로 방출(정책 출처 도장).
-REGISTRY_VERSION = "appearance-engine-v0.1.0"
+REGISTRY_VERSION = "appearance-engine-v0.1.0+calib.race981-20260720"  # L-B 판정: race981 캘리 전환
 
 G_CATEGORY_NAME = "Face Geometry"
 
@@ -125,10 +125,10 @@ _CALIBRATED_G_RANGES_RACE981: dict[str, tuple[float, float]] = {
 }
 
 # 캘리 테이블 레지스트리 — 이름이 출처를 읽게 한다. --ab calib(원장 ①) 이 두 테이블을
-# 나란히 투영해 양안 판정 재료를 낸다. **recipe 스테이지 기본은 legacy 유지**(recipe.py
-# 가 `_CALIBRATED_G_RANGES` 를 직접 소비) — race981 전환은 L-B user 판정 후 recipe.py 의
-# import 를 `_CALIBRATED_G_RANGES_RACE981` 로 바꾸는 별도 1줄 커밋이다(그때 recipe.json
-# range 가 바뀌어 특성화 골든 재동결 동반). 지금은 recipe.json 산출 무변 = 특성화 무영향.
+# 나란히 투영해 양안 판정 재료를 낸다. **recipe 스테이지 기본 = race981**(L-B user 판정
+# 2026-07-20 — recipe.py 가 `_CALIBRATED_G_RANGES_RACE981` 을 소비). legacy 는 --ab
+# calib 양안 비교용으로만 보존. 전환 커밋에서 특성화 골든 재동결(range·registry_version
+# 필드 변경, 축 value 는 불변).
 CALIB_TABLES: dict[str, dict[str, tuple[float, float]]] = {
     "legacy-sample1": _CALIBRATED_G_RANGES,
     "race981-20260720": _CALIBRATED_G_RANGES_RACE981,

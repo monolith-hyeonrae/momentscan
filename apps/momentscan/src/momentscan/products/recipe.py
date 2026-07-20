@@ -42,8 +42,13 @@ from momentscan.infra.store.stash import read_appearance, write_recipes
 
 from momentscan.perception.readings.face_axes import face_axes
 
+# 캘리 테이블 = race981 (L-B user 판정 2026-07-20: 구 sample_1은 posed-스튜디오 편향
+# [G22 입꼬리 p95 53°→26°], 4키 포화 원인 — legacy 는 --ab calib 양안 비교용으로만
+# 보존, recipe_axes.CALIB_TABLES).
 from momentscan.products.recipe_axes import (
-    _CALIBRATED_G_RANGES,
+    _CALIBRATED_G_RANGES_RACE981 as _CALIBRATED_G_RANGES,
+)
+from momentscan.products.recipe_axes import (
     G_AXES,
     G_CATEGORY_NAME,
     REGISTRY_VERSION,
