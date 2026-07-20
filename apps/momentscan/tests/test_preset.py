@@ -33,6 +33,8 @@ def test_race981_likeness_values():
     assert lk.hair_obs_tau == 0.1
     assert lk.face_id_min_frontal == 10
     assert lk.face_id_p05_floor == 0.5
+    assert lk.hair_phase == "boarding"       # ⑦ 신설 (preset-native, G5)
+    assert lk.phase_min_frames == 8
 
 
 def test_preset_frozen_and_default():

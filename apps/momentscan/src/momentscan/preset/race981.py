@@ -31,6 +31,9 @@ RACE981 = Preset(
         hair_obs_tau=0.1,          # hair/face 픽셀비 < → hair 관측불가 (후드-업; 크롭 스케일 의존)
         face_id_min_frontal=10,    # < clean-frontal → face_id 센트로이드 valid 폴백 (기아 방지)
         face_id_p05_floor=0.5,     # coherence_p05 < → low_confidence (P1-② 감사 보정)
+        hair_phase="boarding",     # ⑦(user 2026-07-14): 활강 이전 얼굴이 덜 일그러지고 헤어 안 망가짐
+        phase_min_frames=8,        # ≈1.3s@6fps — 대표 뷰(pose_bins/hair)를 담을 최소 boarding 관측;
+                                   # 미달=전체 폴백(정직 열화). 보수적 제안값 — user 델타 검토로 조정 대기
     ),
     phase=PhasePreset(),
     portrait=PortraitPreset(),

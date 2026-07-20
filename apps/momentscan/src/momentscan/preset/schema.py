@@ -30,6 +30,8 @@ class LikenessPreset:
     hair_obs_tau: float      # hair/face 픽셀비 중앙값 < → hair 관측불가(후드-업)
     face_id_min_frontal: int # < clean-frontal → face_id 센트로이드 valid 폴백
     face_id_p05_floor: float # coherence_p05 < → low_confidence 플래그(주의 신호, 게이트 아님)
+    hair_phase: str          # ⑦ 대표 뷰(pose_bins/center_nearest) 선호 phase (scene_phase 값; "boarding")
+    phase_min_frames: int    # 트랙에 이 phase 프레임 ≥ 이 수 → 그 안에서 대표 선정, 미달=전체 폴백
 
 
 @dataclass(frozen=True, kw_only=True)
