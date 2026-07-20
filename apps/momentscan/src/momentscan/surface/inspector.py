@@ -14,14 +14,23 @@ from pathlib import Path
 import cv2
 import polars as pl
 
-from momentscan.perception import gates
-from momentscan.perception.readings import geometry, pose, signals
-from momentscan.surface._inspector_html import _TUBELET_INSPECT_HTML
 from momentscan.infra.store.stash import (
-    read_candidates, read_detections, read_gate_trace, read_headpose,
-    read_landmarks, read_parse, read_portrait, read_scene, read_stitch,
+    read_candidates,
+    read_detections,
+    read_gate_trace,
+    read_headpose,
+    read_landmarks,
+    read_parse,
+    read_portrait,
+    read_scene,
+    read_stitch,
     read_tubelets,
 )
+
+from momentscan.perception import gates
+from momentscan.perception.readings import geometry, pose, signals
+
+from momentscan.surface._inspector_html import _TUBELET_INSPECT_HTML
 
 log = logging.getLogger("momentscan.surface.inspector")
 
@@ -93,6 +102,7 @@ def render_tubelet_inspect(out_root: str | Path, clip_id: str, *,
     so it works before the 67D derived stage exists.
     """
     import json
+
     import numpy as np
 
     out_dir = Path(out_root) / clip_id
@@ -199,18 +209,21 @@ def render_tubelet_inspect(out_root: str | Path, clip_id: str, *,
     # candidates.jsonl on each run, so portrait candidates are a racy/wiped source. the
     # json always reflects the PNGs actually extracted from the crop track.
     portrait_riders = (read_portrait(out_root, clip_id) or {}).get("riders", {})
-    from momentscan.products.portrait import MIN_ADMIT          # threshold, for the "why empty" readout
     from momentscan.infra.store.stash import read_appearance
+
+    from momentscan.products.portrait import MIN_ADMIT  # threshold, for the "why empty" readout
     likeness_riders = (read_appearance(out_root, clip_id) or {}).get("riders", {})   # ③ likeness reading (how identity was read)
     # highlight-lang (optional stage): the generated NL description + its LLM-judge match to the
     # attraction expectation, per analyzed candidate frame. Absent if the stage was not run.
     import json as _json
+
     from momentscan.infra.store.stash import clip_dir as _clip_dir
     _hlp = _clip_dir(Path(out_root), clip_id) / "highlight_lang.json"
     hl_lang = _json.loads(_hlp.read_text(encoding="utf-8")) if _hlp.exists() else None
     # the QUERY CRITERION each product was selected AGAINST (what we were looking for) —
     # portrait's authored expression query (gates preset), highlight's attraction expectation.
-    from momentscan.perception.gates import PORTRAIT_QUERY as _PQ, QUERY_DIST_MAX as _PTAU
+    from momentscan.perception.gates import PORTRAIT_QUERY as _PQ
+    from momentscan.perception.gates import QUERY_DIST_MAX as _PTAU
     portrait_qlabel = (f"따뜻한 PFP · 눈뜸(blink≈{_PQ['blink']}) · 미소(smile≈{_PQ['smile']}) · "
                        f"입다뭄(jaw≈{_PQ['jaw']}) · 근접 τ≤{_PTAU}")
 

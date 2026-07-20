@@ -12,14 +12,19 @@ from pathlib import Path
 
 import cv2
 import polars as pl
-
 from visualbus import BBox, DrawBBox, DrawText, FileSource, apply_hint
 from visualbus.structured_log import log_context
 from visualbus.timestamp import ns_to_seconds
 
 from momentscan.infra.store.stash import (
-    read_attribution, read_candidates, read_detections, read_features,
-    read_landmarks, read_process_trace, read_stitch, read_tubelets,
+    read_attribution,
+    read_candidates,
+    read_detections,
+    read_features,
+    read_landmarks,
+    read_process_trace,
+    read_stitch,
+    read_tubelets,
 )
 
 log = logging.getLogger("momentscan.surface.cards")
@@ -496,8 +501,7 @@ def render_select_timeline(out_root: str | Path, clip_id: str, *, fps: int = 6, 
     """
     import numpy as np
 
-    from momentscan.products.select import frame_scores
-    from momentscan.products.select import rolling_median
+    from momentscan.products.select import frame_scores, rolling_median
 
     out_dir = Path(out_root) / clip_id
     cands = read_candidates(out_root, clip_id)
@@ -762,13 +766,13 @@ def render_appearance_card(out_root: str | Path, clip_id: str, *,
     (gray wire): the "평균 대비" picture behind template offset/ratios.
     """
     import numpy as np
-
-    from momentscan.perception.readings.geometry import canonicalize, norm468, template
-    from momentscan_features_specialist45d.registry import INDEX
-
     from mediapipe.tasks.python.vision.face_landmarker import (
         FaceLandmarksConnections as _FLC,
     )
+
+    from momentscan.perception.readings.geometry import canonicalize, norm468, template
+
+    from momentscan_features_specialist45d.registry import INDEX
     edges = [(c.start, c.end) for c in
              (*_FLC.FACE_LANDMARKS_CONTOURS, *_FLC.FACE_LANDMARKS_NOSE)]
 

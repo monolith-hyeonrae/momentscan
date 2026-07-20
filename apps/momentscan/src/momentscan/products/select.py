@@ -46,12 +46,18 @@ from pathlib import Path
 import numpy as np
 import polars as pl
 
-from momentscan.perception.readings.emotion import fused_valence
-from momentscan.perception.readings.pose import CAMERA_FRONTAL_DEG
 from momentscan.infra.store.stash import (
-    append_candidate, candidates_path, read_features, read_gate_trace, read_tubelets, write_select,
+    append_candidate,
+    candidates_path,
+    read_features,
+    read_gate_trace,
+    read_tubelets,
+    write_select,
 )
 from momentscan.infra.store.telemetry import CandidateLog
+
+from momentscan.perception.readings.emotion import fused_valence
+from momentscan.perception.readings.pose import CAMERA_FRONTAL_DEG
 
 log = logging.getLogger("momentscan.select")
 
@@ -314,8 +320,10 @@ def frame_scores(out_root, clip_id: str, track_id: int, *, fps: int = 6) -> dict
     smile = np.full(len(fx), np.nan)
     d_center = np.full(len(fx), np.nan)
     try:
-        from momentscan.perception.readings.geometry import canonicalize
         from momentscan.infra.store.stash import read_appearance, read_landmarks
+
+        from momentscan.perception.readings.geometry import canonicalize
+
         from momentscan_features_specialist45d.specialists import BLENDSHAPE_ORDER
 
         lmdf = read_landmarks(out_root, clip_id).filter(

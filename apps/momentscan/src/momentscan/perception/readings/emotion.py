@@ -97,6 +97,7 @@ def valence_timeline(out_root, clip_id: str, track_id: int | None = None):
     import polars as pl
 
     from momentscan.infra.store.stash import read_features
+
     from momentscan_features_specialist45d.registry import INDEX
 
     f = read_features(out_root, clip_id, "A")
@@ -167,8 +168,13 @@ def extract_emotion(out_root, clip_id: str, *, fps: int = 6) -> dict:
     import polars as pl
 
     from momentscan.infra.store.stash import (
-        clip_dir, read_features, read_tubelets, write_emotion, write_emotion_frame,
+        clip_dir,
+        read_features,
+        read_tubelets,
+        write_emotion,
+        write_emotion_frame,
     )
+
     from momentscan_features_specialist45d.registry import INDEX
 
     t0 = time.perf_counter()

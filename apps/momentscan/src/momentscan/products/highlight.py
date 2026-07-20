@@ -36,8 +36,9 @@ from pathlib import Path
 import numpy as np
 import polars as pl
 
-from momentscan.products.select import TOP_K, frame_scores, rolling_median, when_from_channels
 from momentscan.infra.store.stash import read_tubelets, write_highlight
+
+from momentscan.products.select import TOP_K, frame_scores, rolling_median, when_from_channels
 
 log = logging.getLogger("momentscan.highlight")
 

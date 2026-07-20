@@ -24,7 +24,6 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 
 import cv2
-
 from visualbus import DrawText, FileSource, apply_hint
 from visualbus.structured_log import log_context
 from visualbus.timestamp import ns_to_seconds

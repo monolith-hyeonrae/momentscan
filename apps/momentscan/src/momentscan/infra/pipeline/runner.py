@@ -14,8 +14,7 @@ import logging
 import time
 from pathlib import Path
 
-from momentscan.infra.pipeline import freshness
-from momentscan.infra.pipeline import registry
+from momentscan.infra.pipeline import freshness, registry
 from momentscan.infra.store.stash import clip_dir, provenance_path, write_manifest, write_provenance, write_run
 
 log = logging.getLogger("momentscan.pipeline")
@@ -26,6 +25,7 @@ def _attribute(out, clip, src, fps):
     # about. seat_rule = the depth-vote default; reference_face = a photo. Every
     # strategy emits the SAME attribution.json shape → downstream unchanged (C3).
     from momentscan.infra.store.stash import read_job
+
     from momentscan.perception.subjects.query import parse_subject_query
     q = parse_subject_query(((read_job(out, clip) or {}).get("subject_query")))
     if q["strategy"] == "reference_face":

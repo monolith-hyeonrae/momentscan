@@ -11,7 +11,7 @@ visualstack 일관성 검토 후 **결을 재해석**해서 풀었음. 아래는
 
 ## ① Depth — `visualpath-plugin-depth`
 
-portrait981 `apps/momentscan/src/momentscan/app/depth.py`의 도메인-무관 2개 메서드를
+portrait981(레거시 워크스페이스)의 `app/depth.py`의 도메인-무관 2개 메서드를
 **standalone class**로 옮겼음. bus Module이 아니라, sampled frame에 직접 호출하는
 estimator.
 

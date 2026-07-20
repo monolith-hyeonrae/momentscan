@@ -25,7 +25,6 @@ from pathlib import Path
 import cv2
 import numpy as np
 import polars as pl
-
 from visualbus import FileSource
 from visualbus.structured_log import log_context
 from visualbus.timestamp import ns_to_seconds

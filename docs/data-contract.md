@@ -4,8 +4,8 @@
 # Data contract (Phase 1)
 
 The PoC instantiation of the storage model. Schemas are authoritative in
-[`apps/momentscan/src/momentscan/stash.py`](../apps/momentscan/src/momentscan/stash.py)
-(column maps) and [`ports.py`](../apps/momentscan/src/momentscan/ports.py)
+[`apps/momentscan/src/momentscan/infra/store/stash.py`](../apps/momentscan/src/momentscan/infra/store/stash.py)
+(column maps) and [`ports.py`](../apps/momentscan/src/momentscan/infra/store/ports.py)
 (`Tubelet` / `TrackFeatures`). This doc is the narrative + the `Distribution`
 contract (which lives in visualstack and can't be enforced from here).
 

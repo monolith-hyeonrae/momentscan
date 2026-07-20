@@ -22,6 +22,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from momentscan.infra.pipeline import registry
+
 from momentscan.perception import gates
 
 # detect runs exactly 2 visualpath bus modules (resolver topo-orders them); shown
