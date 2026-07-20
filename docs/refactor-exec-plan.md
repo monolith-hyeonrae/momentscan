@@ -93,7 +93,7 @@ momentscan = 놀이기구 탑승 영상 1클립 → 세 제품을 뽑는 배치 
 ### ~~R0~~ → **DONE 2026-07-08** (registry 0err · api 19/19 · replay 0drift — 기준값은 R2 테스트로 전환됨)
 
 ### R1 — `--only` 오타를 에러로
-- **위치**: `apps/momentscan/src/momentscan/pipeline.py:182-183`
+- **위치**: `apps/momentscan/src/momentscan/infra/pipeline/runner.py` (구 pipeline.py:182-183 — T6/T7 이동)
 - **문제**: 미지 스테이지명이 조용히 필터-아웃 → 아무것도 안 돌고 성공처럼 끝남 (L4).
 - **방법**:
   ```python
@@ -173,7 +173,7 @@ momentscan = 놀이기구 탑승 영상 1클립 → 세 제품을 뽑는 배치 
 - **의존**: R2 (테스트 그물 위에서 수행).
 
 ### R6 — C11·Result 기계 검증 (msgspec)
-- **위치**: 신규 `apps/momentscan/src/momentscan/contracts.py`;
+- **위치**: 신규 계약 모듈 `momentscan/infra/contracts.py` (미구축·계획 — G4 실존 가드 밖);
   `products/likeness.py`의 `write_appearance` 직전; `service.py`의 deliver 직전.
 - **문제**: L3 — 계약 위반이 소비자 측에서 발견됨.
 - **방법**: ① `uv add msgspec` ② `contracts.py`에 msgspec.Struct로 LikenessV1(필수:

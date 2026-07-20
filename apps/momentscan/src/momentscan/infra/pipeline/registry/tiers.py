@@ -33,6 +33,16 @@ EXTRA_ARTIFACT_TIERS: dict[str, str] = {
     "result.json": "ops", "manifest.json": "ops",
     "process_trace.jsonl": "ops", "process_timeline.png": "ops",
     "source_cache/": "ops", "eval/": "ops",
+    # ── G3 (decl-guards): 무소유 산출물 등재 — 코퍼스 클립 classify 에 unclassified 0 ──
+    "select.json": "substrate",           # select 스테이지 기록 + 재개 프로브 (candidates.jsonl 짝)
+    "features/": "substrate",             # features/{track}.parquet 홈 (⚠선언 artifact='features.parquet'
+                                          # 인데 실제는 디렉토리 — D4 계열 선언 불일치, 여기선 등재만)
+    "highlight_lang.json": "product",     # 언어-매칭·맥락조건 highlight 스코어링 산출 (highlight 가족)
+    "appearance_card.png": "surface",     # likeness 렌더 카드 (사람용)
+    "portrait_card.png": "surface",       # portrait 렌더 카드 (사람용)
+    "select_timeline.png": "surface",     # select 타임라인 viz (사람용)
+    # detect_h264.mp4(inspect/ 내)·crops/s{sid}.mp4 는 중첩 산출물 — classify 는 top-level
+    # 항목만 보므로 부모 디렉토리 tier(inspect/=surface · crops/=substrate)가 덮는다(별도 키 불요).
 }
 
 ARTIFACT_TIERS: dict[str, str] = (

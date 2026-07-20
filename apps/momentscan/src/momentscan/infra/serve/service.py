@@ -49,7 +49,7 @@ EGRESS = {p.name: p.egress for p in PRODUCTS}          # 제품 → 반출 파�
 
 # ── 소스 반입 / 결과 반출 (S3 | 로컬) ─────────────────────────────────────────
 def _s3():
-    import boto3                                        # lazy — 로컬 알파는 불필요
+    import boto3  # lazy — 로컬 알파는 불필요
     return boto3.client("s3")
 
 

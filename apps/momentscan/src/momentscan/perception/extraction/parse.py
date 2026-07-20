@@ -32,8 +32,9 @@ from pathlib import Path
 import cv2
 import numpy as np
 
-from momentscan.perception.subjects.crops import portrait_box
 from momentscan.infra.store.stash import clip_dir, read_landmarks, read_tubelets, write_parse
+
+from momentscan.perception.subjects.crops import portrait_box
 
 log = logging.getLogger("momentscan.parse")
 

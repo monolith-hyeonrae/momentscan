@@ -134,7 +134,7 @@ def run_apicheck(*, keep: bool = False) -> int:
            and "text/html" in raw.headers["Content-Type"] and b"t1 report" in raw.read(), "")
         sub = urllib.request.urlopen(f"{base}/reports/t1/inspect/clip.html", timeout=10)
         ok("하위 자산(inspect/clip.html) 서빙", sub.status == 200 and b"inspect" in sub.read(), "")
-        import http.client                               # urllib은 ..를 클라이언트에서 정규화 → 원시 요청
+        import http.client  # urllib은 ..를 클라이언트에서 정규화 → 원시 요청
         conn = http.client.HTTPConnection("127.0.0.1", server.server_address[1], timeout=10)
         conn.request("GET", "/reports/t1/../../../etc/passwd")
         ok("경로 탈출 차단 (…/..) → 404", conn.getresponse().status == 404, "")

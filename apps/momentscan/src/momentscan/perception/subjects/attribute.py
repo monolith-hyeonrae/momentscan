@@ -31,7 +31,6 @@ import time
 from pathlib import Path
 
 import polars as pl
-
 from visualbus import FileSource
 from visualbus.structured_log import log_context
 

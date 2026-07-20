@@ -154,12 +154,12 @@ def _external_deps() -> dict[str, tuple[Path, ...]]:
     """
     deps: dict[str, tuple[Path, ...]] = {}
     try:
-        from momentscan.perception.extraction.headpose import DEFAULT_ONNX            # 6DRepNet weights
+        from momentscan.perception.extraction.headpose import DEFAULT_ONNX  # 6DRepNet weights
         deps["momentscan.perception.extraction.headpose"] = (Path(DEFAULT_ONNX),)
     except Exception:
         pass
     try:
-        from momentscan.perception.readings.geometry import CANONICAL_OBJ            # MediaPipe canonical mesh
+        from momentscan.perception.readings.geometry import CANONICAL_OBJ  # MediaPipe canonical mesh
         deps["momentscan.perception.readings.geometry"] = (Path(CANONICAL_OBJ),)
     except Exception:
         pass

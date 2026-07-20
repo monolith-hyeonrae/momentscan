@@ -44,13 +44,20 @@ import cv2
 import numpy as np
 import polars as pl
 
-from momentscan.perception.readings import signals
-from momentscan.perception.readings.emotion import EM_ALL as EM, fused_valence
-from momentscan.perception.readings.pose import POSE_MAX_DEG, euler_from_transform, fuse_pose, pose_class
 from momentscan.infra.store.stash import (
-    clip_dir, read_features, read_headpose, read_landmarks, read_parse,
-    read_tubelets, write_gate_trace,
+    clip_dir,
+    read_features,
+    read_headpose,
+    read_landmarks,
+    read_parse,
+    read_tubelets,
+    write_gate_trace,
 )
+
+from momentscan.perception.readings import signals
+from momentscan.perception.readings.emotion import EM_ALL as EM
+from momentscan.perception.readings.emotion import fused_valence
+from momentscan.perception.readings.pose import POSE_MAX_DEG, euler_from_transform, fuse_pose, pose_class
 
 log = logging.getLogger("momentscan.gates")
 

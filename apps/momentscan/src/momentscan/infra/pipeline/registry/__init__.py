@@ -15,19 +15,19 @@ reference fails the import, so the map cannot silently diverge from the catalog.
 from __future__ import annotations
 
 from momentscan.infra.pipeline.registry.analyzers import (
+    _BY_NAME,
     ANALYZERS,
     OUTPUT_KINDS,
     Analyzer,
-    _BY_NAME,
     _depends_closure,
     by_output_kind,
     get,
     topo_order,
 )
 from momentscan.infra.pipeline.registry.products import (
+    _BY_PRODUCT,
     PRODUCTS,
     Product,
-    _BY_PRODUCT,
     product,
     products,
 )

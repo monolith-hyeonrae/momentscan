@@ -13,9 +13,10 @@ def _cmd_doctor(args: argparse.Namespace) -> int:
 
 
 def _cmd_check(args: argparse.Namespace) -> int:
-    from momentscan.perception import gates
     from momentscan.infra.pipeline import registry as A
     from momentscan.infra.pipeline.runner import RUNNERS, UPSTREAM_OF_RUNNER
+
+    from momentscan.perception import gates
 
     problems = A.registry_drift(RUNNERS.keys(), UPSTREAM_OF_RUNNER) + gates.gate_drift()
     errs = [m for sev, m in problems if sev == "error"]
@@ -60,9 +61,7 @@ def _cmd_replay_check(args: argparse.Namespace) -> int:
 
 
 def _cmd_eval(args: argparse.Namespace) -> int:
-    from momentscan.products.evals.harness import make_template, score
-
-    from momentscan.products.evals.harness import score_pairs
+    from momentscan.products.evals.harness import make_template, score, score_pairs
 
     if args.template:
         result = make_template(args.out, args.template)

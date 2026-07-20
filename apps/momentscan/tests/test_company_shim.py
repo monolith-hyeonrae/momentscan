@@ -5,8 +5,8 @@
 run_pipeline만 패치하고 수리/큐/워커/콜백 훅은 실코드 (apicheck 관례)."""
 import http.client
 import json
-from pathlib import Path
 import threading
+from pathlib import Path
 
 import pytest
 
