@@ -164,6 +164,20 @@ fashion·samples.hair 방출됨) ⑤test_12 hair 세그 오검출 조사(user �
 ⑦**hair/pose_bins 수집의 boarding-phase 선호**(user 2026-07-14, test_3 라벨 중 발견: 활강 전=바람에 헤어 안 망가짐·얼굴 일그러짐 덜함 — samples.pose_bins/hair_match 입력을 pre-ride 프레임 우선으로; phase-conditioned readings의 likeness 적용). → **착지 2026-07-20** (b) 빈-내 소프트: 3뷰 보존+빈별 boarding 선호.
 ⑧**랜드마크 정준화 = 정면 전용**(user 2026-07-20, appearance card A/B 판독 중 방향 확정): 측면 얼굴은 랜드마크 정준화(neutral/center 집계)에 쓰지 않는다 — 측면의 직무는 **헤어스타일 추론 향상**(hair_match 입력)뿐. 정준 기하는 가급적 정면 빈에서만 추론. ⚠값-변경 트랙(likeness 특성화 핀 이동 예상, 델타 설명 문법; recipe 골든은 입력-고정 fixture라 무영향). **원장 ① 캘리 양안보다 선행해야**(캘리는 정면-전용 기하 위에서).
 ⑨**표본 스크리닝 2종**(user 2026-07-20, 카드 육안 판독: 어두운 크롭·눈감은 크롭이 표본에 선택됨): (a) 밝기 — exposure 게이트는 entropy-only **유지**(validity 판정, 어두움=recoverable 결정 불변), 대신 **표본/정준화 선발 랭킹**에 face_micro(parse DESCRIPTIVE 보존분) 투입 — exposure-gate 결정 때 예약해둔 자리 그대로. (b) 눈감음 — blink 신호(blendshape eyeBlink/EAR)로 표본 선발에서 제외. 둘 다 게이트 신설 아님 = selection 정책.
+   → **선발 정책 확정 (2026-07-20, 진단 카드 v0~v6.2 + FIQA A/B/C 판정, user 동행)**:
+   대표(c-슬롯) = ①**보이는-정면**: sym(뺨 x-거리 log비)<0.6 **∧** |yaw dev|<15°
+   — 상호 환각 방어(yaw는 f16 오분류·sym은 극단 yaw서 f260 환각, 실측) ②**눈동자
+   -가시 floor**: 눈꺼풀 개구/홍채 지름 ≥0.5(절대량 — ARKit blink/squint는 야외
+   포화로 폐기, EAR-백분위는 실눈형 트랙서 미보장) ③점수 = 0.40 무표정(정면 위에서만
+   신뢰) + 0.25 pupil + 0.35 품질3축 nan-skip 평균(선명·face_micro·**buffalo_l
+   embedding_norm** — raw 저장 덕에 공짜) ④시간 간격 ≥2s ⑤사다리 완화+FB 정직
+   표기(boarding 선호는 같은 단 안에서만 — 탑승-측면이 라이드-정면을 못 이김).
+   헤어뷰 빈(left/right)=측면 전용 유지(눈뜸 floor pct40). **FIQA 판정**: CR-FIQA=
+   CC-BY-NC 탈락(라이선스 게이트)·MagFace(Apache-2.0, sha256 검증)=단독 백본 탈락
+   (인식-효용은 눈동자 미흡수: pu 0.33 게슴츠레를 mg100%로 선발, 6클립 실측)·pupil
+   floor 유지 + 품질축만 MagFace 교체(C′)=공짜 3축과 픽 동일(test_3 3/3 일치) →
+   **한계효용 0, 도입 안 함**(모델 283MB+GPU 패스 비용 불가). MagFace 스코어러는
+   scratchpad 보존 = E1 eval-baseline 후보(exposure-gate 때 예약한 자리).
 
 ### (완료 기록) P1-④까지의 트랙 — ③ 동결 완료, P1-④ 실패 모드
 
