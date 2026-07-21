@@ -269,6 +269,31 @@ crop이 부적절해 결정된 likeness에 신뢰가 없다"; 실증 계기=풀 
    무표정 절대 상한(test_3 픽 ex 0.62~0.64 — 상대 랭킹 한계) · 소재-한계 자백 필드(test_0/
    test_12=풀 전체가 하방/상방-롤, 픽은 풀을 정직 대표 — likeness가 표본 풀 품질을 자백할
    지). **다음 = v7 진단 카드(신 사다리 A/B) → user 봉인 → 트랙 발사**(⑧⑨ 선례 프로세스).
+⑫**샘플링 워크벤치 + 선별 2단 구조**(user 정식화·도구 3종 발상 2026-07-21): user 문안
+"품질 스크리닝으로 후보군의 **결정경계**를 좁히고, 대표성으로 우선순위 **깃발**을 꽂는다"
+= 선별의 2단 명시화 — 1단 품질 스크린(**공용**: likeness≈portrait, ⑪ 노트의 실체; 극성
+동일 축=선명·조도·chroma·가림·글레어) / 2단 대표성 랭킹(**제품-특이**: likeness=수렴
+[무표정·다양성] vs portrait=발산 — clean_ref 극성 그대로). 미결 다이얼 5종을 이 축으로
+분류: 품질(light 가중·f240 글레어·cs floor)/대표성(무표정 상한)/직무(hair 빈 각도).
+   **도구 3종(user 발상)을 한 도구의 세 층으로 통합**: 데이터층=frame_table 와이드 뷰
+   (프로브 4종이 반복한 조인의 단일홈; stash 읽기-전용 파생, 영속화 없음=이중-진실 방지)
+   · 인터랙션층=HTML 다이얼 시뮬레이터(퍼널 카운트·A/B 프리셋·생존 풀 그리드; 측정=영속
+   이라 스크린/랭킹은 JS 실시간; **드리프트 방어**=사다리 대신 명시-floor 의미론+로드 시
+   셀프테스트 JS≡python[기본 설정=v7.2 픽 6/6 재현]+봉인 전 파이썬 카드 재확인) · 축적층
+   =클릭 GT(pos/neg 순환, 수용-집합 P2 원형의 샘플링 적용; 프레임-수준=정책-강건; **홈=
+   fixtures/eval**[user 확정, README 스키마 momentscan.workbench-gt/v0], v0=export 버튼
+   [서버 무변경]). 계기=`scratchpad_workbench.py`. 스코프 v0=center 픽(hair 빈=v1).
+   프로세스 재편: 다이얼 점검=카드 왕복 → **user 직접 탐색+GT 축적 → 봉인 → 트랙 착지**
+   (GT-채점 증거 지참).
+   (노트) **pixeltable 판정**(user 반문 "중복=fit이면 위임/visualstack 내장?"): fit은
+   실재하나 층-의존 — 잘 맞는 층(per-frame 계산 컬럼)=우리에겐 이미 동결·저비용 부분,
+   안 맞는 층=몰튼 연구부(코호트-상대 게이트·추적·전역 stitch·풀-상대 선별 = row-wise
+   아님), 비이전 층=enforcement(계약·특성화 핀·replay tolerance·가드). 운영 무게(embedded
+   Postgres vs ls-able parquet — 회사 워커·엣지 이식성, structure-transparency)·이행 비용
+   (골든/replay 재구축)·two-truth 전환기 위험. **결론: 진실(stash)은 비위임, 인체공학은
+   위임** — frame_table이 80%, 실험이 코호트-횡단·시맨틱 검색으로 자라면 "stash=진실 +
+   pixeltable=분석 렌즈"(additive·가역, stash를 import하는 소비자)로 재상정. visualstack
+   내장 = R16 ArtifactNode 자리의 **엔진 후보**로 소비자-지불 시 검토(우산 bead 후보).
 
 ### (완료 기록) P1-④까지의 트랙 — ③ 동결 완료, P1-④ 실패 모드
 
