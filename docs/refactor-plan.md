@@ -213,6 +213,38 @@ G02 턱폭비·G03 턱각·G04 광대·G05 이마; 13키의 윤곽 몰프=Chin_L
    만 변경(gate_trace·portrait·emotion 무영향). 코퍼스 재계산·replay-ref 재동결은 머지 후
    공유 스윕(트랙-스코프). pytest 127·registry 0err·ruff 57·recipe 골든 15 무영향.
 
+⑪**표본 신뢰 개정 — phase 강등·정체성-판독성 축**(user 동행 판정 2026-07-21; 발단="선정
+crop이 부적절해 결정된 likeness에 신뢰가 없다"; 실증 계기=풀 시트 `scratchpad_likeness_pool.py`
+·가림 프로브 `scratchpad_emb_occlusion.py`):
+   (a) **center_nearest의 phase 선호 제거** — 외형 단서는 boarding 불요(user: "수집범위
+   제한이 오히려 악영향"). 증거=dual_2 픽 f6/f9/f10(최소 간격 1프레임 — boarding 창 안에서
+   gap 사다리가 0까지 붕괴한 첫 1초 3연사)·boarding 실측 f0~13 단 14프레임, ride 전역엔
+   양질 정면 다수(풀 시트). 시간-다양성(gap floor) > phase 선호.
+   (b) pose_bins(hair)는 boarding 소프트 선호 **유지** — ⑦ 물리 근거(바람 전 헤어) 유효,
+   빈-내 폴백 이미 존재.
+   (c) **identity-legibility 축 신설**: cos_self(detect raw embedding 정규화→트랙 중앙값
+   코사인; 비교는 빈-내/풀-내 **상대** — 측면은 정면보다 자연히 낮아 절대 비교 금지)를
+   빈 Q 4축째 + center 사다리 가드로. 증거=dual_2 **세 빈 픽 전부 바닥 10%**(frontal 9%·
+   left 5%·right 2%) — 현행 Q(눈뜸·micro·선명)=identity-blind; right f1205 반가림=cs 0.571
+   바닥 2%인데 **norm 65% = norm은 가림 맹목**(q3의 norm 유지하되 한계 명기). clean_ref
+   극성(likeness=수렴)과 정합.
+   (d) **입-가림 소프트 선호**(user: 비디오 안에 입 가림/노출 변동 실재 — 안 가려진 경우
+   우선): mouth_vis(parse 보존분)를 상대 선호 축으로. 하드 스크린 금지 — 목도리 클립은
+   포화(dual_2 right p50=0.000; 착용물=fashion 원칙과 충돌 방지).
+   (e) **조명 상태 = phase가 재던 것의 실측 대체**(user: 탑승 지점↔활강 지점 조명차 실재,
+   밝을수록 영상 선명 이점): phase 조건부를 지우는 대신 밝기·선명 축(기존 face_micro·
+   sharp)이 그 이점을 직접 잰다 — 가중/사다리 위치는 v7 카드 판정으로.
+   (노트) **likeness 후보 샘플링 ≈ portrait 후보 샘플링**(user 관찰 2026-07-21): 표본-품질
+   축(선명·밝기·가림·정체성-판독성·시선·표정)은 두 제품 공용 후보 — 졸업 규칙 관점의
+   selection 기판 후보. 설계 시 likeness-특이(수렴 극성·무표정 선호) vs 공용 축을 분리
+   표기해 둘 것.
+   계기 정비: 진단 카드 CAND C(MagFace) 행 제거(user "비교 무의미"). 시선(eyeLook) 하드
+   스크린 **기각 실증**: international_1은 렌즈 응시가 eyeLookDown 0.4~0.6으로 읽힘(탑승
+   카메라 눈높이-아래 기하) — 쓰려면 클립-내 상대 귀속+검증 프로브 선행. 미결 판정 2:
+   무표정 절대 상한(test_3 픽 ex 0.62~0.64 — 상대 랭킹 한계) · 소재-한계 자백 필드(test_0/
+   test_12=풀 전체가 하방/상방-롤, 픽은 풀을 정직 대표 — likeness가 표본 풀 품질을 자백할
+   지). **다음 = v7 진단 카드(신 사다리 A/B) → user 봉인 → 트랙 발사**(⑧⑨ 선례 프로세스).
+
 ### (완료 기록) P1-④까지의 트랙 — ③ 동결 완료, P1-④ 실패 모드
 
 ~~P1-2b color identity~~ → **DONE 5c34f2d**. ~~P1-③ 스키마 동결~~ → **DONE** —

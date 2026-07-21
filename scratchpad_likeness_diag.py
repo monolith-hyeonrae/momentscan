@@ -208,18 +208,7 @@ def diagnose(clip_id: str, out_root: Path, out_png: Path) -> dict:
     picked, note = pick3(score, PUPIL_LADDER, np.ones(n, bool), "A")
     new_center = [int(fx[i]) for i in picked]
 
-    # C안(user 요청): MagFace(Apache-2.0, sha256 검증) 품질 백본 + 무표정 + 동일 정면
-    # 스크린, pupil floor 없음 = FIQA 가 눈동자를 흡수하는지 시험. 커버리지 100%(자체 계산).
-    mag_dir = Path(__file__).parent / "magface" / "scores"
-    mag_of = {}
-    mp_ = mag_dir / f"{clip_id}.json"
-    if mp_.exists():
-        mag_of = {int(k): float(v) for k, v in json.load(open(mp_)).items()}
-    mag = np.array([mag_of.get(int(f), np.nan) for f in fx])
-    mag_pct = pct_rank(mag)
-    score_b = 0.5 * rank01(mag) + 0.5 * rank01(expr, flip=True)
-    picked_b, note_b = pick3(score_b, (None,), np.isfinite(mag), "C")
-    new_center_b = [int(fx[i]) for i in picked_b]
+    # (CAND C/MagFace 행 제거 — user 판정 2026-07-21: L-B 미채택 실험 행, 비교 무의미)
     pool_show = sorted([i for i in range(n) if sym[i] < 0.9 and abs(yaw[i] - FRONTAL_DEG) < 20 and pupil[i] >= 0.4],
                        key=lambda i: -score[i])[:8]
 
@@ -251,7 +240,7 @@ def diagnose(clip_id: str, out_root: Path, out_png: Path) -> dict:
     rows_w = LABEL + n_slots * (TILE + PAD) + 18
     W = rows_w + 2 * (panel_w + 14) + 10
     row_h = TILE + 58
-    H = max(30 + 4 * row_h + 8, 30 + 3 * (panel_h + 12))
+    H = max(30 + 3 * row_h + 8, 30 + 3 * (panel_h + 12))
     img = np.full((H, W, 3), 22, dtype=np.uint8)
 
     def text(s, x, y, color=(225, 225, 225), sc=0.42):
@@ -259,7 +248,7 @@ def diagnose(clip_id: str, out_root: Path, out_png: Path) -> dict:
 
     text(f"{clip_id}  t{tid}  sampling diagnosis v6 (ledger 8/9, BEFORE change)   "
          f"n_valid={n} frontal_clean={int(fmask.sum())} phase={'boarding' if use_phase else 'off'}"
-         f"   H[{note}] C[{note_b}] mag_cov={float(np.isfinite(mag).mean()):.0%}", 10, 18, sc=0.46)
+         f"   H[{note}]", 10, 18, sc=0.46)
 
     cap = cv2.VideoCapture(str(out_root / clip_id / "detect.mp4"))
 
@@ -287,16 +276,13 @@ def diagnose(clip_id: str, out_root: Path, out_png: Path) -> dict:
         text(f"pu {pupil[i]:.2f} sy {sym[i]:.1f} ex {expr[i]:.2f}", x + 2, y + TILE + 27,
              (170, 170, 170), 0.33)
         nm = f"nm{norm_pct[i]:.0f}%" if np.isfinite(norm_pct[i]) else "nm--"
-        mg = f" mg{mag_pct[i]:.0f}%" if np.isfinite(mag_pct[i]) else " mg--"
-        text(nm + mg, x + 2, y + TILE + 41, (150, 150, 150), 0.33)
+        text(nm, x + 2, y + TILE + 41, (150, 150, 150), 0.33)
 
     yA, yB = 30, 30 + row_h
-    yD, yC = 30 + 2 * row_h, 30 + 3 * row_h
+    yC = 30 + 2 * row_h
     text("CURRENT", 8, yA + TILE // 2, (120, 180, 240), 0.4)
     text("CAND H", 8, yB + TILE // 2, (120, 220, 120), 0.4)
     text("(hybrid)", 8, yB + TILE // 2 + 14, (120, 220, 120), 0.3)
-    text("CAND C", 8, yD + TILE // 2, (100, 190, 250), 0.4)
-    text("(MagFace)", 8, yD + TILE // 2 + 14, (100, 190, 250), 0.3)
     text("H POOL", 8, yC + TILE // 2, (180, 160, 220), 0.4)
     text("REPRESENTATIVE (frontal)", LABEL, 27, (200, 200, 100), 0.36)
     hv_x = LABEL + 4 * (TILE + PAD) + 18
@@ -309,14 +295,11 @@ def diagnose(clip_id: str, out_root: Path, out_png: Path) -> dict:
                 draw_tile(cur_center[k], x, yA, name)
             if k < len(new_center):
                 draw_tile(new_center[k], x, yB, name, changed=(new_center[k] not in cur_center))
-            if k < len(new_center_b):
-                draw_tile(new_center_b[k], x, yD, name, changed=(new_center_b[k] not in cur_center))
         else:
             draw_tile(cur_bins[name], x, yA, name)
             if name in new_bins:
                 draw_tile(new_bins[name], x, yB, name + bin_note.get(name, ""),
                           changed=(new_bins[name] != cur_bins[name]))
-    text("(hair views: same policy as A)", hv_x, yD + 12, (120, 120, 120), 0.34)
     for j, i in enumerate(pool_show):
         draw_tile(int(fx[i]), LABEL + j * (TILE + PAD), yC, f"p{j+1}")
 
@@ -349,10 +332,9 @@ def diagnose(clip_id: str, out_root: Path, out_png: Path) -> dict:
     fmt = lambda i: {"f": int(fx[i]), "pu": round(float(pupil[i]), 2),
                      "sy": round(float(sym[i]), 2), "ex": round(float(expr[i]), 2)}
     fmt2 = lambda i: {**fmt(i),
-                      "nm": None if not np.isfinite(norm_pct[i]) else round(float(norm_pct[i])),
-                      "mg": None if not np.isfinite(mag_pct[i]) else round(float(mag_pct[i]))}
-    return {"clip": clip_id, "tid": tid, "H_note": note, "C_note": note_b,
-            "H": [fmt2(i) for i in picked], "C": [fmt2(i) for i in picked_b]}
+                      "nm": None if not np.isfinite(norm_pct[i]) else round(float(norm_pct[i]))}
+    return {"clip": clip_id, "tid": tid, "H_note": note,
+            "H": [fmt2(i) for i in picked]}
 
 
 if __name__ == "__main__":
