@@ -13,9 +13,15 @@
      디자이너 blend 를 blender-내부 python 이 연다.
 투영과 렌더를 함수 경계로 분리해, 투영은 특성화 골든으로 봉인 가능하다.
 
+측정-메쉬 병치(`render_mesh_montage`, CLI `--ab mesh`, 2026-07-20 승격): 리그 렌더
+옆에 **투영을 안 거친** 측정-메쉬 클레이 렌더를 세운다 — likeness neutral(1차 표현)
+vs 리그(도메인 표현)의 시각 증거(ARCHITECTURE §④ 벽). 렌더 경계 규율은 2와 동일,
+스크립트만 `_meshref_blender.py`(blend 불요).
+
 surface 계약("persisted payload 위 순수 렌더러"): 입력 = recipe.json(recipe 스테이지가
-persist). 프리뷰는 run 자동 산출이 아니라 온디맨드(무거운 것=온디맨드 선례) — 렌더
-PNG 는 stash(output/l2)에 쓰지 않고 호출자가 지정한 preview-out 으로 나간다.
+persist; mesh 병치는 likeness.json 의 neutral 도 읽는다). 프리뷰는 run 자동 산출이
+아니라 온디맨드(무거운 것=온디맨드 선례) — 렌더 PNG 는 stash(output/l2)에 쓰지 않고
+호출자가 지정한 preview-out 으로 나간다.
 
 blend 판정(2026-07-20 실측): `_DEFAULT_BLEND`(body+basic_260527.blend, 449M)만
 SHAPE_KEY_MAP 의 13키(head+base)·HAIR_LIBRARY 의 14 hair 메시와 정합한다. 자매
@@ -47,6 +53,11 @@ _DEFAULT_BLEND: Path = Path.home() / "repo" / "p981" / "assets" / "blend" / "bod
 # blender-내부에서 도는 apply/render 스크립트(bpy 사용, momentscan 은 절대 import
 # 하지 않고 subprocess 로만 실행). recipe_preview 옆에 둔다.
 _BLENDER_SCRIPT: Path = Path(__file__).with_name("_recipe_blender.py")
+
+# blender-내부 측정-메쉬(클레이) 렌더 스크립트 — 같은 경계(subprocess 전용), blend
+# 불요(empty scene + from_pydata). 루트 scratchpad_meshref_blender.py 승격(2026-07-20
+# user 검수 조명/각도).
+_MESHREF_SCRIPT: Path = Path(__file__).with_name("_meshref_blender.py")
 
 # 렌더 해상도(px)·타깃 창(정면 헤드-온리). 구 하니스 512² 관례.
 _RENDER_PX: int = 512
@@ -353,6 +364,72 @@ def _render_jobs(blend: Path, jobs: list[dict], preview_out: Path) -> None:
         raise RuntimeError(f"blender 가 렌더 PNG 를 안 냄({len(missing)}/{len(jobs)}): {missing[:3]}")
 
 
+def _render_mesh_jobs(faces: list[list[int]], jobs: list[dict], preview_out: Path) -> None:
+    """측정-메쉬 클레이 렌더 — `_meshref_blender.py` subprocess. 리그 렌더(_render_jobs)와
+    같은 경계 규율(부재=RuntimeError 설치 힌트·실패=stderr 꼬리 지참·빈-렌더 자백)이되
+    blend 파일이 없다(empty scene + from_pydata). jobs = [{name, vertices 468×3, out_png}]."""
+    binary = blender_binary()
+    if binary is None:
+        raise RuntimeError(
+            "blender 바이너리 없음(shutil.which('blender')=None) — "
+            "snap: `sudo snap install blender --classic`")
+
+    payload = {"faces": faces, "render_px": _RENDER_PX, "jobs": jobs}
+    payload_path = preview_out / "_payload_mesh.json"
+    payload_path.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
+
+    cmd = [binary, "--background", "--python", str(_MESHREF_SCRIPT), "--", str(payload_path)]
+    proc = subprocess.run(cmd, capture_output=True, text=True, timeout=_RENDER_TIMEOUT_S)
+    if proc.returncode != 0:
+        tail = (proc.stdout + proc.stderr)[-1500:]
+        raise RuntimeError(f"blender 측정-메쉬 렌더 실패(rc={proc.returncode}, jobs={len(jobs)}):\n{tail}")
+
+    missing = [j["out_png"] for j in jobs if not Path(j["out_png"]).exists()]
+    if missing:
+        raise RuntimeError(f"blender 가 측정-메쉬 PNG 를 안 냄({len(missing)}/{len(jobs)}): {missing[:3]}")
+
+
+def _canonical_faces() -> list[list[int]]:
+    """측정-메쉬 렌더의 삼각 토폴로지 — MediaPipe canonical obj 의 `f` 라인(1-based)을
+    0-based 로. 경로는 geometry.CANONICAL_OBJ 단일홈에서 가져온다 — 이 lazy import 로
+    geometry 가 본 모듈의 import 클로저에 들어오고, obj 는 geometry 의 external dep 로
+    이미 등재라 freshness 이중 등재가 불필요하다(_DEFAULT_BLEND 와 달리 홈이 이미 있음)."""
+    from momentscan.perception.readings.geometry import CANONICAL_OBJ
+
+    if not Path(CANONICAL_OBJ).exists():
+        raise RuntimeError(
+            f"canonical obj 없음: {CANONICAL_OBJ} — MediaPipe 저장소에서 취득"
+            " (momentscan verify doctor 의 canonical_face_model.obj 행)")
+    faces: list[list[int]] = []
+    for ln in Path(CANONICAL_OBJ).read_text(encoding="utf-8").splitlines():
+        if ln.startswith("f "):
+            faces.append([int(tok.split("/")[0]) - 1 for tok in ln.split()[1:4]])
+    return faces
+
+
+def _neutral_vertices(clip_dir: Path) -> list[list[float]] | None:
+    """likeness.json → main rider 의 neutral 표본(표정-회귀 정준 기하, 478×3 평탄 배열)
+    → 468×3 정점(홍채 10점 제외 — canonical obj 토폴로지의 basis_mesh 기저와 일치).
+
+    rider 는 center(관측 중심)와 neutral.center(무표정 보정)를 둘 다 지참한다 —
+    측정-메쉬 렌더는 **neutral** 을 쓴다(likeness 가 사람의 기하로 확정한 표본).
+    파일/main rider/neutral 부재(회귀 불가 클립) = None — 호출자가 행 스킵 + 로그."""
+    lk = clip_dir / "likeness.json"
+    if not lk.exists():
+        return None
+    riders = json.loads(lk.read_text(encoding="utf-8")).get("riders", {})
+    main = next((r for r in riders.values() if r.get("role") == "main"), None)
+    if main is None:
+        return None
+    flat = (main.get("neutral") or {}).get("center")
+
+    from momentscan.perception.readings.geometry import CANONICAL_FRAME
+    n = CANONICAL_FRAME.basis_mesh * 3                       # 468×3 — 홍채 10점 절사
+    if not isinstance(flat, list) or len(flat) < n:
+        return None
+    return [flat[i:i + 3] for i in range(0, n, 3)]
+
+
 def _real_thumbnail(clip_dir: Path) -> Path | None:
     """클립의 대표 실사 썸네일 — portraits/*_rep.png(없으면 None). 몽타주 real 열."""
     portraits = clip_dir / "portraits"
@@ -408,6 +485,66 @@ def render_recipe_montage(
             "variants": [v.title for v in variants], "blend": str(blend_path)}
 
 
+def render_mesh_montage(
+    out_root: Path | str,
+    clip_ids: list[str],
+    *,
+    rig_variant: Variant,
+    preview_out: Path | str,
+    blend: Path | str | None = None,
+) -> dict:
+    """[real | 측정 메쉬 | 리그] 몽타주 — "1차 표현 vs 도메인 표현" 벽의 시각 증거
+    (ARCHITECTURE §④ 벽 · change-forecast 2026-07-20 항목). CLI `--ab mesh`.
+
+    측정-메쉬 열 = likeness.json main rider 의 neutral 표본(정준 프레임 478×3 → 468)을
+    클레이 렌더 — likeness 가 재는 것 그 자체(1차 표현, 리그·recipe 무관). 리그 열 =
+    rig_variant(현행 기본 정책 렌더 = 도메인 표현). 병치가 "리그 13키가 1차 표현의
+    무엇을 잃는가"(표현력 격차, 원장 ⑩ 증거물 2026-07-20 승인본)를 눈으로 보여준다.
+
+    neutral 없는 클립(회귀 불가)은 행에서 정직 스킵. blender 없으면 RuntimeError
+    (호출 CLI 가 exit 2 로 번역 — render_recipe_montage 와 동일 경계)."""
+    out_root = Path(out_root)
+    preview_out = Path(preview_out)
+    preview_out.mkdir(parents=True, exist_ok=True)
+    blend_path = Path(blend) if blend is not None else _DEFAULT_BLEND
+
+    if not blend_path.exists():
+        raise RuntimeError(f"blend 파일 없음: {blend_path} (정본=우산 assets/blend, MANIFEST.md 참조)")
+
+    rows = _build_rows(out_root, clip_ids, [rig_variant], preview_out)
+    kept: list[dict] = []
+    mesh_jobs: list[dict] = []
+    for row in rows:
+        verts = _neutral_vertices(out_root / row["clip_id"])
+        if verts is None:
+            log.warning("recipe_preview.skip",
+                        extra={"clip_id": row["clip_id"], "reason": "no likeness neutral"})
+            continue
+        cell = {"name": row["image_id"], "vertices": verts,
+                "out_png": str(preview_out / f"{row['image_id']}_meshref.png")}
+        row["cells"] = [cell, *row["cells"]]                 # 열 순서 = [mesh, rig]
+        mesh_jobs.append(cell)
+        kept.append(row)
+    if not kept:
+        return {"ok": False, "reason": "no recipe.json + likeness neutral for any clip",
+                "clip_ids": clip_ids}
+
+    _render_mesh_jobs(_canonical_faces(), mesh_jobs, preview_out)
+    _render_jobs(blend_path, [row["cells"][1] for row in kept], preview_out)
+
+    montage_path = preview_out / "montage.png"
+    columns = [Variant(title="measured mesh (primary, no rig)", slug="meshref"),
+               rig_variant]
+    _assemble_montage(kept, columns, montage_path, blend_path,
+                      suptitle="primary vs domain — measured mesh (likeness neutral) | "
+                               f"designer rig {kept[0]['n_mapped']}/13 keys ×{rig_variant.gain:g}")
+
+    log.info("recipe_preview.mesh_montage", extra={"n_clips": len(kept),
+                                                   "montage": str(montage_path)})
+    return {"ok": True, "montage": str(montage_path), "n_clips": len(kept),
+            "variants": [c.title for c in columns], "blend": str(blend_path)}
+
+
 def _build_rows(out_root: Path, clip_ids: list[str], variants: list[Variant],
                 preview_out: Path) -> list[dict]:
     """클립별로 recipe 를 로드해 변형별 렌더 잡 + real 썸네일을 담은 행 목록 구성."""
@@ -440,8 +577,10 @@ def _build_rows(out_root: Path, clip_ids: list[str], variants: list[Variant],
 
 
 def _assemble_montage(rows: list[dict], variants: list[Variant],
-                      montage_path: Path, blend: Path) -> None:
-    """PIL 로 그리드 몽타주 조립 — 행=클립, 열=[real] + 변형별 3D. 셀 라벨·헤더 포함."""
+                      montage_path: Path, blend: Path,
+                      suptitle: str | None = None) -> None:
+    """PIL 로 그리드 몽타주 조립 — 행=클립, 열=[real] + 변형별 3D. 셀 라벨·헤더 포함.
+    suptitle=None(기본)이면 투영-변형 몽타주의 관례 제목; mesh 병치는 자기 제목 지참."""
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
@@ -453,7 +592,8 @@ def _assemble_montage(rows: list[dict], variants: list[Variant],
 
     fig, axes = plt.subplots(n_rows, n_cols, figsize=(n_cols * 2.6, n_rows * 2.6),
                              squeeze=False)
-    fig.suptitle(f"likeness → face_recipe → designer rig: "
+    fig.suptitle(suptitle if suptitle is not None else
+                 f"likeness → face_recipe → designer rig: "
                  f"{' vs '.join(v.title for v in variants)} "
                  f"(rig {n_mapped}/13 mapped + {n_proposed} proposed keys [ledger 10])",
                  fontsize=11, x=0.02, ha="left")

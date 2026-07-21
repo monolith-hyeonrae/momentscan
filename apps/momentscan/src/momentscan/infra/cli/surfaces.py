@@ -81,7 +81,13 @@ def _cmd_viz_recipe(args: argparse.Namespace) -> int:
     blender 없이 순수 동작하나(테스트가 커버), 몽타주의 목적=렌더라 부재 시 exit 2."""
     from momentscan.products.recipe_axes import CALIB_TABLES
 
-    from momentscan.surface.recipe_preview import GAIN_HI, Variant, blender_binary, render_recipe_montage
+    from momentscan.surface.recipe_preview import (
+        GAIN_HI,
+        Variant,
+        blender_binary,
+        render_mesh_montage,
+        render_recipe_montage,
+    )
 
     if blender_binary() is None:
         print("momentscan: viz-recipe needs the blender binary (renders the designer rig; "
@@ -102,12 +108,21 @@ def _cmd_viz_recipe(args: argparse.Namespace) -> int:
     elif args.ab == "gain":
         variants = [Variant(title=f"×{gv:g}", slug=f"g{gv:g}", gain=gv) for gv in (1.0, GAIN_HI)]
     else:
+        # 단일-변형(무 --ab) 및 --ab mesh 의 리그 열 — 현행 기본 정책 렌더(gain=--gain).
         variants = [Variant(title=f"×{g:g}", slug=f"g{g:g}", gain=g)]
 
     try:
-        result = render_recipe_montage(Path(args.out), args.clips, variants=variants,
-                                       preview_out=Path(args.preview_out).expanduser(),
-                                       blend=args.blend)
+        if args.ab == "mesh":
+            # 측정-메쉬 병치(1차 표현 vs 도메인 표현 벽): [real | measured mesh | rig].
+            result = render_mesh_montage(Path(args.out), args.clips,
+                                         rig_variant=variants[0]._replace(
+                                             title=f"designer rig ×{g:g} (domain)"),
+                                         preview_out=Path(args.preview_out).expanduser(),
+                                         blend=args.blend)
+        else:
+            result = render_recipe_montage(Path(args.out), args.clips, variants=variants,
+                                           preview_out=Path(args.preview_out).expanduser(),
+                                           blend=args.blend)
     except RuntimeError as exc:
         print(f"momentscan: recipe preview render failed: {exc}", file=sys.stderr)
         return 1
@@ -137,10 +152,12 @@ def register(sub, common: argparse.ArgumentParser) -> None:
     pvr.add_argument("clips", nargs="+", help="clip id(s) — 행 하나당 한 클립 (recipe.json 존재해야)")
     pvr.add_argument("--out", default="output", help="stash root (recipe.json 위치)")
     pvr.add_argument("--gain", type=float, default=DEFAULT_GAIN,
-                     help="단일-변형 및 --ab calib 의 고정 gain(기본 ×2.2 = L-B ③ 판정: "
-                          "×1.0 개인차 미약). shape key 편차 과장 배율")
-    pvr.add_argument("--ab", choices=("gain", "calib"), default=None,
-                     help="gain=×1.0 vs ×2.2 A/B 몽타주 · calib=캘리 양안(원장 ①: legacy vs race981)")
+                     help="단일-변형·--ab calib·--ab mesh 리그 열의 고정 gain(기본 ×2.2 = "
+                          "L-B ③ 판정: ×1.0 개인차 미약). shape key 편차 과장 배율")
+    pvr.add_argument("--ab", choices=("gain", "calib", "mesh"), default=None,
+                     help="gain=×1.0 vs ×2.2 A/B 몽타주 · calib=캘리 양안(원장 ①: legacy vs "
+                          "race981) · mesh=측정 메쉬 vs 리그(1차 표현 vs 도메인 표현 벽의 "
+                          "시각 증거 — likeness neutral 클레이 렌더 병치)")
     pvr.add_argument("--preview-out", dest="preview_out", default="preview_recipe",
                      help="몽타주·셀 PNG 출력 디렉토리 (output/l2 밖 — 프리뷰는 stash 불변)")
     pvr.add_argument("--blend", default=None,

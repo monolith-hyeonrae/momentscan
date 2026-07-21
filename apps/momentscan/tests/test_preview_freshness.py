@@ -25,6 +25,19 @@ def test_blend_is_registered_external_dep():
     assert Path(_DEFAULT_BLEND) in deps, f"blend 미등재: {deps}"
 
 
+def test_canonical_obj_in_preview_closure_via_geometry():
+    """측정-메쉬 병치(--ab mesh)가 canonical obj 토폴로지를 읽는다 — 경로 단일홈
+    (geometry.CANONICAL_OBJ)의 lazy import 로 geometry 가 프리뷰 클로저에 들어오고,
+    obj 는 geometry 의 external dep 로 이미 등재 → 프리뷰 신선도에 잡힌다.
+    (_DEFAULT_BLEND 처럼 이중 등재할 필요가 없다는 설계 판단의 봉인.)"""
+    from momentscan.perception.readings.geometry import CANONICAL_OBJ
+
+    geo = "momentscan.perception.readings.geometry"
+    assert geo in freshness._closure_modules(_MOD), "geometry 가 프리뷰 클로저 밖"
+    freshness._external_deps.cache_clear()
+    assert Path(CANONICAL_OBJ) in freshness._external_deps().get(geo, ()), "obj 미등재"
+
+
 def test_blend_mtime_drives_preview_staleness(tmp_path, monkeypatch):
     """blend mtime 이 프리뷰보다 새로우면 stale. Downloads 를 만지지 않도록 stand-in
     blend 로 mtime 만 조작해 blend 엣지를 격리 실증한다."""
