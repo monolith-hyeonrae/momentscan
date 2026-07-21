@@ -234,6 +234,19 @@ crop이 부적절해 결정된 likeness에 신뢰가 없다"; 실증 계기=풀 
    (e) **조명 상태 = phase가 재던 것의 실측 대체**(user: 탑승 지점↔활강 지점 조명차 실재,
    밝을수록 영상 선명 이점): phase 조건부를 지우는 대신 밝기·선명 축(기존 face_micro·
    sharp)이 그 이점을 직접 잰다 — 가중/사다리 위치는 v7 카드 판정으로.
+   → **실측 정정(2026-07-21, user "얼굴면 조도 분석/기준이 없다")**: micro/sharp는 조도
+   대체 불가 — corr(skin_lum, face_micro)=+0.24~+0.85(클립별, test_4 최저). **skin_lum
+   직접 축 신설**(parse 보존분; lum_eff=skin_lum×(1−skin_clip_hi), **풀-내 상대 랭크만**
+   — 스케일 클립별 75~198로 절대 floor 금지=노출 게이트 교훈). **boarding 밝기 우위
+   실측**: test_3 179/90·dual_2 170/75·test_4 169/82(≈2×) — phase 선호가 우연히 주던
+   조도 이점의 정체; (a)로 phase를 지우면 이 축이 그 자리를 직접 잰다(v7→v7.1 dual_2
+   픽이 어두운-ride 3장→밝은 boarding 1+ride 2 혼합으로 복원 실증). 발견 2: ①test_12
+   washout(skin_lum 218~230 백화-외관)이 skin_clip_hi에 안 잡힘(max 0.01 — 245 미만
+   포화) → 백화 페널티 무력, 밝음-이득 상한 다이얼 후보(예: 풀 p75 초과 이득 절단)
+   ②조도·cs 축이 hair 빈 픽을 정면-쪽 경계로 끌어당김(left 픽 dev −15.1 = 경계 0.1°
+   통과, 구 −23~−33 대비 얕음) — side view 직무(헤어 각도)와 긴장, 빈은 각도-깊이
+   선호 또는 cs/lt 가중 축소 판정 필요. 계기=scratchpad_likeness_light.py(조도 지형
+   카드)·scratchpad_likeness_v7.py(v7.1, light 축 0.20+빈 Q6).
    (노트) **likeness 후보 샘플링 ≈ portrait 후보 샘플링**(user 관찰 2026-07-21): 표본-품질
    축(선명·밝기·가림·정체성-판독성·시선·표정)은 두 제품 공용 후보 — 졸업 규칙 관점의
    selection 기판 후보. 설계 시 likeness-특이(수렴 극성·무표정 선호) vs 공용 축을 분리
