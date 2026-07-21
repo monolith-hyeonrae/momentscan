@@ -247,6 +247,18 @@ crop이 부적절해 결정된 likeness에 신뢰가 없다"; 실증 계기=풀 
    통과, 구 −23~−33 대비 얕음) — side view 직무(헤어 각도)와 긴장, 빈은 각도-깊이
    선호 또는 cs/lt 가중 축소 판정 필요. 계기=scratchpad_likeness_light.py(조도 지형
    카드)·scratchpad_likeness_v7.py(v7.1, light 축 0.20+빈 Q6).
+   → **채도 v2(2026-07-21, user 발상 "같은 카메라·같은 사람이면 채도 차이가 빛 좋은
+   장면을 가른다")**: HSV-S는 **기각** — S=chroma/명도 비율이라 밝기와 반비례(실측
+   corr(S,V) −0.76~−0.90, user가 생동으로 지목한 international_1 초반이 S 저값으로
+   반전). 지각 생동감의 자 = **절대 chroma(max−min, 생산 skin 마스크 동일)**:
+   international_1 초반 84.3 vs 풀 p50 49.0(+72%, user 판독 그대로) · 건강 클립
+   corr(ch,lum)=+0.65~+0.99 · **test_12만 −0.44 = 백화 서명**(clip_hi 무력 지점을
+   상관 부호 하나가 가름). light 축 = mean(rank lum_eff, rank chroma) **복합**(v7.2):
+   합의(건강)/거부권(백화) 구조 — 실증: dual_2 청색-캐스트 f6 자동 탈락(캐스트→skin
+   chroma 저하 = 색온도 우려 부분 흡수) · test_12 백화 회피. 잔여 의문: test_12 신규
+   픽 f240=안경 글레어+측방 시선의 chroma 고값 승격 — 글레어/시선은 chroma 사각.
+   생산 편입 = parse additive 2열(skin_chroma·chroma_std, 동일 마스크 1채널 추가)
+   + 코퍼스 parse 재계산 동반. 계기=scratchpad_likeness_sat.py(chroma 지형 카드).
    (노트) **likeness 후보 샘플링 ≈ portrait 후보 샘플링**(user 관찰 2026-07-21): 표본-품질
    축(선명·밝기·가림·정체성-판독성·시선·표정)은 두 제품 공용 후보 — 졸업 규칙 관점의
    selection 기판 후보. 설계 시 likeness-특이(수렴 극성·무표정 선호) vs 공용 축을 분리

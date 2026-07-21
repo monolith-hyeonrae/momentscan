@@ -4,10 +4,12 @@ V7 = ⑪ 판정의 구현 후보 (판정 재료 — 봉인은 user 동행):
   center: (a) phase 풀 제거(전체 valid) · gap 사다리 (12,6) — 0 붕괴 없음(다양성 floor)
           점수 = 0.30 무표정 + 0.15 pupil + 0.20 q3(선명·micro·norm)
                  + 0.15 vis2(cs=identity-legibility · mv=입-가시) — (c)(d)
-                 + 0.20 light(⑪-e 직접 축: lum_eff=skin_lum×(1−clip_hi), 풀-내 상대
-                   — boarding이 재던 조도 이점의 실측 대체; 절대 floor 금지=노출 교훈)
+                 + 0.20 light(⑪-e v2 복합: mean[rank(lum_eff), rank(chroma)] — lum_eff=
+                   skin_lum×(1−clip_hi)·chroma=절대 max−min[user 채도 발상, HSV-S는 밝기
+                   반비례라 기각]; 건강 클립=두 축 합의(+0.65~+0.99), 백화 클립(test_12
+                   corr −0.44)=chroma 거부권. 풀-내 상대만, 절대 floor 금지=노출 교훈)
   bins:   (b) boarding 소프트 유지 + 눈뜸 floor pct40 + Q 6축(눈뜸·micro·선명
-          + 빈-내 상대 cs · mv · light) — 측면의 cs 절대 비교 금지(포즈 교란).
+          + 빈-내 상대 cs · mv · light복합) — 측면의 cs 절대 비교 금지(포즈 교란).
 행1 = CURRENT(likeness.json 표본) · 행2 = V7(교체=초록) · 행3 = V7 풀 상위 8.
 패널: cos_self 분포 · mouth_vis 분포 · center 와이어(valid vs frontal) · yaw dev.
 타일 라벨 셋째 줄 = cs/mv 백분위(풀-전역).
@@ -139,6 +141,27 @@ def diagnose(clip_id: str, out_root: Path, out_png: Path) -> dict:
     chi = np.array([hi_of.get(int(f), float("nan")) for f in fx], dtype=np.float64)
     lum_eff = lum * (1.0 - np.nan_to_num(chi, nan=0.0))   # ⑪-e: 백화 픽셀만큼 조도 이득 삭감
 
+    # ⑪-e v2: 절대 chroma(생동감 축) — parse 미보존이라 detect.mp4 순차 디코드로 산출
+    from scratchpad_likeness_sat import skin_sv
+    chroma = np.full(n, np.nan)
+    row_of = {int(f): i for i, f in enumerate(fx)}
+    cap0 = cv2.VideoCapture(str(out_root / clip_id / "detect.mp4"))
+    fidx = 0
+    while True:
+        ok0, frm0 = cap0.read()
+        if not ok0:
+            break
+        i0 = row_of.get(fidx)
+        if i0 is not None:
+            cbv = cb[i0]
+            pts0 = np.stack([cbv[0] + P[i0, :, 0] * (cbv[2] - cbv[0]),
+                             cbv[1] + P[i0, :, 1] * (cbv[3] - cbv[1])], 1)
+            r0 = skin_sv(frm0, pts0, cbv)
+            if r0 is not None:
+                chroma[i0] = r0[3]
+        fidx += 1
+    cap0.release()
+
     det = pl.read_parquet(out_root / clip_id / "detections.parquet")
     dmain = det.filter(pl.col("track_id") == tid)
     erows = [(int(f), np.asarray(e, float)) for f, e in
@@ -170,7 +193,7 @@ def diagnose(clip_id: str, out_root: Path, out_png: Path) -> dict:
     pupil, sym = face_signals(P)
     micro_pct, sharp_pct = pct_rank(micro), pct_rank(blur)
     norm_pct, cs_pct, mv_pct = pct_rank(nrm_full), pct_rank(cs), pct_rank(mv)
-    light_pct = pct_rank(lum_eff)
+    light_pct = np.nanmean(np.vstack([pct_rank(lum_eff), pct_rank(chroma)]), axis=0)
 
     def rank01(x, flip=False):
         r = np.argsort(np.argsort(np.nan_to_num(x, nan=(np.inf if flip else -np.inf))))
@@ -180,7 +203,7 @@ def diagnose(clip_id: str, out_root: Path, out_png: Path) -> dict:
     q3 = np.nanmean(np.vstack([sharp_pct, micro_pct, norm_pct]), axis=0)
     vis2 = np.nanmean(np.vstack([cs_pct, mv_pct]), axis=0)      # ⑪-c/d: 판독성+입-가시
     score = (0.30 * rank01(expr, flip=True) + 0.15 * rank01(pupil)
-             + 0.20 * rank01(q3) + 0.15 * rank01(vis2) + 0.20 * rank01(lum_eff))
+             + 0.20 * rank01(q3) + 0.15 * rank01(vis2) + 0.20 * rank01(light_pct))
     dev_all = yaw - FRONTAL_DEG
 
     def pick3_v7(score_vec):
@@ -227,7 +250,8 @@ def diagnose(clip_id: str, out_root: Path, out_png: Path) -> dict:
         pe = pool & (eye_pct >= 40)
         bin_note[name] = "" if pe.any() else " FB"
         pw = np.where(pe if pe.any() else pool)[0]
-        cs_bin, mv_bin, lt_bin = pct_rank(cs[pw]), pct_rank(mv[pw]), pct_rank(lum_eff[pw])
+        cs_bin, mv_bin = pct_rank(cs[pw]), pct_rank(mv[pw])
+        lt_bin = np.nanmean(np.vstack([pct_rank(lum_eff[pw]), pct_rank(chroma[pw])]), axis=0)
         Q6 = np.nanmean(np.vstack([eye_pct[pw], micro_pct[pw], sharp_pct[pw], cs_bin, mv_bin, lt_bin]), axis=0)
         new_bins[name] = int(fx[pw[np.argmax(np.nan_to_num(Q6, nan=-1))]])
 
@@ -243,9 +267,9 @@ def diagnose(clip_id: str, out_root: Path, out_png: Path) -> dict:
     def text(s, x, y, color=(225, 225, 225), sc=0.42):
         cv2.putText(img, s, (x, y), cv2.FONT_HERSHEY_SIMPLEX, sc, color, 1, cv2.LINE_AA)
 
-    text(f"{clip_id}  t{tid}  V7.1 (ledger 11: no-phase center + gap>=6 + cs/mv + LIGHT axis)   "
+    text(f"{clip_id}  t{tid}  V7.2 (ledger 11: no-phase center + gap>=6 + cs/mv + light[lum*chroma])   "
          f"n_valid={n} frontal_clean={int(fmask.sum())} bins_phase={'board-soft' if use_phase else 'off'}"
-         f"   V7.1[{note}]", 10, 18, sc=0.46)
+         f"   V7.2[{note}]", 10, 18, sc=0.46)
 
     cap = cv2.VideoCapture(str(out_root / clip_id / "detect.mp4"))
 
@@ -319,9 +343,9 @@ def diagnose(clip_id: str, out_root: Path, out_png: Path) -> dict:
     wire(img, norm468(center_valid), x + w // 2, cy, s, (60, 200, 230))
     if center_frontal is not None:
         wire(img, norm468(center_frontal), x + w // 2, cy, s, (90, 220, 90))
-    hist_panel(img, px1, 30 + panel_h + 12, panel_w, panel_h, lum_eff,
-               "face light lum_eff=skin_lum x (1-clip_hi) (11-e)  markers=V7 picks",
-               markers=[(lum_eff[i], (120, 220, 120)) for i in smp_i])
+    hist_panel(img, px1, 30 + panel_h + 12, panel_w, panel_h, chroma,
+               "skin chroma = vividness (11-e v2)  markers=V7 picks",
+               markers=[(chroma[i], (120, 220, 120)) for i in smp_i])
 
     cap.release()
     cv2.imwrite(str(out_png), img)
