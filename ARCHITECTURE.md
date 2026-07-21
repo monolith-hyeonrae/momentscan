@@ -141,6 +141,22 @@ engine; resident in select.py until R16/17 — 물리 이전은 energy 재편 �
 (파일 선점 없음). `products/evals/`는 방법론(rescore=현재 코드로 동결 평결에 재측정)을
 쥐고, 그 방법론의 parquet 전환은 **영구 기각**(렌더러에 옳은 처방을 채점기에 적용 금지).
 
+**1차 표현 vs 도메인 표현 벽 (user 정식화, 2026-07-20)** — user 원문: *"momentscan에서
+1차적으로 뽑는 likeness는 그 사람다움에 대한 1차 표현이고, blendshape을 통해 디자이너의
+3D 모델에 적합한 수치로 변환하여 제공하는 것은 도메인 표현이다. 구분되어야 한다.
+momentscan은 기본적으로 도메인 표현을 제공하지 않지만, 3D 제품을 위한 일종의 변환기가
+어댑터처럼 부착되어 출력을 변경하는 것."* 적용 규칙(코드와 정합):
+- 캘리 range·키 사상·gain·리그 어휘(shape key·hair 카탈로그) = 전부 **어댑터 측**
+  (`products/recipe.py`·`products/recipe_axes.py`·`surface/recipe_preview.py`)에만 산다.
+- `products/likeness.py`는 recipe의 존재를 모른다 — 의존은 단방향(recipe→likeness 소비).
+- recipe.json은 egress(Result·C11) **제외** — 도메인 표현은 기본 미제공, 부착 시에만.
+
+인용 축: **소비자 교체**(리그 교체·FLAME·diffusion 개인화 — 1차 표현은 불변이어야).
+축 근거 = change-forecast ④ "벽 신설(2026-07-20)" 항목(커밋 11ddc00 계열), 정본 메모 =
+likeness-primary-vs-domain. 시각 증거 도구 = `momentscan viz-recipe --ab mesh`: 1차 표현
+렌더(측정 neutral 메쉬 클레이, `surface/_meshref_blender.py`)와 도메인 표현 렌더(디자이너
+리그)를 병치해 벽의 양쪽을 눈으로 보여준다.
+
 **졸업 규칙 (균일 성장)**:
 - **L2 읽기 도메인 졸업**: 시그널 도메인은 *백엔드 ≥2 또는 융합/양자화 정책 보유* 시
   `signals.py`에서 자기 모듈로 (pose·geometry 완료 · identity가 다음, 6D-가림이 지불).

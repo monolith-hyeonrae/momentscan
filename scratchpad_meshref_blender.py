@@ -1,4 +1,5 @@
 """blender-내부: 측정 neutral(468정점) → 클레이 가면 렌더. payload JSON 경유.
+승격됨 → surface/_meshref_blender.py (track/lk-meshref — 이 파일이 승인 스펙 원본).
 payload = {faces: [[i,j,k]...], render_px, jobs: [{name, vertices: [[x,y,z]x468], out_png}]}
 좌표 = momentscan 정준 프레임(y-up, z-out, RMS≈1) → 카메라 +Z에서 -Z 응시."""
 import json

@@ -145,6 +145,115 @@ def test_render_raises_when_blender_absent(monkeypatch, tmp_path):
                               preview_out=tmp_path / "out", blend=fake_blend)
 
 
+# ── 측정-메쉬 병치 (track lk-meshref — 1차 표현 vs 도메인 표현 벽) ──────────────
+
+_N_FULL, _N_MESH = 478, 468                                  # CANONICAL_FRAME 기저(홍채 10점)
+
+
+def _write_likeness(clip_dir: Path, *, rider_id: str = "0", role: str = "main",
+                    neutral_center=None) -> None:
+    """실코퍼스 likeness.json 형태의 최소 픽스처 — riders 는 id-키 dict, main 은 role 로 찾는다."""
+    rider = {"role": role, "center": [0.0] * (_N_FULL * 3),
+             "neutral": None if neutral_center is None else {"center": neutral_center}}
+    (clip_dir / "likeness.json").write_text(
+        json.dumps({"schema": "momentscan.likeness/v1", "riders": {rider_id: rider}}),
+        encoding="utf-8")
+
+
+def test_neutral_vertices_slice_and_main_rider(tmp_path):
+    """neutral.center(478×3 평탄)를 468×3 으로 절사(홍채 제외)하고, main rider 를
+    id 가 아니라 role 로 찾는다(dual_2 의 main=rider '1' 실사례)."""
+    from momentscan.surface.recipe_preview import _neutral_vertices
+
+    flat = [float(i) for i in range(_N_FULL * 3)]
+    _write_likeness(tmp_path, rider_id="1", neutral_center=flat)   # main 이 '0' 아님
+    verts = _neutral_vertices(tmp_path)
+    assert verts is not None and len(verts) == _N_MESH
+    assert verts[0] == [0.0, 1.0, 2.0]
+    assert verts[-1] == [float(_N_MESH * 3 - 3), float(_N_MESH * 3 - 2), float(_N_MESH * 3 - 1)]
+
+
+def test_neutral_vertices_none_paths(tmp_path):
+    """파일 부재·main 부재·neutral=null(회귀 불가 클립) = None — 행 스킵 신호."""
+    from momentscan.surface.recipe_preview import _neutral_vertices
+
+    assert _neutral_vertices(tmp_path) is None                    # likeness.json 없음
+    _write_likeness(tmp_path, role="aux",
+                    neutral_center=[0.0] * (_N_FULL * 3))
+    assert _neutral_vertices(tmp_path) is None                    # main rider 없음
+    _write_likeness(tmp_path, neutral_center=None)
+    assert _neutral_vertices(tmp_path) is None                    # neutral=null
+
+
+def test_canonical_faces_zero_based(tmp_path, monkeypatch):
+    """obj `f` 라인(1-based, v/vt 혼합)을 0-based 삼각형으로 — 정점 라인은 무시."""
+    from momentscan.perception.readings import geometry
+
+    from momentscan.surface.recipe_preview import _canonical_faces
+
+    obj = tmp_path / "canon.obj"
+    obj.write_text("v 0 0 0\nv 1 0 0\nv 0 1 0\nf 1/10 2/20 3/30\nf 3 2 1\n", encoding="utf-8")
+    monkeypatch.setattr(geometry, "CANONICAL_OBJ", obj)
+    assert _canonical_faces() == [[0, 1, 2], [2, 1, 0]]
+
+
+def test_mesh_render_raises_when_blender_absent(tmp_path, monkeypatch):
+    """--ab mesh 경로도 같은 경계: blender 부재 = RuntimeError(설치 힌트), 조용한 열화 없음."""
+    from momentscan.perception.readings import geometry
+
+    from momentscan.surface.recipe_preview import render_mesh_montage
+
+    monkeypatch.setattr("momentscan.surface.recipe_preview.shutil.which", lambda _n: None)
+    obj = tmp_path / "canon.obj"                                  # 머신의 실 obj 에 비의존
+    obj.write_text("v 0 0 0\nf 1 1 1\n", encoding="utf-8")
+    monkeypatch.setattr(geometry, "CANONICAL_OBJ", obj)
+
+    clip = tmp_path / "test_3"
+    (clip / "recipe").mkdir(parents=True)
+    (clip / "recipe" / "test_3_t0.recipe.json").write_text(
+        json.dumps(_recipe("test_3_t0")), encoding="utf-8")
+    _write_likeness(clip, neutral_center=[0.0] * (_N_FULL * 3))
+    fake_blend = tmp_path / "rig.blend"
+    fake_blend.write_bytes(b"stub")
+
+    with pytest.raises(RuntimeError, match="blender"):
+        render_mesh_montage(tmp_path, ["test_3"],
+                            rig_variant=Variant(title="rig", slug="g1", gain=1.0),
+                            preview_out=tmp_path / "out", blend=fake_blend)
+
+
+def test_mesh_montage_skips_clip_without_neutral(tmp_path, monkeypatch):
+    """recipe 는 있으나 neutral 이 없는 클립(회귀 불가)은 행에서 정직 스킵 — 전 클립
+    스킵이면 ok=False 로 자백(렌더 시도 없음 = blender 불요)."""
+    from momentscan.surface.recipe_preview import render_mesh_montage
+
+    clip = tmp_path / "test_3"
+    (clip / "recipe").mkdir(parents=True)
+    (clip / "recipe" / "test_3_t0.recipe.json").write_text(
+        json.dumps(_recipe("test_3_t0")), encoding="utf-8")
+    _write_likeness(clip, neutral_center=None)                    # neutral=null
+    fake_blend = tmp_path / "rig.blend"
+    fake_blend.write_bytes(b"stub")
+
+    result = render_mesh_montage(tmp_path, ["test_3"],
+                                 rig_variant=Variant(title="rig", slug="g1", gain=1.0),
+                                 preview_out=tmp_path / "out", blend=fake_blend)
+    assert result["ok"] is False and "neutral" in result["reason"]
+
+
+def test_cli_ab_mesh_choice_wired():
+    """CLI --ab 에 mesh 선택지가 있다(gain·calib 선례와 동형 문법)."""
+    import argparse
+
+    from momentscan.infra.cli import surfaces
+
+    parser = argparse.ArgumentParser()
+    common = argparse.ArgumentParser(add_help=False)
+    surfaces.register(parser.add_subparsers(), common)
+    args = parser.parse_args(["viz-recipe", "test_3", "--ab", "mesh"])
+    assert args.ab == "mesh" and args.gain == DEFAULT_GAIN
+
+
 # ── 확장 키셋 (원장 ⑩ · track lk-keyset) ─────────────────────────────────────
 
 _EXPECTED_PROPOSED_AXES = frozenset({
