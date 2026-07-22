@@ -1,6 +1,13 @@
-"""샘플링 워크벤치 v0.2 (2026-07-22) — 원장 ⑫ 계기. v0 대비 UI 개정(user 피드백
+"""샘플링 워크벤치 v0.4 (2026-07-22) — 원장 ⑫ 계기. v0 대비 UI 개정(user 피드백
 "여러 비디오 동시 표시 = 과복잡" → v0.1 / "다이얼에 따라 타임라인 어디가 선택·
-걸러지는지 보이게" → v0.2):
+걸러지는지 보이게" → v0.2 / "원하는 헤드포즈로 그라운딩" → v0.3 / "다이얼과 연관된
+분포 지도 + 우리 조작이 어디쯤인지" → v0.4):
+  v0.3: Shift+클릭=포즈 그라운딩(예시-쿼리) · 포즈 눈금 사다리(클릭=그라운딩) ·
+  pitch 다이얼(클립-중앙값 상대 |pc|, 기본 off=셀프테스트 불변, 결측=통과).
+  v0.4: **다이얼 분포 지도** — 각 스크린 다이얼 아래 현재 클립의 신호 히스토그램
+  (x축=슬라이더와 동일 스케일 → 위치 대응 직관), 노랑 선=현재 값·초록=통과 측·
+  파랑 ▲=A 픽 위치·우상단 %=측정치 중 통과율. 사람마다 다른 포즈/신호 분포 위에서
+  경계를 정한다(per-clip 상대 원칙의 UI 형).
   v0.1: 단일-클립 탭 뷰(←→ 키보드 전환·탭에 GT/생존 배지) · 썸네일 224px(픽=원치수,
   풀=112 축소+호버 2× 확대) · 퍼널 막대 · 풀 정렬 토글(시간순/점수순 — 랭커 취향
   노출) · A/B diff 하이라이트(주황 외곽) · 변경-다이얼 하이라이트.
@@ -250,6 +257,7 @@ body{background:#161616;color:#ddd;font:13px/1.45 system-ui,sans-serif;margin:0}
 .dial.mod label{color:#fc6}
 .dial.mod label::after{content:" •"}
 .dial input[type=range]{width:100%}
+.dh{display:block;background:#141414;border:1px solid #2e2e2e;margin-top:1px}
 #tabs{display:flex;gap:6px;flex-wrap:wrap;margin:4px 0 10px}
 .tab{padding:4px 10px;border:1px solid #444;border-radius:4px;cursor:pointer;font-size:12px;color:#aaa}
 .tab.cur{background:#28343f;color:#dfeaf5;border-color:#6a92b8}
@@ -438,6 +446,7 @@ function render(){
   <div class="strip sm">`+show.map(r=>cellHTML(C.clip,r,"")).join("")+`</div>`;
  document.getElementById("main").innerHTML=h;
  drawTimeline(C,m);
+ drawDialHists(C,m);
 
  const st=document.getElementById("selftest");
  if(isDef){st.textContent=st_ok?"selftest OK — JS ≡ python (기본 설정)":"selftest FAIL: "+st_msg.join(",");
@@ -498,6 +507,51 @@ function drawTimeline(C,m){
   cyc(e,C.clip,nearest(e.clientX-rect.left).f);
  };
 }
+const HSPEC={
+ sym_max:{f:r=>r.sy,dir:"below"},
+ dev_max:{f:r=>Math.abs(r.dv),dir:"below"},
+ pt_max:{f:r=>Math.abs(r.pc),dir:"below"},
+ pu_min:{f:r=>r.pu,dir:"above"},
+ cs_min:{f:r=>r.cs,dir:"above"},
+ mv_min:{f:r=>r.mv,dir:"above"},
+ lt_min:{f:r=>r.lt,dir:"above"},
+ ex_max:{f:r=>r.ex,dir:"below"},
+};
+function drawDialHists(C,m){
+ const byf={};C.rows.forEach(r=>byf[r.f]=r);
+ for(const d of DIALS){
+  if(d.length==1)continue;
+  const [k,,mn,mx]=d, sp=HSPEC[k];
+  if(!sp)continue;
+  const cv=document.getElementById("h_"+k);
+  if(!cv)continue;
+  const ctx=cv.getContext("2d"), W=cv.width, H=cv.height;
+  ctx.clearRect(0,0,W,H);
+  const vals=[];
+  for(const r of C.rows){const v=sp.f(r);if(v!=null&&isFinite(v))vals.push(v);}
+  const NB=40, bins=new Array(NB).fill(0);
+  for(const v of vals){let b=Math.floor((Math.min(mx,Math.max(mn,v))-mn)/(mx-mn)*NB);
+   if(b>=NB)b=NB-1;if(b<0)b=0;bins[b]++;}
+  const bm=Math.max(...bins,1), thr=A[k];
+  const tx=v=>4+(Math.min(mx,Math.max(mn,v))-mn)/(mx-mn)*(W-8);
+  for(let i=0;i<NB;i++){
+   const x0=4+i*(W-8)/NB, bh=Math.round((H-13)*bins[i]/bm);
+   const mid=mn+(i+0.5)*(mx-mn)/NB;
+   const pass=sp.dir=="below"?mid<thr:mid>=thr;
+   ctx.fillStyle=pass?"#6f9b6f":"#484848";
+   ctx.fillRect(x0,H-3-bh,Math.max(1,(W-8)/NB-1),bh);
+  }
+  ctx.fillStyle="#fc6";ctx.fillRect(tx(thr)-0.8,1,1.6,H-2);   // 현재 다이얼 위치
+  ctx.fillStyle="#7ac";                                        // A 픽 위치 ▲
+  for(const f of m.pA){const r=byf[f];if(!r)continue;const v=sp.f(r);if(v==null||!isFinite(v))continue;
+   const x=tx(v);ctx.beginPath();ctx.moveTo(x,H-2);ctx.lineTo(x-3,H-9);ctx.lineTo(x+3,H-9);ctx.closePath();ctx.fill();}
+  let np=0;
+  for(const v of vals){if(sp.dir=="below"?v<thr:v>=thr)np++;}
+  ctx.fillStyle="#bbb";ctx.font="9px sans-serif";ctx.textAlign="right";
+  ctx.fillText(Math.round(100*np/Math.max(vals.length,1))+"%",W-3,9);
+  ctx.textAlign="left";
+ }
+}
 function cyc(e,clip,f){
  if(e&&e.shiftKey){groundPose(clip,f);return;}
  const k=clip+":"+f;GT[k]=GT[k]=="pos"?"neg":GT[k]=="neg"?undefined:"pos";
@@ -532,8 +586,10 @@ function buildPanel(){
   const [k,lbl,mn,mx,stp]=d;
   h+=`<div class="dial" id="d_${k}"><label>${lbl}<span id="v_${k}">${A[k]}</span></label>
    <input type="range" min="${mn}" max="${mx}" step="${stp}" value="${A[k]}"
-    oninput="A['${k}']=+this.value;document.getElementById('v_${k}').textContent=this.value;render()"></div>`;}
- h+=`<div class="note" style="margin-top:12px">주황 라벨 • = 기본값에서 움직인 다이얼</div>`;
+    oninput="A['${k}']=+this.value;document.getElementById('v_${k}').textContent=this.value;render()">`+
+   (HSPEC[k]?`<canvas class="dh" id="h_${k}" width="236" height="36"></canvas>`:``)+`</div>`;}
+ h+=`<div class="note" style="margin-top:12px">주황 라벨 • = 기본값에서 움직인 다이얼<br>
+  분포 지도 = 현재 클립의 신호 분포(초록=통과 측 · 노랑 선=현재 값 · ▲=A 픽 · %=측정치 중 통과율)</div>`;
  p.innerHTML=h;}
 document.addEventListener("keydown",e=>{
  if(e.target.tagName=="INPUT")return;
