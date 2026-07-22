@@ -11,6 +11,10 @@
   v0.5: **yaw = 부호-있는 밴드 다이얼**(dev_lo/dev_hi, portrait 쿼리 대비 — "yaw 60~90"
   같은 측면 구간 선택 가능; 수렴 스크린=밴드의 특수형, 기본 (−15,15)=구 |dev|<15 동치
   =셀프테스트 불변) · 포즈 눈금=좌측면→정면→우측면 스윕 · 그라운딩=밴드 확장 의미론.
+  v0.8: **빛 판별력 계수 lf + 분산-감쇠 시험 토글**(⑪-e v3, user 관찰 "test_3=흐린 날
+  → 조명 영향 적어야": 풀-상대 랭크는 분산을 지워 저분산 클립에서 축이 과대발언 —
+  lf=robust (p90−p10)/p50 정규화[test_4급≈1.0], ATT 토글 시 w_light×lf. 기본 off=
+  셀프테스트 불변; 채택 시 lk-sampling2 파이썬 확정 구현).
   v0.7: **상태 5그룹 재편**(user 정식화: 포즈/표정·얼굴/빛/영상/왜곡 — 원장 ⑪ 봉인
   좌표계) — 다이얼 패널·퍼널·타임라인이 그룹 단위로 정렬(분류=역학). 빛-심층 축 신설:
   dp=입체감(|face_light_lr|+|tb| 방향성, relight '입체감 floor' 예약석)·hh=거칠기
@@ -296,6 +300,16 @@ def build_clip(clip_id, out_root, wb_dir):
     # v0.7 빛-심층·영상: 입체감=|lr|+|tb|(방향성 총량, flat→저값)·거칠기 harsh·선명
     dp_pct = pct_rank(np.abs(t["light_lr"]) + np.abs(t["light_tb"]))
     hh_pct = pct_rank(t["light_hh"])
+
+    # v0.8 빛 판별력 계수(⑪-e v3): 흐린 날=저분산 → 랭크 과대발언 감쇠용.
+    # robust (p90−p10)/p50, test_4급 동적범위(≈0.8)를 1.0으로 정규화.
+    def _spread(v):
+        fin = v[np.isfinite(v)]
+        if len(fin) < 10:
+            return 0.0
+        p10, p50, p90 = np.percentile(fin, [10, 50, 90])
+        return float((p90 - p10) / (abs(p50) + 1e-6))
+    lf = round(min(1.0, 0.5 * (_spread(t["lum_eff"]) + _spread(chroma)) / 0.8), 2)
     q3 = np.nanmean(np.vstack([sharp_pct, micro_pct, norm_pct]), axis=0)
     vis2 = np.nanmean(np.vstack([cs_pct, mv_pct]), axis=0)
     R = np.stack([rank01(t["expr"], flip=True), rank01(t["pupil"]), rank01(q3),
@@ -321,7 +335,7 @@ def build_clip(clip_id, out_root, wb_dir):
                      "r": [round(float(v), 4) for v in R[i]],
                      "th": (f"thumbs/{clip_id}/f{int(fx[i]):05d}.jpg" if int(fx[i]) in thumb_ok else None)})
     selftest = compute_picks([dict(r) for r in rows], DEFAULT_CFG)
-    return {"clip": clip_id, "tid": t["tid"], "n": n, "vf": vf, "cur": cur,
+    return {"clip": clip_id, "tid": t["tid"], "n": n, "vf": vf, "cur": cur, "lf": lf,
             "selftest": selftest, "rows": rows, "ghost": ghost, "absent": absent}
 
 
@@ -428,7 +442,7 @@ const DIALS=[
 const DEF={sym_max:0.6,dev_lo:-15,dev_hi:15,pt_max:99,pu_min:0.4,cs_min:0,mv_min:0,lt_min:0,ex_max:1.0,gap_min:12,
            dp_min:0,hh_max:100,sp_min:0,
            w_expr:0.30,w_pu:0.15,w_q3:0.20,w_vis2:0.15,w_light:0.20};
-let A={...DEF}, Bcfg=null, GT={}, cur=0, sortMode="time", poseOpen=false;
+let A={...DEF}, Bcfg=null, GT={}, cur=0, sortMode="time", poseOpen=false, ATT=false;   // ATT=빛 분산-감쇠(시험)
 const STAGES=["포즈","표정·얼굴","빛","영상","왜곡"];   // 상태 5그룹(원장 ⑪ 재편) = 퍼널·타임라인 단위
 const SCOL=["#c98a4a","#e08aa8","#d8c455","#55aacc","#b070d0"];
 const SURV="#69d069";
@@ -448,10 +462,12 @@ function funnel(rows,c){
  const s4=s3.filter(r=>r.sp==null||r.sp>=c.sp_min);
  const s5=s4.filter(r=>(r.cs==null||r.cs>=c.cs_min)&&(r.mv==null||r.mv>=c.mv_min));
  return [rows.length,s1.length,s2.length,s3.length,s4.length,s5.length];}
-function score(r,c){return c.w_expr*r.r[0]+c.w_pu*r.r[1]+c.w_q3*r.r[2]+c.w_vis2*r.r[3]+c.w_light*r.r[4];}
-function picks(rows,c){
+function score(r,c,lf){
+ const wl=ATT?c.w_light*(lf==null?1:lf):c.w_light;   // ⑪-e v3: 판별력-비례 감쇠(시험)
+ return c.w_expr*r.r[0]+c.w_pu*r.r[1]+c.w_q3*r.r[2]+c.w_vis2*r.r[3]+wl*r.r[4];}
+function picks(rows,c,lf){
  const sv=rows.filter(r=>pass(r,c));
- sv.forEach(r=>r._s=score(r,c));
+ sv.forEach(r=>r._s=score(r,c,lf));
  sv.sort((a,b)=>b._s-a._s);
  const got=[];
  for(const r of sv){if(got.every(o=>Math.abs(r.f-o.f)>=c.gap_min))got.push(r);if(got.length==3)break;}
@@ -491,8 +507,8 @@ function render(){
  let st_ok=true,st_msg=[],gtP=0,gtN=0,gtPB=0,gtNB=0;
  const isDef=JSON.stringify(A)==JSON.stringify(DEF);
  const meta=WB.clips.map(C=>{
-  const pA=picks(C.rows,A), fn=funnel(C.rows,A);
-  const pB=Bcfg?picks(C.rows,Bcfg):null;
+  const pA=picks(C.rows,A,C.lf), fn=funnel(C.rows,A);
+  const pB=Bcfg?picks(C.rows,Bcfg,C.lf):null;
   if(isDef){const same=JSON.stringify(pA.slice().sort((a,b)=>a-b))==JSON.stringify(C.selftest.slice().sort((a,b)=>a-b));
    if(!same){st_ok=false;st_msg.push(C.clip);}}
   pA.forEach(f=>{const g=GT[C.clip+":"+f];if(g=="pos")gtP++;if(g=="neg")gtN++;});
@@ -512,9 +528,11 @@ function render(){
        gAbs=C.absent.reduce((a,r)=>a+r[1]-r[0]+1,0);
  let h=`<div id="tabs">${tabs}</div><b>${C.clip}</b> t${C.tid} <span class="note">비디오 ${C.vf}f = 측정 ${C.n}`+
   (gInv?` + 무효 ${gInv}`:"")+(gDet?` + 미측정 ${gDet}`:"")+(gFrag?` + 파편 ${gFrag}`:"")+(gAbs?` + 무검출 ${gAbs}`:"")+
-  ` · 풀 정렬:</span>
+  ` · <b>빛 판별력 lf=${C.lf==null?"?":C.lf}</b>${ATT?` <span style="color:#fc6">(감쇠 적용: w_light ${A.w_light}→${(A.w_light*(C.lf==null?1:C.lf)).toFixed(2)})</span>`:""} · 풀 정렬:</span>
   <button onclick="sortMode=sortMode=='time'?'score':'time';render()">${sortMode=='time'?'시간순':'점수순'}</button>
-  <button onclick="poseOpen=!poseOpen;render()">포즈 눈금 ${poseOpen?'닫기':'보기'}</button>`;
+  <button onclick="poseOpen=!poseOpen;render()">포즈 눈금 ${poseOpen?'닫기':'보기'}</button>
+  <label style="font-size:12px;color:#bbb;margin-left:6px"><input type="checkbox" ${ATT?"checked":""}
+   onchange="ATT=this.checked;render()"> 빛 분산-감쇠(시험)</label>`;
  h+=funnelHTML(m.fn);
  h+=`<div id="tl"><canvas id="tlc" width="1000" height="44"></canvas><div id="tlTip"></div></div>`+legendHTML();
  if(poseOpen){
@@ -536,7 +554,7 @@ function render(){
  if(m.pB)h+=`<div class="rowlbl">B 픽</div><div class="strip big">`+
    m.pB.map(f=>cellHTML(C.clip,byf[f],"pickB"+(!setA.has(f)?" diff":""))).join("")+`</div>`;
  const sv=C.rows.filter(r=>pass(r,A));
- sv.forEach(r=>r._s=score(r,A));
+ sv.forEach(r=>r._s=score(r,A,C.lf));
  const ordered=sortMode=="time"?sv.slice().sort((a,b)=>a.f-b.f):sv.slice().sort((a,b)=>b._s-a._s);
  const show=ordered.slice(0,400);                            // v0.6: 썸네일 필터 제거(공평)
  h+=`<div class="rowlbl">생존 풀 (A, ${sv.length}행 중 ${show.length} 표시 · ${sortMode=='time'?'시간순':'점수순'})</div>
