@@ -93,7 +93,7 @@ class _WorkbenchHandler(BaseHTTPRequestHandler):
         path = u.path.rstrip("/") or "/"
         if path == "/":
             data = {"clips": list_clips(self.out_root), "corpus": self.corpus,
-                    "gt_count": len(read_gt(self.gt_path))}
+                    "gt_path": str(self.gt_path), "gt_count": len(read_gt(self.gt_path))}
             self._send_html(INDEX_PAGE.replace("__DATA__", json.dumps(data, ensure_ascii=False)))
         elif path == "/wb":
             q = parse_qs(u.query)

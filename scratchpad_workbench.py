@@ -11,6 +11,7 @@ export → fixtures/eval/, 스키마 momentscan.workbench-gt/v0).
 드리프트 방어: 명시-floor 의미론(사다리는 생산 상세) + 로드 시 셀프테스트(JS가 기본
 설정으로 뽑은 픽 ≡ 파이썬 동일-데이터 픽). 봉인 전 최종 확인=파이썬 카드 재실행.
 스코프 v0.x = center 픽만(hair 빈은 v1). 표시 썸네일은 표본화(수치는 전 행 기준).
+승격(2026-07-22 track/lk-workbench): 정식 표면 = `momentscan workbench` (surface/workbench*.py) — 이 스크립트는 값-동일 참조 구현으로 보존.
 """
 import json
 import sys

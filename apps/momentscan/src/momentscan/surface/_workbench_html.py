@@ -257,7 +257,7 @@ input[type=text]{background:#111;color:#ddd;border:1px solid #444;border-radius:
 </style></head><body>
 <script>const DATA=__DATA__;</script>
 <h1>momentscan workbench</h1>
-<div class="note">코퍼스 = <b id="corpus"></b> · GT 홈 = fixtures/eval/workbench_gt.jsonl (<span id="gtn"></span>행)
+<div class="note">코퍼스 = <b id="corpus"></b> · GT 홈 = <span id="gtpath"></span> (<span id="gtn"></span>행)
  · 첫 열람은 클립당 수십 초(detect.mp4 디코드 → 캐시), 이후 즉시</div>
 
 <div id="reg">
@@ -276,6 +276,7 @@ input[type=text]{background:#111;color:#ddd;border:1px solid #444;border-radius:
 
 <script>
 document.getElementById("corpus").textContent=DATA.corpus;
+document.getElementById("gtpath").textContent=DATA.gt_path;
 document.getElementById("gtn").textContent=DATA.gt_count;
 const tbl=document.getElementById("tbl");
 for(const c of DATA.clips){
