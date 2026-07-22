@@ -1,16 +1,23 @@
 """workbench — likeness 표본 샘플링 연구 콘솔의 데이터층 (원장 ⑫ 승격).
 
-참조 구현 = scratchpad_workbench.py v0.5 (2026-07-22, main 5f1bdd9) 을 값-동일하게
+참조 구현 = scratchpad_workbench.py v0.6 (2026-07-22, main 1fb0da2) 을 값-동일하게
 승격한 것. 다이얼 의미론(명시-floor 스크린 + 가중 랭킹)과 셀프테스트 픽은 v0.x 와
 문자 그대로 같아야 한다 — 검증 좌표: test_3=[29,511,352] · dual_2=[34,1052,662]
 (pitch pt_max 기본 99=off · yaw 밴드 기본 (−15,15)=구 |dev|<15 동치라 전부 불변).
 
+v0.6 공평 우주: 측정 행 썸네일 표본화를 제거(전 행 저장)하고, 선택받지 못한 프레임의
+존재를 유령 우주(ghost/absent/vf)로 페이로드에 실어 타임라인 유령 레인·풀 그리드가
+비디오 전체를 정직하게 비춘다 — 유령 종류: inv(측정됐으나 valid 밖)·det(검출만,
+랜드마크 없음)·frag(동일 subject 타 트랙)·무검출(absent 구간).
+
 층 구성 (원장 ⑫ — user 도구 3종의 세 층):
   frame_table    클립 main rider 의 전 신호 와이드 행 — 프로브 4종이 반복한 조인의
-                 단일홈. stash 읽기-전용 파생, stash 로 영속화하지 않는다(이중-진실 방지).
-  build_clip_data  frame_table + chroma/썸네일 디코드 + 랭크 합성 → 워크벤치 페이로드.
-                 캐시 = <wb_dir>/cache/<clip>.json (mtime-기반 무효화). 캐시는 stash
-                 아티팩트가 아니라 계기 파생물 — freshness 등재 대상이 아니다.
+                 단일홈 (+유령 우주 컨텍스트: lm_all_cb·det_bbox·frag_bbox).
+                 stash 읽기-전용 파생, stash 로 영속화하지 않는다(이중-진실 방지).
+  build_clip_data  frame_table + chroma/썸네일 디코드(전 행 + 유령 표본) + 랭크 합성
+                 → 워크벤치 페이로드(+ghost/absent/vf). 캐시 = <wb_dir>/cache/<clip>.json
+                 (mtime-기반 무효화). 캐시는 stash 아티팩트가 아니라 계기 파생물 —
+                 freshness 등재 대상이 아니다.
   compute_picks  다이얼 설정 → 픽. 서버가 기본 설정으로 계산해 페이로드에 동봉
                  (selftest) → JS 가 같은 의미론으로 대조한다(드리프트 방어).
   GT I/O         클릭 깃발의 영구 홈 = fixtures/eval/workbench_gt.jsonl
@@ -44,8 +51,8 @@ from momentscan.perception.readings.face_signals import pupil_visibility, visual
 
 # ── 상수 (v0.x 와 문자 그대로 동일해야 하는 것들) ────────────────────────────
 THUMB = 224                       # 저장 원치수 px — 픽 행은 원치수, 풀은 112 축소 표시
-THUMB_MAX = 120                   # 클립당 표본 썸네일 상한 (수치는 전 행 기준)
-CACHE_VERSION = 2                 # 의미론 변경 시 올린다 → 전 캐시 무효화 (2=v0.3 pt/pc 행 편입)
+GHOST_THUMB_MAX = 60              # 유령 종류별 썸네일 상한 (v0.6 — 측정 행은 전량 저장)
+CACHE_VERSION = 3                 # 의미론 변경 시 올린다 → 전 캐시 무효화 (3=v0.6 공평 우주: 전 행 썸네일·ghost/absent/vf)
 
 # 기본 설정 = v7.2 등가(단일-floor 의미론) — _workbench_html.js 의 DEF 와 문자 그대로
 # 동일해야 한다 (로드 시 셀프테스트가 이 짝을 감시).
@@ -95,11 +102,13 @@ def rank01(x: np.ndarray, flip: bool = False) -> np.ndarray:
 
 # ── frame_table: stash 조인의 단일홈 ─────────────────────────────────────────
 def frame_table(clip_id: str, out_root: Path) -> dict:
-    """클립 main rider 의 전 신호 와이드 테이블 (+썸네일용 컨텍스트).
+    """클립 main rider 의 전 신호 와이드 테이블 (+유령 우주 컨텍스트, v0.6).
 
     조인: landmarks(유효 게이트 프레임) × features/A(yaw·blur) × parse(micro·
     mouth_vis·skin_lum·clip_hi) × detections(raw embedding → cs·norm) ×
-    tubelets(scene_phase) × blendshapes(expr). 전부 읽기-전용."""
+    tubelets(scene_phase) × blendshapes(expr). 전부 읽기-전용.
+    유령 우주: lm_all_cb(valid-필터 전 전체 lm crop_box)·det_bbox(이 트랙 검출 bbox)·
+    frag_bbox(동일 subject·타 track_id 파편 bbox) — build_clip_data 가 차집합으로 종류 분류."""
     # 랭킹 상수는 preset 소유 (C9 자리) — v0 과 동일하게 race981 의 정면 좌표를 쓴다.
     from momentscan.preset import resolve
     frontal_deg = resolve("race981").camera.frontal_deg
@@ -110,10 +119,14 @@ def frame_table(clip_id: str, out_root: Path) -> dict:
     out_root = Path(out_root)
     rec = json.loads(appearance_path(out_root, clip_id).read_text(encoding="utf-8"))
     tid, rider = next((int(t), r) for t, r in rec["riders"].items() if r.get("role") == "main")
-    lm = read_landmarks(out_root, clip_id).filter(pl.col("track_id") == tid).sort("frame_idx")
+    lmr = read_landmarks(out_root, clip_id).filter(pl.col("track_id") == tid).sort("frame_idx")
+    # 유령 우주 재료: 무효(valid-필터로 빠질 lm 행)의 crop_box — 전량 보존 후 필터
+    lm_all_cb = {int(f): tuple(float(v) for v in b)
+                 for f, b in zip(lmr["frame_idx"].to_list(), lmr["crop_box"].to_list())}
     gt = pl.read_parquet(clip_dir(out_root, clip_id) / "gate_trace.parquet") \
            .filter(pl.col("track_id") == tid)
     valid = set(gt.filter(pl.col("valid"))["frame_idx"].to_list())
+    lm = lmr
     keep = lm["frame_idx"].is_in(list(valid))
     if int(keep.sum()) >= 10:
         lm = lm.filter(keep)
@@ -146,8 +159,19 @@ def frame_table(clip_id: str, out_root: Path) -> dict:
     chi = np.array([hi_of.get(int(f), np.nan) for f in fx], float)
     lum_eff = lum * (1.0 - np.nan_to_num(chi, nan=0.0))    # 원장 ⑪-e: 백화 페널티
 
-    det = pl.read_parquet(clip_dir(out_root, clip_id) / "detections.parquet") \
-            .filter(pl.col("track_id") == tid)
+    det_all = pl.read_parquet(clip_dir(out_root, clip_id) / "detections.parquet")
+    det = det_all.filter(pl.col("track_id") == tid)
+    # 유령 우주 재료: 이 트랙의 검출 bbox(랜드마크 유무 무관) + 동일-subject 타-트랙 파편
+    det_bbox = {int(f): tuple(float(v) for v in b)
+                for f, b in zip(det["frame_idx"].to_list(), det["bbox"].to_list()) if b is not None}
+    frag_bbox = {}
+    if "subject_id" in det_all.columns:
+        sids = det["subject_id"].drop_nulls().unique().to_list()
+        if sids:
+            fr = det_all.filter(pl.col("subject_id").is_in(sids) & (pl.col("track_id") != tid))
+            frag_bbox = {int(f): tuple(float(v) for v in b)
+                         for f, b in zip(fr["frame_idx"].to_list(), fr["bbox"].to_list())
+                         if b is not None}
     erows = [(int(f), np.asarray(e, float)) for f, e in
              zip(det["frame_idx"].to_list(), det["embedding"].to_list()) if e is not None]
     cs = np.full(n, np.nan)
@@ -176,7 +200,8 @@ def frame_table(clip_id: str, out_root: Path) -> dict:
     sym = visual_frontality(P)
     return dict(tid=tid, rider=rider, fx=fx, cb=cb, P=P, yaw=yaw, pitch=pitch, blur=blur,
                 micro=micro, mv=mv, lum_eff=lum_eff, cs=cs, nrm=nrm, board=board, expr=expr,
-                pupil=pupil, sym=sym, frontal_deg=frontal_deg)
+                pupil=pupil, sym=sym, frontal_deg=frontal_deg,
+                lm_all_cb=lm_all_cb, det_bbox=det_bbox, frag_bbox=frag_bbox)
 
 
 # ── 픽 의미론 (JS 시뮬레이터와 문자 그대로 동일 — 반올림된 shipped 값 위에서) ──
@@ -268,10 +293,11 @@ def _cache_fresh(cache: Path, out_root: Path, clip_id: str) -> bool:
 
 
 def build_clip_data(clip_id: str, out_root: Path, *, force: bool = False) -> dict:
-    """워크벤치 클립 페이로드 {clip,tid,n,cur,selftest,rows} — 캐시-우선.
+    """워크벤치 클립 페이로드 {clip,tid,n,vf,cur,selftest,rows,ghost,absent} — 캐시-우선.
 
-    빌드 = frame_table + detect.mp4 한 번의 순차 디코드(chroma 전 행 + 썸네일 표본)
-    + 랭크 합성 + 파이썬 셀프테스트 픽. 썸네일은 <wb_dir>/thumbs/<clip>/ 에 파일로."""
+    빌드 = frame_table + detect.mp4 한 번의 순차 디코드(chroma 전 행 + 썸네일 전 행 +
+    유령 표본) + 랭크 합성 + 파이썬 셀프테스트 픽 + 유령 우주(ghost/absent/vf).
+    썸네일은 <wb_dir>/thumbs/<clip>/ 에 파일로."""
     import cv2
 
     out_root = Path(out_root)
@@ -283,26 +309,44 @@ def build_clip_data(clip_id: str, out_root: Path, *, force: bool = False) -> dic
     fx, cb, P = t["fx"], t["cb"], t["P"]
     n = len(fx)
 
-    # chroma + 썸네일: 한 번의 순차 디코드 (v0 build_clip 값-동일)
+    # chroma + 썸네일(v0.6: 전 행 = 공평 우주) + 유령 썸네일: 한 번의 순차 디코드
     dev = t["yaw"] - t["frontal_deg"]
-    thumbable = (t["sym"] < 1.3) & (t["pupil"] >= 0.25) & (np.abs(dev) < 25)
-    tidx = np.where(thumbable)[0]
-    if len(tidx) > THUMB_MAX:
-        tidx = tidx[np.unique(np.linspace(0, len(tidx) - 1, THUMB_MAX).astype(int))]
     cur = list(t["rider"]["samples"]["center_nearest"])
-    tset = set(int(fx[i]) for i in tidx) | set(int(c) for c in cur if c in set(fx.tolist()))
     row_of = {int(f): i for i, f in enumerate(fx)}
+    fxset = set(row_of)
+    # 유령 우주: inv=측정됐으나 valid 밖 · det=검출만(랜드마크 없음) · frag=동일-subject 타 트랙
+    inv_f = sorted(set(t["lm_all_cb"]) - fxset)
+    det_f = sorted(set(t["det_bbox"]) - set(t["lm_all_cb"]))
+    frag_f = sorted(set(t["frag_bbox"]) - set(t["det_bbox"]) - set(t["lm_all_cb"]))
+    ghost_kind = {**{f: "inv" for f in inv_f}, **{f: "det" for f in det_f},
+                  **{f: "frag" for f in frag_f}}
+    ghost_thumb = set()
+    for kfs in (inv_f, det_f, frag_f):                          # 종류별 썸네일 ≤60 표본
+        if len(kfs) > GHOST_THUMB_MAX:
+            ghost_thumb |= {kfs[i] for i in
+                            np.unique(np.linspace(0, len(kfs) - 1, GHOST_THUMB_MAX).astype(int))}
+        else:
+            ghost_thumb |= set(kfs)
+
+    def _sq(b, W0, H0, pad=1.3):
+        x1, y1, x2, y2 = b
+        cx, cy, s = (x1 + x2) / 2, (y1 + y2) / 2, max(x2 - x1, y2 - y1) * pad / 2
+        return max(0, int(cx - s)), max(0, int(cy - s)), min(W0, int(cx + s)), min(H0, int(cy + s))
+
     chroma = np.full(n, np.nan)
     tdir = workbench_dir(out_root) / "thumbs" / clip_id
     tdir.mkdir(parents=True, exist_ok=True)
     thumb_ok = set()
     cap = cv2.VideoCapture(str(clip_dir(out_root, clip_id) / "detect.mp4"))
+    vf = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
     fidx = 0
     while True:
         ok, frm = cap.read()
         if not ok:
             break
+        H0, W0 = frm.shape[:2]
         i = row_of.get(fidx)
+        box = None
         if i is not None:
             cbv = cb[i]
             pts = np.stack([cbv[0] + P[i, :, 0] * (cbv[2] - cbv[0]),
@@ -310,15 +354,36 @@ def build_clip_data(clip_id: str, out_root: Path, *, force: bool = False) -> dic
             r = _skin_chroma(frm, pts, cbv)
             if r is not None:
                 chroma[i] = r
-            if fidx in tset:
-                x1, y1, x2, y2 = (int(v) for v in cbv)
-                if x2 - x1 > 1 and y2 - y1 > 1:
-                    tile = cv2.resize(frm[max(0, y1):y2, max(0, x1):x2], (THUMB, THUMB))
-                    cv2.imwrite(str(tdir / f"f{fidx:05d}.jpg"), tile,
-                                [cv2.IMWRITE_JPEG_QUALITY, 82])
-                    thumb_ok.add(fidx)
+            box = tuple(cbv)
+        elif fidx in ghost_thumb:
+            k = ghost_kind[fidx]
+            box = (t["lm_all_cb"].get(fidx) if k == "inv"
+                   else _sq(t["det_bbox"].get(fidx) or t["frag_bbox"].get(fidx), W0, H0))
+        if box is not None:
+            x1, y1, x2, y2 = (int(v) for v in box)
+            if x2 - x1 > 1 and y2 - y1 > 1:
+                tile = cv2.resize(frm[max(0, y1):y2, max(0, x1):x2], (THUMB, THUMB))
+                cv2.imwrite(str(tdir / f"f{fidx:05d}.jpg"), tile,
+                            [cv2.IMWRITE_JPEG_QUALITY, 82])
+                thumb_ok.add(fidx)
         fidx += 1
     cap.release()
+    vf = max(vf, fidx)
+    covered = fxset | set(ghost_kind)
+    absent = []
+    _st = None
+    for f in range(vf):
+        if f not in covered:
+            if _st is None:
+                _st = f
+        elif _st is not None:
+            absent.append([_st, f - 1])
+            _st = None
+    if _st is not None:
+        absent.append([_st, vf - 1])
+    ghost = [{"f": f, "k": k,
+              "th": (f"thumbs/{clip_id}/f{f:05d}.jpg" if f in thumb_ok else None)}
+             for f, k in sorted(ghost_kind.items())]
 
     micro_pct, sharp_pct = pct_rank(t["micro"]), pct_rank(t["blur"])
     norm_pct, cs_pct, mv_pct = pct_rank(t["nrm"]), pct_rank(t["cs"]), pct_rank(t["mv"])
@@ -348,8 +413,9 @@ def build_clip_data(clip_id: str, out_root: Path, *, force: bool = False) -> dic
                      "th": (f"thumbs/{clip_id}/f{int(fx[i]):05d}.jpg"
                             if int(fx[i]) in thumb_ok else None)})
     selftest = compute_picks([dict(r) for r in rows], DEFAULT_CFG)
-    payload = {"clip": clip_id, "tid": t["tid"], "n": n, "cur": cur, "selftest": selftest,
-               "rows": rows, "cache_version": CACHE_VERSION,
+    payload = {"clip": clip_id, "tid": t["tid"], "n": n, "vf": vf, "cur": cur,
+               "selftest": selftest, "rows": rows, "ghost": ghost, "absent": absent,
+               "cache_version": CACHE_VERSION,
                "built_iso": time.strftime("%Y-%m-%dT%H:%M:%S%z")}
     _atomic_write(cp, json.dumps(payload, ensure_ascii=False))
     return payload

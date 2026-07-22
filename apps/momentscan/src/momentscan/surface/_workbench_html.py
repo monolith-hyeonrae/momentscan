@@ -1,9 +1,9 @@
 """workbench HTML 템플릿 — 서버가 데이터(payload)를 주입하는 순수 렌더러.
 
 _inspector_html.py 관례: 템플릿은 이 모듈, 데이터 주입(__WB__ 등 치환)은 서버.
-워크벤치 페이지의 다이얼/퍼널/픽 JS 는 scratchpad_workbench.py v0.5 (2026-07-22,
-main 5f1bdd9: 단일-클립 탭 뷰·타임라인 스트립·포즈 그라운딩·pitch 다이얼·다이얼
-분포 지도·yaw 부호-있는 밴드) 이식 —
+워크벤치 페이지의 다이얼/퍼널/픽 JS 는 scratchpad_workbench.py v0.6 (2026-07-22,
+main 1fb0da2: 단일-클립 탭 뷰·타임라인 스트립·포즈 그라운딩·pitch 다이얼·다이얼
+분포 지도·yaw 부호-있는 밴드·공평 우주[유령 레인·전 행 썸네일]) 이식 —
 **의미론(firstFail/pass/funnel/score/picks·DEF)은 파이썬 workbench.compute_picks /
 DEFAULT_CFG 와 문자 그대로 동일해야 한다**(로드 시 셀프테스트가 이 짝을 감시).
 v0.x 대비 서버판 변경 3: data.js → const WB 인라인 · GT 클릭 = POST /api/gt 즉시
@@ -92,8 +92,8 @@ const CORPUS=__CORPUS__;
 const DIALS=[
  ["1단 · 품질 스크린 (결정경계)"],
  ["sym_max","보이는-정면 sym <",0.3,2.0,0.05],
- ["dev_lo","yaw dev 하한 > (밴드)",-45,44,1],
- ["dev_hi","yaw dev 상한 < (밴드)",-44,45,1],
+ ["dev_lo","yaw dev 하한 > (밴드)",-90,89,1],
+ ["dev_hi","yaw dev 상한 < (밴드)",-89,90,1],
  ["pt_max","|pitch dev| < (클립상대·99=off)",3,99,1],
  ["pu_min","눈동자 pupil >=",0,0.8,0.01],
  ["cs_min","정체성 cs pct >=",0,90,5],
@@ -148,7 +148,7 @@ function picks(rows,c){
 
 function cellHTML(clip,r,cls){
  const k=clip+":"+r.f, fl=GT[k]||"";
- const img=r.th?`<img src="/${r.th}">`:`<div class="noimg">f${r.f}<br>(no thumb)</div>`;
+ const img=r.th?`<img src="/${r.th}" loading="lazy">`:`<div class="noimg">f${r.f}<br>(no thumb)</div>`;
  const cap=`f${r.f} ex${r.ex} pu${r.pu}<br>cs${r.cs==null?"--":r.cs} mv${r.mv==null?"--":r.mv} lt${r.lt==null?"--":r.lt}`;
  const mark=fl=="pos"?"O":fl=="neg"?"X":"";
  return `<div class="cell ${fl} ${cls||""}" onclick="cyc(event,'${clip}',${r.f})">${img}
@@ -170,6 +170,9 @@ function legendHTML(){
   `<span><i style="background:rgba(80,170,180,.5)"></i>boarding</span>
    <span><i style="background:#7ac"></i>A 픽</span><span><i style="border:1px dashed #ca7;width:7px;height:7px"></i>B 픽</span>
    <span style="color:#4e4">●</span><span style="color:#e44;margin-left:-8px">●</span> <span>GT ±</span>
+   <span style="margin-left:8px">하단 유령 레인:</span>
+   <span><i style="background:#a05244"></i>무효</span><span><i style="background:#5a78a0"></i>미측정</span>
+   <span><i style="background:#8a70b0"></i>파편</span><span><i style="background:#3a3a3a"></i>무검출</span>
    · 호버=미리보기 · 클릭=GT 깃발</div>`;}
 
 function render(){
@@ -193,7 +196,12 @@ function render(){
  const C=WB.clips[cur], m=meta[cur];
  const byf={};C.rows.forEach(r=>byf[r.f]=r);
  const setA=new Set(m.pA), setB=m.pB?new Set(m.pB):null;
- let h=`<div id="tabs">${tabs}</div><b>${C.clip}</b> t${C.tid} <span class="note">n=${C.n} · 풀 정렬:</span>
+ const gInv=C.ghost.filter(g=>g.k=="inv").length, gDet=C.ghost.filter(g=>g.k=="det").length,
+       gFrag=C.ghost.filter(g=>g.k=="frag").length,
+       gAbs=C.absent.reduce((a,r)=>a+r[1]-r[0]+1,0);
+ let h=`<div id="tabs">${tabs}</div><b>${C.clip}</b> t${C.tid} <span class="note">비디오 ${C.vf}f = 측정 ${C.n}`+
+  (gInv?` + 무효 ${gInv}`:"")+(gDet?` + 미측정 ${gDet}`:"")+(gFrag?` + 파편 ${gFrag}`:"")+(gAbs?` + 무검출 ${gAbs}`:"")+
+  ` · 풀 정렬:</span>
   <button onclick="sortMode=sortMode=='time'?'score':'time';render()">${sortMode=='time'?'시간순':'점수순'}</button>
   <button onclick="poseOpen=!poseOpen;render()">포즈 눈금 ${poseOpen?'닫기':'보기'}</button>`;
  h+=funnelHTML(m.fn);
@@ -219,8 +227,8 @@ function render(){
  const sv=C.rows.filter(r=>pass(r,A));
  sv.forEach(r=>r._s=score(r,A));
  const ordered=sortMode=="time"?sv.slice().sort((a,b)=>a.f-b.f):sv.slice().sort((a,b)=>b._s-a._s);
- const show=ordered.filter(r=>r.th).slice(0,96);
- h+=`<div class="rowlbl">생존 풀 (A, ${sv.length}행 중 썸네일 ${show.length} 표시 · ${sortMode=='time'?'시간순':'점수순'})</div>
+ const show=ordered.slice(0,400);                            // v0.6: 썸네일 필터 제거(공평)
+ h+=`<div class="rowlbl">생존 풀 (A, ${sv.length}행 중 ${show.length} 표시 · ${sortMode=='time'?'시간순':'점수순'})</div>
   <div class="strip sm">`+show.map(r=>cellHTML(C.clip,r,"")).join("")+`</div>`;
  document.getElementById("main").innerHTML=h;
  drawTimeline(C,m);
@@ -242,20 +250,25 @@ function drawTimeline(C,m){
  if(!cv)return;
  const ctx=cv.getContext("2d"), W=cv.width, H=cv.height;
  ctx.clearRect(0,0,W,H);
- const fmin=C.rows[0].f, fmax=Math.max(C.rows[C.rows.length-1].f, fmin+1);
+ const fmin=0, fmax=Math.max(C.vf-1, 1);                     // v0.6: 축=비디오 전체(0..vf)
  const X=f=>4+(f-fmin)/(fmax-fmin)*(W-8);
  ctx.fillStyle="rgba(80,170,180,0.22)";                      // boarding 밴드
- for(const r of C.rows) if(r.b) ctx.fillRect(X(r.f)-1,0,2.2,H);
- for(const r of C.rows){                                     // 프레임 틱
+ for(const r of C.rows) if(r.b) ctx.fillRect(X(r.f)-1,0,2.2,H-8);
+ for(const r of C.rows){                                     // 측정 행 틱
   const ff=firstFail(r,A);
   ctx.fillStyle=ff<0?SURV:SCOL[ff];
-  if(ff<0) ctx.fillRect(X(r.f),12,1.7,H-14);
-  else     ctx.fillRect(X(r.f),20,1.4,H-22);
+  if(ff<0) ctx.fillRect(X(r.f),12,1.7,H-20);
+  else     ctx.fillRect(X(r.f),20,1.4,H-28);
  }
+ // 유령 레인(하단): 우주 밖 프레임의 존재 — 회색 밴드=무검출
+ ctx.fillStyle="#3a3a3a";
+ for(const ab of C.absent) ctx.fillRect(X(ab[0]),H-7,Math.max(1.5,X(ab[1])-X(ab[0])+1.5),6);
+ const GCOL={inv:"#a05244",det:"#5a78a0",frag:"#8a70b0"};
+ for(const g of C.ghost){ctx.fillStyle=GCOL[g.k];ctx.fillRect(X(g.f),H-7,1.6,6);}
  ctx.fillStyle="#7ac";                                       // A 픽
- for(const f of m.pA) ctx.fillRect(X(f)-1.5,9,3,H-9);
+ for(const f of m.pA) ctx.fillRect(X(f)-1.5,9,3,H-17);
  if(m.pB){ctx.strokeStyle="#ca7";ctx.setLineDash([3,2]);     // B 픽
-  for(const f of m.pB) ctx.strokeRect(X(f)-2.5,9,5,H-10);
+  for(const f of m.pB) ctx.strokeRect(X(f)-2.5,9,5,H-18);
   ctx.setLineDash([]);}
  for(const r of C.rows){                                     // GT 점
   const g=GT[C.clip+":"+r.f];
@@ -264,17 +277,28 @@ function drawTimeline(C,m){
   ctx.beginPath();ctx.arc(X(r.f),4.5,2.6,0,7);ctx.fill();
  }
  const tip=document.getElementById("tlTip");
+ const GLBL={inv:"게이트-무효 (측정됨, valid 밖)",det:"미측정 — 검출만 (랜드마크 없음)",
+             frag:"트랙 파편 (동일 인물 추정)"};
+ const uni=C.rows.map(r=>({f:r.f,row:r})).concat(C.ghost.map(g=>({f:g.f,g:g})))
+   .sort((a,b)=>a.f-b.f);
  const nearest=x=>{const fe=fmin+(x-4)/(W-8)*(fmax-fmin);
   let bi=0,bd=1e9;
-  for(let i=0;i<C.rows.length;i++){const d=Math.abs(C.rows[i].f-fe);if(d<bd){bd=d;bi=i;}}
-  return C.rows[bi];};
+  for(let i=0;i<uni.length;i++){const d=Math.abs(uni[i].f-fe);if(d<bd){bd=d;bi=i;}}
+  return uni[bi];};
  cv.onmousemove=e=>{
   const rect=cv.getBoundingClientRect(), x=e.clientX-rect.left;
-  const r=nearest(x), ff=firstFail(r,A);
-  const st=ff<0?`<span style="color:${SURV}">생존</span>`:`<span style="color:${SCOL[ff]}">${STAGES[ff]}에 걸러짐</span>`;
-  const g=GT[C.clip+":"+r.f], gs=g?` · GT:${g=="pos"?"＋":"−"}`:"";
-  tip.innerHTML=(r.th?`<img src="/${r.th}">`:"")+
-   `f${r.f} ${st}${gs}<br>ex${r.ex} pu${r.pu} sy${r.sy} dv${r.dv}<br>pt${r.pt==null?"--":r.pt}(Δ${r.pc}) cs${r.cs==null?"--":r.cs} mv${r.mv==null?"--":r.mv} lt${r.lt==null?"--":r.lt}`;
+  const o=nearest(x);
+  const gflag=GT[C.clip+":"+o.f], gs=gflag?` · GT:${gflag=="pos"?"＋":"−"}`:"";
+  if(o.row){
+   const r=o.row, ff=firstFail(r,A);
+   const st=ff<0?`<span style="color:${SURV}">생존</span>`:`<span style="color:${SCOL[ff]}">${STAGES[ff]}에 걸러짐</span>`;
+   tip.innerHTML=(r.th?`<img src="/${r.th}" loading="lazy">`:"")+
+    `f${r.f} ${st}${gs}<br>ex${r.ex} pu${r.pu} sy${r.sy} dv${r.dv}<br>pt${r.pt==null?"--":r.pt}(Δ${r.pc}) cs${r.cs==null?"--":r.cs} mv${r.mv==null?"--":r.mv} lt${r.lt==null?"--":r.lt}`;
+  }else{
+   const g=o.g;
+   tip.innerHTML=(g.th?`<img src="/${g.th}" loading="lazy">`:"")+
+    `f${g.f} <span style="color:${GCOL[g.k]}">${GLBL[g.k]}</span>${gs}<br>측정 신호 없음 — 클릭=GT 깃발 가능`;
+  }
   tip.style.display="block";
   tip.style.left=Math.min(x+14,W-140)+"px";
   tip.style.top="46px";
@@ -350,8 +374,8 @@ function groundPose(clip,f){
  const r=C&&C.rows.find(r=>r.f==f);
  if(!r)return;
  A.sym_max=Math.min(2.0,Math.round((Math.floor(r.sy/0.05)+1)*5)/100);
- A.dev_lo=Math.min(A.dev_lo,Math.max(-45,Math.floor(r.dv)-1));   // 밴드 확장(포함되게)
- A.dev_hi=Math.max(A.dev_hi,Math.min(45,Math.floor(r.dv)+1));
+ A.dev_lo=Math.min(A.dev_lo,Math.max(-90,Math.floor(r.dv)-1));   // 밴드 확장(포함되게)
+ A.dev_hi=Math.max(A.dev_hi,Math.min(90,Math.floor(r.dv)+1));
  if(A.pt_max<99)A.pt_max=Math.max(A.pt_max,Math.min(99,Math.floor(Math.abs(r.pc))+1));
  buildPanel();render();}
 function snapshotB(){Bcfg={...A};render();}

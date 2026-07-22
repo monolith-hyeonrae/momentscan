@@ -137,6 +137,15 @@ def test_workbench_page_has_selftest_and_gt_post():
     assert '"/api/gt"' in WORKBENCH_PAGE or "'/api/gt'" in WORKBENCH_PAGE
 
 
+def test_workbench_page_has_ghost_lane_v06():
+    """v0.6 공평 우주: 타임라인 축=0..vf · 유령 레인 3색 + 레이블 · 풀 필터 제거."""
+    assert "const fmin=0" in WORKBENCH_PAGE               # 축=비디오 전체(0..vf)
+    for hexcol in ("#a05244", "#5a78a0", "#8a70b0"):     # GCOL inv·det·frag
+        assert hexcol in WORKBENCH_PAGE
+    assert "GLBL" in WORKBENCH_PAGE                       # 유령 호버 레이블
+    assert "ordered.slice(0,400)" in WORKBENCH_PAGE       # 풀 그리드 썸네일-필터 제거
+
+
 # ── 캐시 신선도 (mtime + 버전) ────────────────────────────────────────────────
 def _fake_corpus(tmp_path: Path, clip: str = "c1") -> Path:
     out = tmp_path / "out"
