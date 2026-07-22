@@ -1,14 +1,30 @@
 """workbench — likeness 표본 샘플링 연구 콘솔의 데이터층 (원장 ⑫ 승격).
 
-참조 구현 = scratchpad_workbench.py v0.6 (2026-07-22, main 1fb0da2) 을 값-동일하게
-승격한 것. 다이얼 의미론(명시-floor 스크린 + 가중 랭킹)과 셀프테스트 픽은 v0.x 와
-문자 그대로 같아야 한다 — 검증 좌표: test_3=[29,511,352] · dual_2=[34,1052,662]
-(pitch pt_max 기본 99=off · yaw 밴드 기본 (−15,15)=구 |dev|<15 동치라 전부 불변).
+참조 구현 = scratchpad_workbench.py v0.9 (2026-07-22, main 7573af8) 을 값-동일하게
+승격한 것. 다이얼 의미론(상태별 스크린/밴드 + 상태 가중 랭킹)과 셀프테스트 픽은
+v0.x 와 문자 그대로 같아야 한다 — 검증 좌표: test_3=[29,511,352] ·
+dual_2=[34,1052,6] · test_4=[570,408,286].
 
 v0.6 공평 우주: 측정 행 썸네일 표본화를 제거(전 행 저장)하고, 선택받지 못한 프레임의
 존재를 유령 우주(ghost/absent/vf)로 페이로드에 실어 타임라인 유령 레인·풀 그리드가
 비디오 전체를 정직하게 비춘다 — 유령 종류: inv(측정됐으나 valid 밖)·det(검출만,
 랜드마크 없음)·frag(동일 subject 타 트랙)·무검출(absent 구간).
+
+v0.7 상태 5그룹 재편(user 정식화: 포즈/표정·얼굴/빛/영상/왜곡 — 원장 ⑪ 봉인 좌표계):
+다이얼 패널·퍼널·타임라인이 그룹 단위. 빛-심층 축 신설 — dp=입체감(|face_light_lr|+
+|tb| 방향성, relight '입체감 floor' 예약석)·hh=거칠기(face_light_harsh)·sp=선명
+(face_blur pct, 영상 그룹), 전부 기본 off.
+
+v0.8 빛 판별력 계수 lf(⑪-e v3): 흐린 날=저분산 클립에서 풀-상대 랭크가 과대발언 —
+lf=robust (p90−p10)/p50 정규화(test_4급≈1.0, /0.8 cap 1.0), 페이로드 선적.
+적용은 JS ATT 토글(w_light×lf, 기본 off=셀프테스트 불변)에서만.
+
+v0.9 상태-쿼리 구조(user: "각 상태를 판별하고 종합하는 수준 높은 스크리닝"):
+1단=상태별 스크린/밴드(포즈=밴드가 곧 쿼리·표정도 ex_min~ex_max 밴드) · 2단=상태
+점수 4종 종합(state_scores: 표정·얼굴=(2무표정+눈동자)/3 · 빛=조도생동 · 영상=
+(선명+micro)/2 · 왜곡=(cs+입가시+norm)/3) — 가중이 신호가 아닌 상태 단위
+(w_face/w_light/w_image/w_distort). rank01 은 8축 개별 선적(r). 점수 기준 재정의 =
+v7.2 등가 브리지 종료(⑪ 후보 정책의 진화; 가드=JS≡python 셀프테스트 유지).
 
 층 구성 (원장 ⑫ — user 도구 3종의 세 층):
   frame_table    클립 main rider 의 전 신호 와이드 행 — 프로브 4종이 반복한 조인의
@@ -52,16 +68,29 @@ from momentscan.perception.readings.face_signals import pupil_visibility, visual
 # ── 상수 (v0.x 와 문자 그대로 동일해야 하는 것들) ────────────────────────────
 THUMB = 224                       # 저장 원치수 px — 픽 행은 원치수, 풀은 112 축소 표시
 GHOST_THUMB_MAX = 60              # 유령 종류별 썸네일 상한 (v0.6 — 측정 행은 전량 저장)
-CACHE_VERSION = 3                 # 의미론 변경 시 올린다 → 전 캐시 무효화 (3=v0.6 공평 우주: 전 행 썸네일·ghost/absent/vf)
+CACHE_VERSION = 4                 # 의미론 변경 시 올린다 → 전 캐시 무효화 (4=v0.7~v0.9: rank 8축·dp/hh/sp·lf)
 
-# 기본 설정 = v7.2 등가(단일-floor 의미론) — _workbench_html.js 의 DEF 와 문자 그대로
-# 동일해야 한다 (로드 시 셀프테스트가 이 짝을 감시).
+# 기본 설정 — _workbench_html.js 의 DEF 와 문자 그대로 동일해야 한다
+# (로드 시 셀프테스트가 이 짝을 감시).
+# v0.9 상태-쿼리 구조: 1단=상태별 스크린/밴드(포즈는 밴드=쿼리, 점수 없음) ·
+#   2단=상태 점수 종합(w_face·w_light·w_image·w_distort — 상태-내 구성은 고정 평균,
+#   세부 sub-가중은 v0.9.x). 점수 기준 재정의 = v7.2 등가 브리지 종료(⑪ 후보 정책의 진화).
+# ex 밴드(ex_min~ex_max): 표정 상태도 쿼리 가능(portrait 웃음-구간 등). 기본 ex_min=0.
 # pt_max=99 = pitch 스크린 off(v0.3 신설 다이얼, 클립-중앙값 상대 |pc| — 기본 off 라 셀프테스트 불변)
 # yaw = 부호-있는 밴드(v0.5, portrait 쿼리 대비: [60,90] 같은 측면 구간 선택 가능) —
 #   기본 (−15,15) = 구 |dev|<15 와 동치(셀프테스트 불변). 수렴=밴드의 특수형.
 DEFAULT_CFG = {"sym_max": 0.6, "dev_lo": -15.0, "dev_hi": 15.0, "pt_max": 99.0, "pu_min": 0.4,
-               "cs_min": 0.0, "mv_min": 0.0, "lt_min": 0.0, "ex_max": 1.0, "gap_min": 12,
-               "w_expr": 0.30, "w_pu": 0.15, "w_q3": 0.20, "w_vis2": 0.15, "w_light": 0.20}
+               "cs_min": 0.0, "mv_min": 0.0, "lt_min": 0.0, "ex_min": 0.0, "ex_max": 1.0,
+               "gap_min": 12, "dp_min": 0.0, "hh_max": 100.0, "sp_min": 0.0,
+               "w_face": 0.45, "w_light": 0.20, "w_image": 0.15, "w_distort": 0.20}
+
+
+def state_scores(r: list[float]) -> tuple[float, float, float, float]:
+    """상태 점수 4종 — r = [re,rp,rs,rm,rn,rc,rv,rl] (rank01 8축).
+    표정·얼굴=(2·무표정+눈동자)/3 · 빛=조도생동 · 영상=(선명+micro)/2 ·
+    왜곡=(cs+입가시+norm)/3 (q3 분해 판정: norm→왜곡)."""
+    re_, rp_, rs_, rm_, rn_, rc_, rv_, rl_ = r
+    return ((2 * re_ + rp_) / 3, rl_, (rs_ + rm_) / 2, (rc_ + rv_ + rn_) / 3)
 
 GT_SCHEMA = "momentscan.workbench-gt/v0"
 
@@ -145,6 +174,10 @@ def frame_table(clip_id: str, out_root: Path) -> dict:
     yaw = M[sel, INDEX["head_yaw_dev"]]
     pitch = M[sel, INDEX["head_pitch"]]
     blur = M[sel, INDEX["face_blur"]]
+    # v0.7 빛-심층(얼굴면 광학, relight '입체감 floor' 예약석): 방향성·거칠기
+    light_lr = M[sel, INDEX["face_light_lr"]]
+    light_tb = M[sel, INDEX["face_light_tb"]]
+    light_hh = M[sel, INDEX["face_light_harsh"]]
 
     pq = pl.read_parquet(clip_dir(out_root, clip_id) / "parse.parquet") \
            .filter(pl.col("track_id") == tid)
@@ -201,12 +234,13 @@ def frame_table(clip_id: str, out_root: Path) -> dict:
     return dict(tid=tid, rider=rider, fx=fx, cb=cb, P=P, yaw=yaw, pitch=pitch, blur=blur,
                 micro=micro, mv=mv, lum_eff=lum_eff, cs=cs, nrm=nrm, board=board, expr=expr,
                 pupil=pupil, sym=sym, frontal_deg=frontal_deg,
-                lm_all_cb=lm_all_cb, det_bbox=det_bbox, frag_bbox=frag_bbox)
+                lm_all_cb=lm_all_cb, det_bbox=det_bbox, frag_bbox=frag_bbox,
+                light_lr=light_lr, light_tb=light_tb, light_hh=light_hh)
 
 
 # ── 픽 의미론 (JS 시뮬레이터와 문자 그대로 동일 — 반올림된 shipped 값 위에서) ──
 def compute_picks(rows: list[dict], cfg: dict) -> list[int]:
-    """1단 품질 스크린(명시-floor) → 2단 가중 랭킹 → 시간 gap 3픽."""
+    """1단 상태별 스크린/밴드 → 2단 상태 가중 랭킹(state_scores) → 시간 gap 3픽."""
     surv = [r for r in rows
             if r["sy"] < cfg["sym_max"] and cfg["dev_lo"] < r["dv"] < cfg["dev_hi"]
             and abs(r["pc"]) < cfg["pt_max"]
@@ -214,11 +248,14 @@ def compute_picks(rows: list[dict], cfg: dict) -> list[int]:
             and (r["cs"] is None or r["cs"] >= cfg["cs_min"])
             and (r["mv"] is None or r["mv"] >= cfg["mv_min"])
             and (r["lt"] is None or r["lt"] >= cfg["lt_min"])
-            and r["ex"] <= cfg["ex_max"]]
+            and (r["dp"] is None or r["dp"] >= cfg["dp_min"])
+            and (r["hh"] is None or r["hh"] <= cfg["hh_max"])
+            and (r["sp"] is None or r["sp"] >= cfg["sp_min"])
+            and cfg["ex_min"] <= r["ex"] <= cfg["ex_max"]]
     for r in surv:
-        r["_s"] = (cfg["w_expr"] * r["r"][0] + cfg["w_pu"] * r["r"][1]
-                   + cfg["w_q3"] * r["r"][2] + cfg["w_vis2"] * r["r"][3]
-                   + cfg["w_light"] * r["r"][4])
+        sf, sl, si, sd = state_scores(r["r"])
+        r["_s"] = (cfg["w_face"] * sf + cfg["w_light"] * sl
+                   + cfg["w_image"] * si + cfg["w_distort"] * sd)
     surv.sort(key=lambda r: -r["_s"])
     got = []
     for r in surv:
@@ -293,7 +330,7 @@ def _cache_fresh(cache: Path, out_root: Path, clip_id: str) -> bool:
 
 
 def build_clip_data(clip_id: str, out_root: Path, *, force: bool = False) -> dict:
-    """워크벤치 클립 페이로드 {clip,tid,n,vf,cur,selftest,rows,ghost,absent} — 캐시-우선.
+    """워크벤치 클립 페이로드 {clip,tid,n,vf,cur,lf,selftest,rows,ghost,absent} — 캐시-우선.
 
     빌드 = frame_table + detect.mp4 한 번의 순차 디코드(chroma 전 행 + 썸네일 전 행 +
     유령 표본) + 랭크 합성 + 파이썬 셀프테스트 픽 + 유령 우주(ghost/absent/vf).
@@ -388,10 +425,23 @@ def build_clip_data(clip_id: str, out_root: Path, *, force: bool = False) -> dic
     micro_pct, sharp_pct = pct_rank(t["micro"]), pct_rank(t["blur"])
     norm_pct, cs_pct, mv_pct = pct_rank(t["nrm"]), pct_rank(t["cs"]), pct_rank(t["mv"])
     light_pct = np.nanmean(np.vstack([pct_rank(t["lum_eff"]), pct_rank(chroma)]), axis=0)
-    q3 = np.nanmean(np.vstack([sharp_pct, micro_pct, norm_pct]), axis=0)
-    vis2 = np.nanmean(np.vstack([cs_pct, mv_pct]), axis=0)
-    R = np.stack([rank01(t["expr"], flip=True), rank01(t["pupil"]), rank01(q3),
-                  rank01(vis2), rank01(light_pct)], axis=1)
+    # v0.7 빛-심층·영상: 입체감=|lr|+|tb|(방향성 총량, flat→저값)·거칠기 harsh·선명
+    dp_pct = pct_rank(np.abs(t["light_lr"]) + np.abs(t["light_tb"]))
+    hh_pct = pct_rank(t["light_hh"])
+
+    # v0.8 빛 판별력 계수(⑪-e v3): 흐린 날=저분산 → 랭크 과대발언 감쇠용.
+    # robust (p90−p10)/p50, test_4급 동적범위(≈0.8)를 1.0으로 정규화.
+    def _spread(v):
+        fin = v[np.isfinite(v)]
+        if len(fin) < 10:
+            return 0.0
+        p10, p50, p90 = np.percentile(fin, [10, 50, 90])
+        return float((p90 - p10) / (abs(p50) + 1e-6))
+    lf = round(min(1.0, 0.5 * (_spread(t["lum_eff"]) + _spread(chroma)) / 0.8), 2)
+    # v0.9 상태-쿼리: 축별 rank01 8종 — [무표정, 눈동자, 선명, micro, norm, cs, 입가시, 빛]
+    R = np.stack([rank01(t["expr"], flip=True), rank01(t["pupil"]),
+                  rank01(sharp_pct), rank01(micro_pct), rank01(norm_pct),
+                  rank01(cs_pct), rank01(mv_pct), rank01(light_pct)], axis=1)
 
     def num(v, nd=2):
         return None if not np.isfinite(v) else round(float(v), nd)
@@ -409,11 +459,12 @@ def build_clip_data(clip_id: str, out_root: Path, *, force: bool = False) -> dic
                      "pu": round(float(t["pupil"][i]), 3) if np.isfinite(t["pupil"][i]) else 0.0,
                      "ex": round(float(t["expr"][i]), 3) if np.isfinite(t["expr"][i]) else 1.0,
                      "cs": num(cs_pct[i], 1), "mv": num(mv_pct[i], 1), "lt": num(light_pct[i], 1),
+                     "dp": num(dp_pct[i], 1), "hh": num(hh_pct[i], 1), "sp": num(sharp_pct[i], 1),
                      "r": [round(float(v), 4) for v in R[i]],
                      "th": (f"thumbs/{clip_id}/f{int(fx[i]):05d}.jpg"
                             if int(fx[i]) in thumb_ok else None)})
     selftest = compute_picks([dict(r) for r in rows], DEFAULT_CFG)
-    payload = {"clip": clip_id, "tid": t["tid"], "n": n, "vf": vf, "cur": cur,
+    payload = {"clip": clip_id, "tid": t["tid"], "n": n, "vf": vf, "cur": cur, "lf": lf,
                "selftest": selftest, "rows": rows, "ghost": ghost, "absent": absent,
                "cache_version": CACHE_VERSION,
                "built_iso": time.strftime("%Y-%m-%dT%H:%M:%S%z")}

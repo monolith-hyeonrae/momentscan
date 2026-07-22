@@ -67,10 +67,12 @@ def test_read_gt_merges_duplicate_lines_later_wins(tmp_path):
     assert len(rows) == 1 and rows[0]["flag"] == "neg"
 
 
-# ── compute_picks 의미론 (명시-floor + 가중 + gap) ───────────────────────────
-def _row(f, *, sy=0.1, dv=0.0, pc=0.0, pu=0.9, ex=0.1, cs=50.0, mv=50.0, lt=50.0, r=None):
+# ── compute_picks 의미론 (상태별 스크린/밴드 + 상태 가중 + gap) ──────────────
+def _row(f, *, sy=0.1, dv=0.0, pc=0.0, pu=0.9, ex=0.1, cs=50.0, mv=50.0, lt=50.0,
+         dp=50.0, hh=50.0, sp=50.0, r=None):
     return {"f": f, "sy": sy, "dv": dv, "pc": pc, "pu": pu, "ex": ex,
-            "cs": cs, "mv": mv, "lt": lt, "r": r or [0.5, 0.5, 0.5, 0.5, 0.5]}
+            "cs": cs, "mv": mv, "lt": lt, "dp": dp, "hh": hh, "sp": sp,
+            "r": r or [0.5] * 8}
 
 
 def test_picks_explicit_floor_screen():
@@ -79,15 +81,26 @@ def test_picks_explicit_floor_screen():
         _row(1, sy=0.7),               # sym floor 탈락
         _row(2, dv=20.0),              # yaw 밴드 상한(dev_hi=15) 탈락
         _row(3, pu=0.1),               # pupil floor 탈락
-        _row(4, ex=0.99, r=[1, 1, 1, 1, 1]),   # ex_max=1.0 이하라 통과 + 최고점
-        _row(5, cs=None, mv=None, lt=None),    # 측정 부재(None) = 스크린 통과
+        _row(4, ex=0.99, r=[1] * 8),   # ex_max=1.0 이하라 통과 + 최고점
+        _row(5, cs=None, mv=None, lt=None, dp=None, hh=None, sp=None),  # 측정 부재(None) = 스크린 통과
         _row(6, pc=120.0),             # 극단 pitch 도 기본(99=off 상한 미만만 통과)에 걸림
         _row(7, dv=-20.0),             # yaw 밴드 하한(dev_lo=−15) 탈락 (v0.5 부호-있는 밴드)
     ]
     got = wb.compute_picks([dict(r) for r in rows], dict(wb.DEFAULT_CFG, gap_min=1))
     assert not {1, 2, 3, 6, 7} & set(got)
-    assert got[0] == 4                 # 가중합 최대가 1순위
+    assert got[0] == 4                 # 상태 가중합 최대가 1순위
     assert set(got) <= {0, 4, 5}
+
+
+def test_picks_state_screens_v07_v09():
+    """v0.7 빛-심층(dp/hh)·영상(sp) 스크린 + v0.9 표정 ex_min 밴드 하한 — 기본은 전부 off."""
+    rows = [
+        _row(0, dp=5.0, hh=95.0, sp=5.0, ex=0.05),      # 기본 설정에선 통과
+        _row(30, dp=80.0, hh=10.0, sp=80.0, ex=0.5),
+    ]
+    assert set(wb.compute_picks([dict(r) for r in rows], wb.DEFAULT_CFG)) == {0, 30}
+    tight = dict(wb.DEFAULT_CFG, dp_min=20.0, hh_max=50.0, sp_min=20.0, ex_min=0.1)
+    assert wb.compute_picks([dict(r) for r in rows], tight) == [30]   # f0 은 네 스크린 전부에 걸림
 
 
 def test_picks_yaw_band_side_query():
@@ -99,7 +112,7 @@ def test_picks_yaw_band_side_query():
 
 def test_picks_pitch_dial_default_off():
     """pt_max 기본 99 = 실질 off (|pc|<99 통과) · 조이면 스크린 (v0.3, 결측 pc=0=통과)."""
-    rows = [_row(0, pc=0.0, r=[0.1] * 5), _row(30, pc=20.0, r=[1.0] * 5)]
+    rows = [_row(0, pc=0.0, r=[0.1] * 8), _row(30, pc=20.0, r=[1.0] * 8)]
     got_def = wb.compute_picks([dict(r) for r in rows], wb.DEFAULT_CFG)
     assert got_def[0] == 30            # 기본 = pitch 무영향, 점수 우선
     tight = dict(wb.DEFAULT_CFG, pt_max=10.0)
@@ -108,18 +121,32 @@ def test_picks_pitch_dial_default_off():
 
 
 def test_picks_gap_min_time_diversity():
-    rows = [_row(f, r=[1 - f * 0.001] * 5) for f in range(6)]   # f0 최고점, 인접 연속
+    rows = [_row(f, r=[1 - f * 0.001] * 8) for f in range(6)]   # f0 최고점, 인접 연속
     got = wb.compute_picks([dict(r) for r in rows], dict(wb.DEFAULT_CFG, gap_min=3))
     assert got[0] == 0
     assert all(abs(a - b) >= 3 for i, a in enumerate(got) for b in got[:i])
 
 
-def test_picks_weights_reorder():
-    r_hi_expr = _row(0, r=[1.0, 0.0, 0.0, 0.0, 0.0])
-    r_hi_light = _row(30, r=[0.0, 0.0, 0.0, 0.0, 1.0])
-    only_light = dict(wb.DEFAULT_CFG, w_expr=0.0, w_pu=0.0, w_q3=0.0, w_vis2=0.0, w_light=0.6)
-    got = wb.compute_picks([dict(r_hi_expr), dict(r_hi_light)], only_light)
+def test_state_scores_composition():
+    """v0.9: 상태 4종 = 얼굴(2·무표정+눈동자)/3 · 빛=rl · 영상(선명+micro)/2 · 왜곡(cs+입+norm)/3."""
+    r = [0.9, 0.6, 0.4, 0.8, 0.3, 0.5, 0.7, 1.0]   # [re,rp,rs,rm,rn,rc,rv,rl]
+    sf, sl, si, sd = wb.state_scores(r)
+    assert sf == pytest.approx((2 * 0.9 + 0.6) / 3)
+    assert sl == pytest.approx(1.0)
+    assert si == pytest.approx((0.4 + 0.8) / 2)
+    assert sd == pytest.approx((0.5 + 0.7 + 0.3) / 3)
+
+
+def test_picks_state_weights_reorder():
+    """v0.9: 가중은 신호가 아닌 상태 단위 — 빛 상태만 가중하면 빛-우세 행이 1순위."""
+    r_hi_face = _row(0, r=[1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0])    # 얼굴 상태=1
+    r_hi_light = _row(30, r=[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0])  # 빛 상태=1
+    only_light = dict(wb.DEFAULT_CFG, w_face=0.0, w_light=0.6, w_image=0.0, w_distort=0.0)
+    got = wb.compute_picks([dict(r_hi_face), dict(r_hi_light)], only_light)
     assert got[0] == 30
+    only_face = dict(wb.DEFAULT_CFG, w_face=0.6, w_light=0.0, w_image=0.0, w_distort=0.0)
+    got = wb.compute_picks([dict(r_hi_face), dict(r_hi_light)], only_face)
+    assert got[0] == 0
 
 
 # ── JS ≡ python 상수 짝 (셀프테스트가 감시하는 계약의 정적 절반) ──────────────
@@ -144,6 +171,18 @@ def test_workbench_page_has_ghost_lane_v06():
         assert hexcol in WORKBENCH_PAGE
     assert "GLBL" in WORKBENCH_PAGE                       # 유령 호버 레이블
     assert "ordered.slice(0,400)" in WORKBENCH_PAGE       # 풀 그리드 썸네일-필터 제거
+
+
+def test_workbench_page_has_state_query_v07_v09():
+    """v0.7~v0.9: 상태 5그룹(퍼널·타임라인 단위) · lf 표시+ATT 토글 · 상태-쿼리 미러."""
+    assert 'const STAGES=["포즈","표정·얼굴","빛","영상","왜곡"]' in WORKBENCH_PAGE
+    assert "function stateScores(rr)" in WORKBENCH_PAGE   # python state_scores 미러
+    assert "빛 판별력 lf=" in WORKBENCH_PAGE               # v0.8 클립 헤더 표시
+    assert "빛 분산-감쇠(시험)" in WORKBENCH_PAGE          # v0.8 ATT 체크박스
+    assert "w_light*(lf==null?1:lf)" in WORKBENCH_PAGE    # ATT 감쇠 식
+    for k in ("dp_min", "hh_max", "sp_min"):              # v0.7 빛-심층·영상 다이얼+분포 지도
+        assert f"{k}:{{f:r=>" in WORKBENCH_PAGE
+    assert 'band:["ex_min","ex_max"]' in WORKBENCH_PAGE   # v0.9 표정 밴드
 
 
 # ── 캐시 신선도 (mtime + 버전) ────────────────────────────────────────────────
@@ -303,19 +342,21 @@ def test_server_register_disabled_without_runner(tmp_path):
         srv.shutdown()
 
 
-# ── 코퍼스-보유 노드: 셀프테스트 픽 고정 (v0 검증 좌표) ──────────────────────
-SELFTEST_REF = {"test_3": [29, 511, 352], "dual_2": [34, 1052, 662]}
+# ── 코퍼스-보유 노드: 셀프테스트 픽 고정 (v0.9 검증 좌표) ────────────────────
+SELFTEST_REF = {"test_3": [29, 511, 352], "dual_2": [34, 1052, 6], "test_4": [570, 408, 286]}
 
 
 @pytest.mark.parametrize("clip", sorted(SELFTEST_REF))
 def test_selftest_picks_pinned_on_corpus(clip):
-    """워크벤치 캐시(첫 열람이 채움)가 있으면 기본-설정 픽을 v0 좌표에 고정.
-    코퍼스/캐시 부재 노드는 skip — 행동 고정은 코퍼스 보유 노드의 몫."""
+    """워크벤치 캐시(첫 열람이 채움)가 있으면 기본-설정 픽을 v0.9 좌표에 고정.
+    코퍼스/캐시 부재·구버전 캐시 노드는 skip — 행동 고정은 현행 캐시 보유 노드의 몫."""
     if not (L2 / clip / "likeness.json").exists():
         pytest.skip("corpus not present")
     cp = wb.cache_path(L2, clip)
     if not cp.exists():
         pytest.skip("workbench cache not built — momentscan workbench 첫 열람이 채운다")
     payload = json.loads(cp.read_text(encoding="utf-8"))
+    if payload.get("cache_version") != wb.CACHE_VERSION:
+        pytest.skip("stale cache version — 다음 열람이 재빌드한다")
     assert payload["selftest"] == SELFTEST_REF[clip]
     assert payload["clip"] == clip
