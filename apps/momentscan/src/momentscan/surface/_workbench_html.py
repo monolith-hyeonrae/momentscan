@@ -1,312 +1,18 @@
-"""샘플링 워크벤치 v0.4 (2026-07-22) — 원장 ⑫ 계기. v0 대비 UI 개정(user 피드백
-"여러 비디오 동시 표시 = 과복잡" → v0.1 / "다이얼에 따라 타임라인 어디가 선택·
-걸러지는지 보이게" → v0.2 / "원하는 헤드포즈로 그라운딩" → v0.3 / "다이얼과 연관된
-분포 지도 + 우리 조작이 어디쯤인지" → v0.4):
-  v0.3: Shift+클릭=포즈 그라운딩(예시-쿼리) · 포즈 눈금 사다리(클릭=그라운딩) ·
-  pitch 다이얼(클립-중앙값 상대 |pc|, 기본 off=셀프테스트 불변, 결측=통과).
-  v0.4: **다이얼 분포 지도** — 각 스크린 다이얼 아래 현재 클립의 신호 히스토그램
-  (x축=슬라이더와 동일 스케일 → 위치 대응 직관), 노랑 선=현재 값·초록=통과 측·
-  파랑 ▲=A 픽 위치·우상단 %=측정치 중 통과율. 사람마다 다른 포즈/신호 분포 위에서
-  경계를 정한다(per-clip 상대 원칙의 UI 형).
-  v0.5: **yaw = 부호-있는 밴드 다이얼**(dev_lo/dev_hi, portrait 쿼리 대비 — "yaw 60~90"
-  같은 측면 구간 선택 가능; 수렴 스크린=밴드의 특수형, 기본 (−15,15)=구 |dev|<15 동치
-  =셀프테스트 불변) · 포즈 눈금=좌측면→정면→우측면 스윕 · 그라운딩=밴드 확장 의미론.
-  v0.6: **공평 우주**(user: "선택받지 못한 프레임도 보여줘야 선택받게 만들 수 있다") —
-  썸네일 표본화 제거(전 행 저장, lazy 로딩)·풀 그리드 썸네일-필터 제거·타임라인 축=
-  비디오 전체(0..vf)·**유령 레인**: 무효(측정됐으나 valid 밖)/미측정(검출만, 랜드마크
-  없음 — dual_2 182f 실측)/파편(동일 subject 타 트랙)/무검출을 하단 6px에 존재 표시,
-  호버=bbox 크롭 썸네일, 클릭=GT 깃발(우주 밖 프레임에 "뽑혀야 한다" 표시 가능).
-  yaw 슬라이더 ±90 확장.
-  v0.1: 단일-클립 탭 뷰(←→ 키보드 전환·탭에 GT/생존 배지) · 썸네일 224px(픽=원치수,
-  풀=112 축소+호버 2× 확대) · 퍼널 막대 · 풀 정렬 토글(시간순/점수순 — 랭커 취향
-  노출) · A/B diff 하이라이트(주황 외곽) · 변경-다이얼 하이라이트.
-  v0.2: **비디오 타임라인 스트립** — 프레임 틱 색 = 생존(초록) / 그 프레임을 먹은
-  첫 스크린 색(정면·눈·cs·입·빛·표정 6색, 퍼널 막대와 동일 팔레트) · boarding 배경
-  밴드 · A(파랑)/B(호박 점선) 픽 마커 · GT 점 · 호버=썸네일+수치 미리보기 · 클릭=GT
-  깃발(어디서든 클릭=GT 일관).
+"""workbench HTML 템플릿 — 서버가 데이터(payload)를 주입하는 순수 렌더러.
 
-층 구성(v0과 동일): frame_table(조인 단일홈, stash 읽기-전용 파생) + HTML 다이얼
-시뮬레이터(1단 품질 스크린=floor/퍼널 · 2단 대표성 랭킹=가중) + 클릭 GT(pos/neg →
-export → fixtures/eval/, 스키마 momentscan.workbench-gt/v0).
-드리프트 방어: 명시-floor 의미론(사다리는 생산 상세) + 로드 시 셀프테스트(JS가 기본
-설정으로 뽑은 픽 ≡ 파이썬 동일-데이터 픽). 봉인 전 최종 확인=파이썬 카드 재실행.
-스코프 v0.x = center 픽만(hair 빈은 v1). 표시 썸네일은 표본화(수치는 전 행 기준).
-승격(2026-07-22 track/lk-workbench): 정식 표면 = `momentscan workbench` (surface/workbench*.py) — 이 스크립트는 값-동일 참조 구현으로 보존.
+_inspector_html.py 관례: 템플릿은 이 모듈, 데이터 주입(__WB__ 등 치환)은 서버.
+워크벤치 페이지의 다이얼/퍼널/픽 JS 는 scratchpad_workbench.py v0.6 (2026-07-22,
+main 1fb0da2: 단일-클립 탭 뷰·타임라인 스트립·포즈 그라운딩·pitch 다이얼·다이얼
+분포 지도·yaw 부호-있는 밴드·공평 우주[유령 레인·전 행 썸네일]) 이식 —
+**의미론(firstFail/pass/funnel/score/picks·DEF)은 파이썬 workbench.compute_picks /
+DEFAULT_CFG 와 문자 그대로 동일해야 한다**(로드 시 셀프테스트가 이 짝을 감시).
+v0.x 대비 서버판 변경 3: data.js → const WB 인라인 · GT 클릭 = POST /api/gt 즉시
+저장(로드 시 서버 GT 복원, export/import 는 백업용) · 썸네일 src 절대경로(/thumbs/...).
 """
-import json
-import sys
-from pathlib import Path
 
-import cv2
-import numpy as np
-import polars as pl
-
-sys.path.insert(0, "apps/momentscan/src")
-from momentscan.infra.store.stash import read_landmarks, read_features, read_tubelets
-from momentscan.perception.readings.geometry import canonicalize
-from momentscan.preset import resolve
-
-from momentscan_features_specialist45d.registry import INDEX
-from momentscan_features_specialist45d.specialists import BLENDSHAPE_ORDER
-
-from scratchpad_likeness_sat import skin_sv
-
-RACE = resolve("race981")
-FRONTAL_DEG = RACE.camera.frontal_deg
-CLIPS = ("test_3", "test_12", "dual_2", "test_4", "test_0", "international_1")
-THUMB = 224     # 저장 원치수 — 픽 행은 원치수, 풀은 112 축소 표시+호버 확대
-
-# 기본 설정 = v7.2 등가(단일-floor 의미론) — JS DEF와 문자 그대로 동일해야 함
-# pt_max=99 = pitch 스크린 off(신설 다이얼, 클립-중앙값 상대 |pc| — 기본 off라 셀프테스트 불변)
-# yaw = 부호-있는 밴드(v0.5, portrait 쿼리 대비: [60,90] 같은 측면 구간 선택 가능) —
-#   기본 (−15,15) = 구 |dev|<15와 동치(셀프테스트 불변). 수렴=밴드의 특수형.
-DEFAULT_CFG = {"sym_max": 0.6, "dev_lo": -15.0, "dev_hi": 15.0, "pt_max": 99.0, "pu_min": 0.4,
-               "cs_min": 0.0, "mv_min": 0.0, "lt_min": 0.0, "ex_max": 1.0, "gap_min": 12,
-               "w_expr": 0.30, "w_pu": 0.15, "w_q3": 0.20, "w_vis2": 0.15, "w_light": 0.20}
-
-
-def face_signals(P):
-    def d2(a, b):
-        return np.linalg.norm(P[:, a, :2] - P[:, b, :2], axis=1)
-    r_iris = (d2(469, 471) + d2(470, 472)) / 2 + 1e-9
-    l_iris = (d2(474, 476) + d2(475, 477)) / 2 + 1e-9
-    pupil = (d2(159, 145) / r_iris + d2(386, 374) / l_iris) / 2
-    dr = np.abs(P[:, 1, 0] - P[:, 234, 0]) + 1e-9
-    dl = np.abs(P[:, 454, 0] - P[:, 1, 0]) + 1e-9
-    return pupil, np.abs(np.log(dr / dl))
-
-
-def pct_rank(x):
-    out = np.full(len(x), np.nan)
-    fin = np.isfinite(x)
-    if fin.sum():
-        v = x[fin]
-        out[fin] = np.array([float(np.mean(v <= xi)) * 100 for xi in x[fin]])
-    return out
-
-
-def rank01(x, flip=False):
-    r = np.argsort(np.argsort(np.nan_to_num(x, nan=(np.inf if flip else -np.inf))))
-    r = r / max(len(x) - 1, 1)
-    return 1 - r if flip else r
-
-
-def frame_table(clip_id: str, out_root: Path):
-    """클립 main rider의 전 신호 와이드 테이블 (+유령 우주 컨텍스트, v0.6)."""
-    rec = json.load(open(out_root / clip_id / "likeness.json"))
-    tid, rider = next((int(t), r) for t, r in rec["riders"].items() if r.get("role") == "main")
-    lmr = read_landmarks(out_root, clip_id).filter(pl.col("track_id") == tid).sort("frame_idx")
-    # 유령 우주 재료: 무효(valid-필터로 빠질 lm 행)의 crop_box — 전량 보존 후 필터
-    lm_all_cb = {int(f): tuple(float(v) for v in b)
-                 for f, b in zip(lmr["frame_idx"].to_list(), lmr["crop_box"].to_list())}
-    gt = pl.read_parquet(out_root / clip_id / "gate_trace.parquet").filter(pl.col("track_id") == tid)
-    valid = set(gt.filter(pl.col("valid"))["frame_idx"].to_list())
-    lm = lmr
-    keep = lm["frame_idx"].is_in(list(valid))
-    if int(keep.sum()) >= 10:
-        lm = lm.filter(keep)
-    fx = lm["frame_idx"].to_numpy()
-    n = len(fx)
-    P = np.array(lm["landmarks"].to_list(), dtype=np.float64).reshape(n, 478, 3)
-    T = np.array(lm["transform"].to_list(), dtype=np.float64).reshape(n, 4, 4)
-    cb = np.array(lm["crop_box"].to_list(), dtype=np.float64)
-    canonicalize(P, T, cb)
-
-    feats = read_features(out_root, clip_id, "A").filter(pl.col("track_id") == tid).sort("frame_idx")
-    pos = {f: i for i, f in enumerate(feats["frame_idx"].to_numpy())}
-    M = np.array(feats["feature"].to_list(), dtype=np.float64)
-    sel = np.array([pos[f] for f in fx])
-    yaw = M[sel, INDEX["head_yaw_dev"]]
-    pitch = M[sel, INDEX["head_pitch"]]
-    blur = M[sel, INDEX["face_blur"]]
-
-    pq = pl.read_parquet(out_root / clip_id / "parse.parquet").filter(pl.col("track_id") == tid)
-    g = lambda col: (dict(zip(pq["frame_idx"].to_list(), pq[col].to_list())) if col in pq.columns else {})
-    micro_of, mv_of, lum_of, hi_of = g("face_micro"), g("mouth_vis"), g("skin_lum"), g("skin_clip_hi")
-    micro = np.array([micro_of.get(int(f), np.nan) for f in fx], float)
-    mv = np.array([mv_of.get(int(f), np.nan) for f in fx], float)
-    lum = np.array([lum_of.get(int(f), np.nan) for f in fx], float)
-    chi = np.array([hi_of.get(int(f), np.nan) for f in fx], float)
-    lum_eff = lum * (1.0 - np.nan_to_num(chi, nan=0.0))
-
-    det_all = pl.read_parquet(out_root / clip_id / "detections.parquet")
-    det = det_all.filter(pl.col("track_id") == tid)
-    det_bbox = {int(f): tuple(float(v) for v in b)
-                for f, b in zip(det["frame_idx"].to_list(), det["bbox"].to_list()) if b is not None}
-    frag_bbox = {}
-    if "subject_id" in det_all.columns:
-        sids = det["subject_id"].drop_nulls().unique().to_list()
-        if sids:
-            fr = det_all.filter(pl.col("subject_id").is_in(sids) & (pl.col("track_id") != tid))
-            frag_bbox = {int(f): tuple(float(v) for v in b)
-                         for f, b in zip(fr["frame_idx"].to_list(), fr["bbox"].to_list()) if b is not None}
-    erows = [(int(f), np.asarray(e, float)) for f, e in
-             zip(det["frame_idx"].to_list(), det["embedding"].to_list()) if e is not None]
-    cs = np.full(n, np.nan)
-    nrm = np.full(n, np.nan)
-    if len(erows) >= 10:
-        dfr = np.array([f for f, _ in erows])
-        dE = np.stack([e for _, e in erows])
-        dn = np.linalg.norm(dE, axis=1)
-        Eh = dE / dn[:, None]
-        c0 = np.median(Eh, axis=0)
-        c0 /= np.linalg.norm(c0)
-        cs_of = dict(zip(dfr.tolist(), (Eh @ c0).tolist()))
-        nm_of = dict(zip(dfr.tolist(), dn.tolist()))
-        cs = np.array([cs_of.get(int(f), np.nan) for f in fx])
-        nrm = np.array([nm_of.get(int(f), np.nan) for f in fx])
-
-    tb = read_tubelets(out_root, clip_id).filter(pl.col("track_id") == tid)
-    ph = dict(zip(tb["frame_idx"].to_list(), tb["scene_phase"].to_list()))
-    board = np.array([ph.get(int(f)) == "boarding" for f in fx])
-
-    B = np.array(lm["blendshapes"].to_list(), dtype=np.float64)
-    ecols = [i for i, nm_ in enumerate(BLENDSHAPE_ORDER)
-             if nm_ != "_neutral" and not nm_.startswith("eyeLook")]
-    expr = B[:, ecols].max(axis=1)
-    pupil, sym = face_signals(P)
-    return dict(tid=tid, rider=rider, fx=fx, cb=cb, P=P, yaw=yaw, pitch=pitch, blur=blur,
-                micro=micro, mv=mv, lum_eff=lum_eff, cs=cs, nrm=nrm, board=board, expr=expr,
-                pupil=pupil, sym=sym, lm_all_cb=lm_all_cb, det_bbox=det_bbox, frag_bbox=frag_bbox)
-
-
-def compute_picks(rows, cfg):
-    """JS 시뮬레이터와 문자 그대로 동일한 의미론 (반올림된 shipped 값 위에서)."""
-    surv = [r for r in rows
-            if r["sy"] < cfg["sym_max"] and cfg["dev_lo"] < r["dv"] < cfg["dev_hi"]
-            and abs(r["pc"]) < cfg["pt_max"]
-            and r["pu"] >= cfg["pu_min"]
-            and (r["cs"] is None or r["cs"] >= cfg["cs_min"])
-            and (r["mv"] is None or r["mv"] >= cfg["mv_min"])
-            and (r["lt"] is None or r["lt"] >= cfg["lt_min"])
-            and r["ex"] <= cfg["ex_max"]]
-    for r in surv:
-        r["_s"] = (cfg["w_expr"] * r["r"][0] + cfg["w_pu"] * r["r"][1]
-                   + cfg["w_q3"] * r["r"][2] + cfg["w_vis2"] * r["r"][3]
-                   + cfg["w_light"] * r["r"][4])
-    surv.sort(key=lambda r: -r["_s"])
-    got = []
-    for r in surv:
-        if all(abs(r["f"] - o["f"]) >= cfg["gap_min"] for o in got):
-            got.append(r)
-        if len(got) == 3:
-            break
-    return [r["f"] for r in got]
-
-
-def build_clip(clip_id, out_root, wb_dir):
-    t = frame_table(clip_id, out_root)
-    fx, cb, P = t["fx"], t["cb"], t["P"]
-    n = len(fx)
-
-    # chroma + 썸네일(v0.6: 전 행 = 공평 우주) + 유령 썸네일: 한 번의 순차 디코드
-    dev = t["yaw"] - FRONTAL_DEG
-    cur = [f for f in t["rider"]["samples"]["center_nearest"]]
-    row_of = {int(f): i for i, f in enumerate(fx)}
-    fxset = set(row_of)
-    # 유령 우주: inv=측정됐으나 valid 밖 · det=검출만(랜드마크 없음) · frag=동일-subject 타 트랙
-    inv_f = sorted(set(t["lm_all_cb"]) - fxset)
-    det_f = sorted(set(t["det_bbox"]) - set(t["lm_all_cb"]))
-    frag_f = sorted(set(t["frag_bbox"]) - set(t["det_bbox"]) - set(t["lm_all_cb"]))
-    ghost_kind = {**{f: "inv" for f in inv_f}, **{f: "det" for f in det_f},
-                  **{f: "frag" for f in frag_f}}
-    ghost_thumb = set()
-    for kfs in (inv_f, det_f, frag_f):                          # 종류별 썸네일 ≤60 표본
-        if len(kfs) > 60:
-            ghost_thumb |= {kfs[i] for i in np.unique(np.linspace(0, len(kfs) - 1, 60).astype(int))}
-        else:
-            ghost_thumb |= set(kfs)
-
-    def _sq(b, W0, H0, pad=1.3):
-        x1, y1, x2, y2 = b
-        cx, cy, s = (x1 + x2) / 2, (y1 + y2) / 2, max(x2 - x1, y2 - y1) * pad / 2
-        return max(0, int(cx - s)), max(0, int(cy - s)), min(W0, int(cx + s)), min(H0, int(cy + s))
-
-    chroma = np.full(n, np.nan)
-    tdir = wb_dir / "thumbs" / clip_id
-    tdir.mkdir(parents=True, exist_ok=True)
-    thumb_ok = set()
-    cap = cv2.VideoCapture(str(out_root / clip_id / "detect.mp4"))
-    vf = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-    fidx = 0
-    while True:
-        ok, frm = cap.read()
-        if not ok:
-            break
-        H0, W0 = frm.shape[:2]
-        i = row_of.get(fidx)
-        box = None
-        if i is not None:
-            cbv = cb[i]
-            pts = np.stack([cbv[0] + P[i, :, 0] * (cbv[2] - cbv[0]),
-                            cbv[1] + P[i, :, 1] * (cbv[3] - cbv[1])], 1)
-            r = skin_sv(frm, pts, cbv)
-            if r is not None:
-                chroma[i] = r[3]
-            box = tuple(cbv)
-        elif fidx in ghost_thumb:
-            k = ghost_kind[fidx]
-            box = (t["lm_all_cb"].get(fidx) if k == "inv"
-                   else _sq(t["det_bbox"].get(fidx) or t["frag_bbox"].get(fidx), W0, H0))
-        if box is not None:
-            x1, y1, x2, y2 = (int(v) for v in box)
-            if x2 - x1 > 1 and y2 - y1 > 1:
-                tile = cv2.resize(frm[max(0, y1):y2, max(0, x1):x2], (THUMB, THUMB))
-                cv2.imwrite(str(tdir / f"f{fidx:05d}.jpg"), tile,
-                            [cv2.IMWRITE_JPEG_QUALITY, 82])
-                thumb_ok.add(fidx)
-        fidx += 1
-    cap.release()
-    vf = max(vf, fidx)
-    covered = fxset | set(ghost_kind)
-    absent = []
-    _st = None
-    for f in range(vf):
-        if f not in covered:
-            if _st is None:
-                _st = f
-        elif _st is not None:
-            absent.append([_st, f - 1])
-            _st = None
-    if _st is not None:
-        absent.append([_st, vf - 1])
-    ghost = [{"f": f, "k": k,
-              "th": (f"thumbs/{clip_id}/f{f:05d}.jpg" if f in thumb_ok else None)}
-             for f, k in sorted(ghost_kind.items())]
-
-    micro_pct, sharp_pct = pct_rank(t["micro"]), pct_rank(t["blur"])
-    norm_pct, cs_pct, mv_pct = pct_rank(t["nrm"]), pct_rank(t["cs"]), pct_rank(t["mv"])
-    light_pct = np.nanmean(np.vstack([pct_rank(t["lum_eff"]), pct_rank(chroma)]), axis=0)
-    q3 = np.nanmean(np.vstack([sharp_pct, micro_pct, norm_pct]), axis=0)
-    vis2 = np.nanmean(np.vstack([cs_pct, mv_pct]), axis=0)
-    R = np.stack([rank01(t["expr"], flip=True), rank01(t["pupil"]), rank01(q3),
-                  rank01(vis2), rank01(light_pct)], axis=1)
-
-    def num(v, nd=2):
-        return None if not np.isfinite(v) else round(float(v), nd)
-
-    pt = t["pitch"]
-    pt_med = float(np.nanmedian(pt)) if np.isfinite(pt).any() else 0.0
-    rows = []
-    for i in range(n):
-        rows.append({"f": int(fx[i]), "b": int(t["board"][i]),
-                     "pt": round(float(pt[i]), 1) if np.isfinite(pt[i]) else None,
-                     # pc = 클립-중앙값 상대 pitch(스크린용) — 결측=0(통과), 절대 비교 금지 원칙
-                     "pc": round(float(pt[i] - pt_med), 1) if np.isfinite(pt[i]) else 0.0,
-                     "sy": round(float(t["sym"][i]), 3) if np.isfinite(t["sym"][i]) else 9.9,
-                     "dv": round(float(dev[i]), 1) if np.isfinite(dev[i]) else 99.0,
-                     "pu": round(float(t["pupil"][i]), 3) if np.isfinite(t["pupil"][i]) else 0.0,
-                     "ex": round(float(t["expr"][i]), 3) if np.isfinite(t["expr"][i]) else 1.0,
-                     "cs": num(cs_pct[i], 1), "mv": num(mv_pct[i], 1), "lt": num(light_pct[i], 1),
-                     "r": [round(float(v), 4) for v in R[i]],
-                     "th": (f"thumbs/{clip_id}/f{int(fx[i]):05d}.jpg" if int(fx[i]) in thumb_ok else None)})
-    selftest = compute_picks([dict(r) for r in rows], DEFAULT_CFG)
-    return {"clip": clip_id, "tid": t["tid"], "n": n, "vf": vf, "cur": cur,
-            "selftest": selftest, "rows": rows, "ghost": ghost, "absent": absent}
-
-
-HTML = """<!DOCTYPE html>
-<html lang="ko"><head><meta charset="utf-8"><title>likeness sampling workbench v0.1</title>
+# ── 워크벤치 뷰 (/wb?clips=a,b) — __WB__·__GT0__·__CORPUS__ 치환 ─────────────
+WORKBENCH_PAGE = r"""<!DOCTYPE html>
+<html lang="ko"><head><meta charset="utf-8"><title>likeness sampling workbench</title>
 <style>
 body{background:#161616;color:#ddd;font:13px/1.45 system-ui,sans-serif;margin:0}
 #top{position:sticky;top:0;background:#1d1d1d;border-bottom:1px solid #333;padding:8px 14px;z-index:9}
@@ -361,10 +67,13 @@ body{background:#161616;color:#ddd;font:13px/1.45 system-ui,sans-serif;margin:0}
 button{background:#2a2a2a;color:#ddd;border:1px solid #555;border-radius:3px;
   padding:3px 10px;margin-right:6px;cursor:pointer}
 button:hover{background:#383838}
+a{color:#8ab}
 .gtscore{color:#cb8;font-size:12px;margin-left:12px}
+.gterr{color:#e66;font-size:12px;margin-left:12px}
 .note{color:#777;font-size:11px}
 </style></head><body>
 <div id="top">
+ <a href="/">≡ 목록</a>
  <span id="selftest">selftest…</span>
  <button onclick="snapshotB()">현재 설정 → B 저장</button>
  <button onclick="clearB()">B 지우기</button>
@@ -372,12 +81,14 @@ button:hover{background:#383838}
  <button onclick="exportGT()">GT export (.jsonl)</button>
  <input type="file" id="gtfile" style="display:none" onchange="importGT(this)">
  <button onclick="document.getElementById('gtfile').click()">GT import</button>
- <span class="gtscore" id="gtscore"></span>
- <div class="note">클릭=GT 깃발(없음→긍정→부정) · <b>Shift+클릭=포즈 그라운딩</b>(그 프레임이 통과하는 경계로 sym/yaw 세팅) · 호버=확대 · ←→=클립 전환 · 주황 외곽=A/B 불일치 픽 · 저장 홈=fixtures/eval/</div>
+ <span class="gtscore" id="gtscore"></span><span class="gterr" id="gterr"></span>
+ <div class="note">클릭=GT 깃발(없음→긍정→부정, 서버 즉시 저장 → fixtures/eval) · <b>Shift+클릭=포즈 그라운딩</b>(그 프레임이 통과하는 경계로 sym/yaw 세팅) · 호버=확대 · ←→=클립 전환 · 주황 외곽=A/B 불일치 픽</div>
 </div>
 <div id="panel"></div><div id="main"></div>
-<script src="data.js"></script>
 <script>
+const WB=__WB__;
+const GT0=__GT0__;
+const CORPUS=__CORPUS__;
 const DIALS=[
  ["1단 · 품질 스크린 (결정경계)"],
  ["sym_max","보이는-정면 sym <",0.3,2.0,0.05],
@@ -401,6 +112,8 @@ const DIALS=[
 const DEF={sym_max:0.6,dev_lo:-15,dev_hi:15,pt_max:99,pu_min:0.4,cs_min:0,mv_min:0,lt_min:0,ex_max:1.0,gap_min:12,
            w_expr:0.30,w_pu:0.15,w_q3:0.20,w_vis2:0.15,w_light:0.20};
 let A={...DEF}, Bcfg=null, GT={}, cur=0, sortMode="time", poseOpen=false;
+for(const o of GT0){if((o.role||"center")=="center"&&(o.flag=="pos"||o.flag=="neg")
+ &&o.corpus==CORPUS)GT[o.clip+":"+o.frame]=o.flag;}
 const STAGES=["정면","pitch","눈동자","cs","입","빛","표정"];
 const SCOL=["#c98a4a","#7fa85c","#d95555","#b070d0","#55aacc","#d8c455","#e08aa8"];
 const SURV="#69d069";
@@ -435,7 +148,7 @@ function picks(rows,c){
 
 function cellHTML(clip,r,cls){
  const k=clip+":"+r.f, fl=GT[k]||"";
- const img=r.th?`<img src="${r.th}" loading="lazy">`:`<div class="noimg">f${r.f}<br>(no thumb)</div>`;
+ const img=r.th?`<img src="/${r.th}" loading="lazy">`:`<div class="noimg">f${r.f}<br>(no thumb)</div>`;
  const cap=`f${r.f} ex${r.ex} pu${r.pu}<br>cs${r.cs==null?"--":r.cs} mv${r.mv==null?"--":r.mv} lt${r.lt==null?"--":r.lt}`;
  const mark=fl=="pos"?"O":fl=="neg"?"X":"";
  return `<div class="cell ${fl} ${cls||""}" onclick="cyc(event,'${clip}',${r.f})">${img}
@@ -499,7 +212,7 @@ function render(){
   const byDev=samp(wt.slice().sort((a,b)=>a.dv-b.dv));
   const bySy=samp(wt.slice().sort((a,b)=>a.sy-b.sy));
   const pose=r=>{const ff=firstFail(r,A);const dim=(ff===0||ff===1)?"opacity:.35":"";
-   return `<div class="cell" style="${dim}" onclick="groundPose('${C.clip}',${r.f})"><img src="${r.th}">
+   return `<div class="cell" style="${dim}" onclick="groundPose('${C.clip}',${r.f})"><img src="/${r.th}">
     <div class="cap">dv${r.dv} sy${r.sy}<br>pt${r.pt==null?"--":r.pt} pc${r.pc}</div></div>`;};
   h+=`<div class="rowlbl">포즈 눈금 — yaw 사다리 (좌측면 → 정면 → 우측면 · 타일 클릭 = 이 포즈가 포함되게 밴드 확장 · 흐림 = 현재 포즈 스크린에 걸러짐)</div>
    <div class="strip sm">`+byDev.map(pose).join("")+`</div>
@@ -579,11 +292,11 @@ function drawTimeline(C,m){
   if(o.row){
    const r=o.row, ff=firstFail(r,A);
    const st=ff<0?`<span style="color:${SURV}">생존</span>`:`<span style="color:${SCOL[ff]}">${STAGES[ff]}에 걸러짐</span>`;
-   tip.innerHTML=(r.th?`<img src="${r.th}" loading="lazy">`:"")+
+   tip.innerHTML=(r.th?`<img src="/${r.th}" loading="lazy">`:"")+
     `f${r.f} ${st}${gs}<br>ex${r.ex} pu${r.pu} sy${r.sy} dv${r.dv}<br>pt${r.pt==null?"--":r.pt}(Δ${r.pc}) cs${r.cs==null?"--":r.cs} mv${r.mv==null?"--":r.mv} lt${r.lt==null?"--":r.lt}`;
   }else{
    const g=o.g;
-   tip.innerHTML=(g.th?`<img src="${g.th}" loading="lazy">`:"")+
+   tip.innerHTML=(g.th?`<img src="/${g.th}" loading="lazy">`:"")+
     `f${g.f} <span style="color:${GCOL[g.k]}">${GLBL[g.k]}</span>${gs}<br>측정 신호 없음 — 클릭=GT 깃발 가능`;
   }
   tip.style.display="block";
@@ -644,10 +357,17 @@ function drawDialHists(C,m){
   ctx.textAlign="left";
  }
 }
+function postGT(row){
+ return fetch("/api/gt",{method:"POST",headers:{"Content-Type":"application/json"},
+   body:JSON.stringify(row)})
+  .then(r=>{document.getElementById("gterr").textContent=r.ok?"":"GT 저장 실패 "+r.status;})
+  .catch(e=>{document.getElementById("gterr").textContent="GT 저장 실패: "+e;});}
 function cyc(e,clip,f){
  if(e&&e.shiftKey){groundPose(clip,f);return;}
  const k=clip+":"+f;GT[k]=GT[k]=="pos"?"neg":GT[k]=="neg"?undefined:"pos";
- if(!GT[k])delete GT[k];render();}
+ if(!GT[k])delete GT[k];
+ postGT({clip:clip,frame:f,role:"center",flag:GT[k]||null,corpus:CORPUS});
+ render();}
 function groundPose(clip,f){
  // 예시-그라운딩: 이 프레임이 포즈 스크린을 통과하는 최소 경계로 세팅 (쿼리 바이 예시)
  const C=WB.clips.find(c=>c.clip==clip);
@@ -664,13 +384,19 @@ function resetA(){A={...DEF};buildPanel();render();}
 function exportGT(){
  const lines=Object.entries(GT).map(([k,v])=>{const i=k.indexOf(":");
   return JSON.stringify({schema:"momentscan.workbench-gt/v0",clip:k.slice(0,i),frame:+k.slice(i+1),
-    role:"center",flag:v,corpus:"output/l2",ts:new Date().toISOString()});});
- const blob=new Blob([lines.join("\\n")+"\\n"],{type:"application/jsonl"});
+    role:"center",flag:v,corpus:CORPUS,ts:new Date().toISOString()});});
+ const blob=new Blob([lines.join("\n")+"\n"],{type:"application/jsonl"});
  const a=document.createElement("a");a.href=URL.createObjectURL(blob);
  a.download="workbench_gt.jsonl";a.click();}
-function importGT(inp){const fr=new FileReader();fr.onload=()=>{
- fr.result.split("\\n").filter(x=>x.trim()).forEach(l=>{try{const o=JSON.parse(l);
-  if(o.flag)GT[o.clip+":"+o.frame]=o.flag;}catch(e){}});render();};
+function importGT(inp){const fr=new FileReader();fr.onload=async()=>{
+ for(const l of fr.result.split("\n").filter(x=>x.trim())){
+  try{const o=JSON.parse(l);
+   if(o.flag&&o.clip!=null&&o.frame!=null){
+    await postGT({clip:o.clip,frame:+o.frame,role:o.role||"center",flag:o.flag,
+                  corpus:o.corpus||CORPUS,ts:o.ts});
+    if((o.corpus||CORPUS)==CORPUS&&(o.role||"center")=="center")GT[o.clip+":"+o.frame]=o.flag;}
+  }catch(e){}}
+ render();};
  fr.readAsText(inp.files[0]);}
 function buildPanel(){
  const p=document.getElementById("panel");let h="";
@@ -692,19 +418,84 @@ buildPanel();render();
 </script></body></html>
 """
 
-if __name__ == "__main__":
-    out_root = Path("output/l2")
-    dst = Path(sys.argv[1]) if len(sys.argv) > 1 else Path("workbench_out")
-    wb = dst
-    wb.mkdir(parents=True, exist_ok=True)
-    clips = []
-    for clip in CLIPS:
-        try:
-            clips.append(build_clip(clip, out_root, wb))
-            print(f"{clip}: rows={clips[-1]['n']} selftest={clips[-1]['selftest']}")
-        except Exception as e:
-            print(f"{clip}: FAIL {type(e).__name__}: {e}")
-    (wb / "data.js").write_text("const WB=" + json.dumps({"clips": clips}, ensure_ascii=False)
-                                + ";", encoding="utf-8")
-    (wb / "workbench.html").write_text(HTML, encoding="utf-8")
-    print("workbench:", wb / "workbench.html")
+# ── 클립 목록 + 등록 (/) — __DATA__ 치환 ─────────────────────────────────────
+INDEX_PAGE = r"""<!DOCTYPE html>
+<html lang="ko"><head><meta charset="utf-8"><title>momentscan workbench — clips</title>
+<style>
+body{background:#161616;color:#ddd;font:13px/1.5 system-ui,sans-serif;margin:0;padding:16px 22px}
+h1{font-size:16px;margin:0 0 2px} .note{color:#777;font-size:11px}
+table{border-collapse:collapse;margin:10px 0}
+td,th{border-bottom:1px solid #2c2c2c;padding:4px 12px 4px 0;text-align:left;font-size:13px}
+th{color:#9ad;font-size:11px;text-transform:uppercase}
+a{color:#8ab} .cached{color:#7c6} .uncached{color:#987}
+button{background:#2a2a2a;color:#ddd;border:1px solid #555;border-radius:3px;
+  padding:4px 12px;margin-right:6px;cursor:pointer}
+button:hover{background:#383838}
+input[type=text]{background:#111;color:#ddd;border:1px solid #444;border-radius:3px;padding:4px 6px}
+#reg{margin:14px 0;padding:10px 12px;background:#1b1b1b;border:1px solid #2c2c2c;border-radius:4px;max-width:760px}
+#reg .row{margin:4px 0}
+#jobs{margin:6px 0} .job{font-size:12px;color:#a9c}
+.err{color:#e66}
+</style></head><body>
+<script>const DATA=__DATA__;</script>
+<h1>momentscan workbench</h1>
+<div class="note">코퍼스 = <b id="corpus"></b> · GT 홈 = <span id="gtpath"></span> (<span id="gtn"></span>행)
+ · 첫 열람은 클립당 수십 초(detect.mp4 디코드 → 캐시), 이후 즉시</div>
+
+<div id="reg">
+ <b>비디오 등록</b> <span class="note">— 로컬 경로 → perception 기판 잡(likeness 클로저), 완주 후 목록에 등장</span>
+ <div class="row">소스 경로 <input type="text" id="src" size="58" placeholder="/path/to/video.mp4"></div>
+ <div class="row">clip_id <input type="text" id="cid" size="24" placeholder="비우면 파일명">
+  <button onclick="register()">등록</button> <span id="regmsg" class="note"></span></div>
+ <div id="jobs"></div>
+</div>
+
+<div>
+ <button onclick="openSel()">선택 클립 워크벤치 열기</button>
+ <span class="note">(체크 후 — 열람 순간 미캐시 클립은 빌드)</span>
+</div>
+<table id="tbl"><tr><th></th><th>clip</th><th>frame_table 캐시</th><th></th></tr></table>
+
+<script>
+document.getElementById("corpus").textContent=DATA.corpus;
+document.getElementById("gtpath").textContent=DATA.gt_path;
+document.getElementById("gtn").textContent=DATA.gt_count;
+const tbl=document.getElementById("tbl");
+for(const c of DATA.clips){
+ const tr=document.createElement("tr");
+ tr.innerHTML=`<td><input type="checkbox" value="${c.clip}"></td><td><b>${c.clip}</b></td>
+  <td class="${c.cached?"cached":"uncached"}">${c.cached?"✓ 캐시됨":"− 미빌드"}</td>
+  <td><a href="/wb?clips=${c.clip}">열기</a></td>`;
+ tbl.appendChild(tr);
+}
+function openSel(){
+ const sel=[...document.querySelectorAll('#tbl input:checked')].map(x=>x.value);
+ if(!sel.length){alert("클립을 선택하세요");return;}
+ location.href="/wb?clips="+sel.join(",");}
+async function register(){
+ const src=document.getElementById("src").value.trim();
+ const cid=document.getElementById("cid").value.trim();
+ const msg=document.getElementById("regmsg");
+ if(!src){msg.textContent="소스 경로를 입력하세요";return;}
+ msg.textContent="등록 중…";
+ try{
+  const r=await fetch("/api/register",{method:"POST",headers:{"Content-Type":"application/json"},
+    body:JSON.stringify(cid?{source_path:src,clip_id:cid}:{source_path:src})});
+  const j=await r.json();
+  msg.textContent=r.ok?`접수: ${j.clip_id} (${j.status||"done"})`:`실패: ${j.error||r.status}`;
+  msg.className=r.ok?"note":"err";
+ }catch(e){msg.textContent="실패: "+e;msg.className="err";}
+ pollJobs();}
+async function pollJobs(){
+ try{
+  const j=await(await fetch("/api/jobs")).json();
+  const el=document.getElementById("jobs");
+  el.innerHTML=j.jobs.length?j.jobs.map(x=>
+   `<div class="job">${x.clip_id} — ${x.status}${x.error?` <span class="err">${x.error}</span>`:""}</div>`).join(""):"";
+  if(j.jobs.some(x=>x.status=="queued"||x.status=="running"))setTimeout(pollJobs,3000);
+  else if(j.jobs.some(x=>x.status=="done")&&!document.__reloaded){
+   document.__reloaded=1;location.reload();}
+ }catch(e){}}
+pollJobs();
+</script></body></html>
+"""
