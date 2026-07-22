@@ -1,17 +1,16 @@
-"""샘플링 워크벤치 v0 (2026-07-21, 원장 ⑫) — user 도구 3종 발상의 통합 계기.
+"""샘플링 워크벤치 v0.1 (2026-07-22) — 원장 ⑫ 계기. v0 대비 UI 개정(user 피드백
+"여러 비디오 동시 표시 = 과복잡"):
+  단일-클립 탭 뷰(←→ 키보드 전환·탭에 GT/생존 배지) · 썸네일 224px(픽=원치수,
+  풀=112 축소+호버 2× 확대) · 퍼널 막대(결정경계가 좁아지는 게 보임) · 풀 정렬
+  토글(시간순/점수순 — 랭커가 뭘 좋아하는지 노출) · A/B diff 하이라이트(주황 외곽)
+  · 기본값에서 움직인 다이얼 하이라이트.
 
-층 구성:
-  데이터층  = frame_table: 클립·트랙의 전 신호를 와이드 행으로 (오늘 프로브 4종이
-              반복한 조인의 단일홈; stash 읽기-전용 파생, 영속화 없음=이중-진실 방지)
-  인터랙션층 = HTML 다이얼 시뮬레이터: 1단 품질 스크린(floor — 결정경계를 좁힘, 퍼널
-              표시) / 2단 대표성 랭킹(가중 — 우선순위 깃발). 측정=영속이라 JS 실시간.
-  축적층    = 클릭 GT: 프레임 pos/neg 깃발 → export(.jsonl) → fixtures/eval/ (user 확정
-              홈). 수용-집합 원형(P2)의 likeness-샘플링 적용, 프레임-수준=정책-강건.
-
-드리프트 방어: JS 사다리는 만들지 않는다 — 명시 floor(사다리는 생산 상세). 로드 시
-셀프테스트 = JS가 기본 설정으로 뽑은 픽 ≡ 파이썬이 같은(반올림된) 데이터로 뽑은 픽.
-봉인 전 최종 확인은 항상 파이썬 카드(v7 계기) 재실행으로.
-스코프 v0 = center 픽만 (hair 빈은 v1). 표시 썸네일은 표본화(수치는 전 행 기준).
+층 구성(v0과 동일): frame_table(조인 단일홈, stash 읽기-전용 파생) + HTML 다이얼
+시뮬레이터(1단 품질 스크린=floor/퍼널 · 2단 대표성 랭킹=가중) + 클릭 GT(pos/neg →
+export → fixtures/eval/, 스키마 momentscan.workbench-gt/v0).
+드리프트 방어: 명시-floor 의미론(사다리는 생산 상세) + 로드 시 셀프테스트(JS가 기본
+설정으로 뽑은 픽 ≡ 파이썬 동일-데이터 픽). 봉인 전 최종 확인=파이썬 카드 재실행.
+스코프 v0.x = center 픽만(hair 빈은 v1). 표시 썸네일은 표본화(수치는 전 행 기준).
 """
 import json
 import sys
@@ -34,7 +33,7 @@ from scratchpad_likeness_sat import skin_sv
 RACE = resolve("race981")
 FRONTAL_DEG = RACE.camera.frontal_deg
 CLIPS = ("test_3", "test_12", "dual_2", "test_4", "test_0", "international_1")
-THUMB = 112
+THUMB = 224     # 저장 원치수 — 픽 행은 원치수, 풀은 112 축소 표시+호버 확대
 
 # 기본 설정 = v7.2 등가(단일-floor 의미론) — JS DEF와 문자 그대로 동일해야 함
 DEFAULT_CFG = {"sym_max": 0.6, "dev_max": 15.0, "pu_min": 0.4, "cs_min": 0.0,
@@ -224,32 +223,49 @@ def build_clip(clip_id, out_root, wb_dir):
 
 
 HTML = """<!DOCTYPE html>
-<html lang="ko"><head><meta charset="utf-8"><title>likeness sampling workbench v0</title>
+<html lang="ko"><head><meta charset="utf-8"><title>likeness sampling workbench v0.1</title>
 <style>
 body{background:#161616;color:#ddd;font:13px/1.45 system-ui,sans-serif;margin:0}
 #top{position:sticky;top:0;background:#1d1d1d;border-bottom:1px solid #333;padding:8px 14px;z-index:9}
 #selftest{font-weight:600}
 .ok{color:#7c6} .bad{color:#e66}
-#panel{position:fixed;left:0;top:52px;bottom:0;width:270px;overflow:auto;background:#1b1b1b;
+#panel{position:fixed;left:0;top:78px;bottom:0;width:270px;overflow:auto;background:#1b1b1b;
   border-right:1px solid #333;padding:10px 14px;box-sizing:border-box}
 #main{margin-left:270px;padding:10px 16px}
 .grp{margin:10px 0 4px;color:#9ad;font-weight:600;font-size:12px;text-transform:uppercase}
 .dial{margin:6px 0}
 .dial label{display:flex;justify-content:space-between;font-size:12px;color:#bbb}
+.dial.mod label{color:#fc6}
+.dial.mod label::after{content:" •"}
 .dial input[type=range]{width:100%}
-.clip{margin:26px 0;border-top:1px solid #2c2c2c;padding-top:10px}
-.funnel{color:#9a8;font-size:12px;margin:4px 0}
-.rowlbl{color:#89b;font-size:11px;margin-top:8px}
+#tabs{display:flex;gap:6px;flex-wrap:wrap;margin:4px 0 10px}
+.tab{padding:4px 10px;border:1px solid #444;border-radius:4px;cursor:pointer;font-size:12px;color:#aaa}
+.tab.cur{background:#28343f;color:#dfeaf5;border-color:#6a92b8}
+.tab .b{color:#9a8} .tab .g{color:#cb8}
+.funnel{margin:6px 0 10px;max-width:560px}
+.fr{display:flex;align-items:center;gap:8px;font-size:11px;color:#9a8;margin:1px 0}
+.fr .lbl{width:44px;text-align:right;color:#8b9}
+.fr .bar{height:9px;background:#3f6b52;border-radius:2px}
+.fr.last .bar{background:#6fae7c}
+.fr .cnt{color:#bcb}
+.rowlbl{color:#89b;font-size:11px;margin-top:12px}
 .strip{display:flex;gap:6px;flex-wrap:wrap;margin:4px 0}
-.cell{width:112px;position:relative}
-.cell img{width:112px;height:112px;display:block;border:2px solid #444;box-sizing:border-box}
-.cell .noimg{width:112px;height:112px;border:2px dashed #444;box-sizing:border-box;
-  display:flex;align-items:center;justify-content:center;color:#666;font-size:10px}
+.cell{position:relative;cursor:pointer}
+.strip.sm .cell,.strip.sm .cell img,.strip.sm .cell .noimg{width:112px}
+.strip.sm .cell img,.strip.sm .cell .noimg{height:112px}
+.strip.big .cell,.strip.big .cell img,.strip.big .cell .noimg{width:224px}
+.strip.big .cell img,.strip.big .cell .noimg{height:224px}
+.cell img{display:block;border:2px solid #444;box-sizing:border-box;transition:transform .07s}
+.strip.sm .cell:hover img{transform:scale(2);position:relative;z-index:8;border-color:#9cf}
+.strip.big .cell:hover img{transform:scale(1.4);position:relative;z-index:8;border-color:#9cf}
+.cell .noimg{border:2px dashed #444;box-sizing:border-box;display:flex;align-items:center;
+  justify-content:center;color:#666;font-size:10px}
 .cell .cap{font-size:10px;color:#aaa;line-height:1.25;margin-top:1px}
 .cell.pos img,.cell.pos .noimg{border-color:#5c5}
 .cell.neg img,.cell.neg .noimg{border-color:#e55}
-.cell .flag{position:absolute;top:2px;right:2px;font-size:12px}
+.cell .flag{position:absolute;top:2px;right:2px;font-size:12px;color:#fff;text-shadow:0 0 3px #000}
 .pickA img{outline:2px solid #7ac} .pickB img{outline:2px dashed #ca7}
+.diff img{outline-color:#f80 !important}
 button{background:#2a2a2a;color:#ddd;border:1px solid #555;border-radius:3px;
   padding:3px 10px;margin-right:6px;cursor:pointer}
 button:hover{background:#383838}
@@ -265,7 +281,7 @@ button:hover{background:#383838}
  <input type="file" id="gtfile" style="display:none" onchange="importGT(this)">
  <button onclick="document.getElementById('gtfile').click()">GT import</button>
  <span class="gtscore" id="gtscore"></span>
- <div class="note">클릭=GT 깃발 순환(없음→긍정→부정) · 저장 홈=fixtures/eval/ · 수치=전 행 기준, 썸네일=표본(없으면 점선칸)</div>
+ <div class="note">클릭=GT 깃발(없음→긍정→부정) · 호버=확대 · ←→=클립 전환 · 주황 외곽=A/B 불일치 픽 · 저장 홈=fixtures/eval/</div>
 </div>
 <div id="panel"></div><div id="main"></div>
 <script src="data.js"></script>
@@ -290,23 +306,23 @@ const DIALS=[
 ];
 const DEF={sym_max:0.6,dev_max:15,pu_min:0.4,cs_min:0,mv_min:0,lt_min:0,ex_max:1.0,gap_min:12,
            w_expr:0.30,w_pu:0.15,w_q3:0.20,w_vis2:0.15,w_light:0.20};
-let A={...DEF}, Bcfg=null, GT={};   // GT["clip:f"]="pos"|"neg"
+let A={...DEF}, Bcfg=null, GT={}, cur=0, sortMode="time";
 
 function pass(r,c){return r.sy<c.sym_max&&Math.abs(r.dv)<c.dev_max&&r.pu>=c.pu_min
  &&(r.cs==null||r.cs>=c.cs_min)&&(r.mv==null||r.mv>=c.mv_min)&&(r.lt==null||r.lt>=c.lt_min)
  &&r.ex<=c.ex_max;}
 function funnel(rows,c){
- const s0=rows.length;
  const s1=rows.filter(r=>r.sy<c.sym_max&&Math.abs(r.dv)<c.dev_max);
  const s2=s1.filter(r=>r.pu>=c.pu_min);
  const s3=s2.filter(r=>r.cs==null||r.cs>=c.cs_min);
  const s4=s3.filter(r=>r.mv==null||r.mv>=c.mv_min);
  const s5=s4.filter(r=>r.lt==null||r.lt>=c.lt_min);
  const s6=s5.filter(r=>r.ex<=c.ex_max);
- return [s0,s1.length,s2.length,s3.length,s4.length,s5.length,s6.length];}
+ return [rows.length,s1.length,s2.length,s3.length,s4.length,s5.length,s6.length];}
+function score(r,c){return c.w_expr*r.r[0]+c.w_pu*r.r[1]+c.w_q3*r.r[2]+c.w_vis2*r.r[3]+c.w_light*r.r[4];}
 function picks(rows,c){
  const sv=rows.filter(r=>pass(r,c));
- sv.forEach(r=>r._s=c.w_expr*r.r[0]+c.w_pu*r.r[1]+c.w_q3*r.r[2]+c.w_vis2*r.r[3]+c.w_light*r.r[4]);
+ sv.forEach(r=>r._s=score(r,c));
  sv.sort((a,b)=>b._s-a._s);
  const got=[];
  for(const r of sv){if(got.every(o=>Math.abs(r.f-o.f)>=c.gap_min))got.push(r);if(got.length==3)break;}
@@ -320,40 +336,63 @@ function cellHTML(clip,r,cls){
  return `<div class="cell ${fl} ${cls||""}" onclick="cyc('${clip}',${r.f})">${img}
    <span class="flag">${mark}</span><div class="cap">${cap}</div></div>`;}
 
+function funnelHTML(fn){
+ const names=["전체","정면","눈동자","cs","입","빛","표정"];
+ const mx=Math.max(fn[0],1);
+ return `<div class="funnel">`+fn.map((v,i)=>
+  `<div class="fr${i==6?" last":""}"><span class="lbl">${names[i]}</span>
+   <span class="bar" style="width:${Math.max(2,Math.round(280*v/mx))}px"></span>
+   <span class="cnt">${v}</span></div>`).join("")+
+  (fn[6]<3?`<div class="fr"><span class="lbl"></span><span style="color:#e66">⚠ 풀&lt;3</span></div>`:``)+`</div>`;}
+
 function render(){
- const m=document.getElementById("main");let h="";let st_ok=true,st_msg=[];
- let gtP=0,gtN=0,gtPB=0,gtNB=0;
- for(const C of WB.clips){
-  const byf={};C.rows.forEach(r=>byf[r.f]=r);
+ // 셀프테스트 + 탭 배지는 전 클립 계산 (표시만 단일 클립)
+ let st_ok=true,st_msg=[],gtP=0,gtN=0,gtPB=0,gtNB=0;
+ const isDef=JSON.stringify(A)==JSON.stringify(DEF);
+ const meta=WB.clips.map(C=>{
   const pA=picks(C.rows,A), fn=funnel(C.rows,A);
   const pB=Bcfg?picks(C.rows,Bcfg):null;
-  const same=JSON.stringify(pA.slice().sort((a,b)=>a-b))==JSON.stringify(C.selftest.slice().sort((a,b)=>a-b));
-  const isDef=JSON.stringify(A)==JSON.stringify(DEF);
-  if(isDef&&!same){st_ok=false;st_msg.push(C.clip);}
+  if(isDef){const same=JSON.stringify(pA.slice().sort((a,b)=>a-b))==JSON.stringify(C.selftest.slice().sort((a,b)=>a-b));
+   if(!same){st_ok=false;st_msg.push(C.clip);}}
   pA.forEach(f=>{const g=GT[C.clip+":"+f];if(g=="pos")gtP++;if(g=="neg")gtN++;});
   if(pB)pB.forEach(f=>{const g=GT[C.clip+":"+f];if(g=="pos")gtPB++;if(g=="neg")gtNB++;});
-  h+=`<div class="clip"><b>${C.clip}</b> t${C.tid} <span class="note">n=${C.n}</span>
-   <div class="funnel">퍼널 A: ${fn[0]} → 정면 ${fn[1]} → 눈 ${fn[2]} → cs ${fn[3]} → 입 ${fn[4]} → 빛 ${fn[5]} → 표정 ${fn[6]}${fn[6]<3?' ⚠ 풀<3':''}</div>`;
-  h+=`<div class="rowlbl">CURRENT (생산 likeness.json)</div><div class="strip">`+
-    C.cur.map(f=>byf[f]?cellHTML(C.clip,byf[f],""):"").join("")+`</div>`;
-  h+=`<div class="rowlbl">A 픽</div><div class="strip">`+
-    pA.map(f=>cellHTML(C.clip,byf[f],"pickA")).join("")+`</div>`;
-  if(pB)h+=`<div class="rowlbl">B 픽</div><div class="strip">`+
-    pB.map(f=>cellHTML(C.clip,byf[f],"pickB")).join("")+`</div>`;
-  const sv=C.rows.filter(r=>pass(r,A));
-  const show=sv.filter(r=>r.th).slice(0,60);
-  h+=`<div class="rowlbl">생존 풀 (A, ${sv.length}행 중 썸네일 ${show.length} 표시)</div><div class="strip">`+
-    show.map(r=>cellHTML(C.clip,r,"")).join("")+`</div></div>`;
- }
- m.innerHTML=h;
+  let p=0,ng=0;for(const k in GT){if(k.startsWith(C.clip+":")){GT[k]=="pos"?p++:ng++;}}
+  return {pA,pB,fn,p,ng};});
+
+ const tabs=WB.clips.map((C,i)=>
+  `<span class="tab${i==cur?" cur":""}" onclick="cur=${i};render()">${C.clip}
+   <span class="b">${meta[i].fn[6]}</span>${meta[i].p+meta[i].ng?`<span class="g"> +${meta[i].p}/−${meta[i].ng}</span>`:""}</span>`).join("");
+
+ const C=WB.clips[cur], m=meta[cur];
+ const byf={};C.rows.forEach(r=>byf[r.f]=r);
+ const setA=new Set(m.pA), setB=m.pB?new Set(m.pB):null;
+ let h=`<div id="tabs">${tabs}</div><b>${C.clip}</b> t${C.tid} <span class="note">n=${C.n} · 풀 정렬:</span>
+  <button onclick="sortMode=sortMode=='time'?'score':'time';render()">${sortMode=='time'?'시간순':'점수순'}</button>`;
+ h+=funnelHTML(m.fn);
+ h+=`<div class="rowlbl">CURRENT (생산 likeness.json)</div><div class="strip sm">`+
+   C.cur.map(f=>byf[f]?cellHTML(C.clip,byf[f],""):"").join("")+`</div>`;
+ h+=`<div class="rowlbl">A 픽</div><div class="strip big">`+
+   m.pA.map(f=>cellHTML(C.clip,byf[f],"pickA"+(setB&&!setB.has(f)?" diff":""))).join("")+`</div>`;
+ if(m.pB)h+=`<div class="rowlbl">B 픽</div><div class="strip big">`+
+   m.pB.map(f=>cellHTML(C.clip,byf[f],"pickB"+(!setA.has(f)?" diff":""))).join("")+`</div>`;
+ const sv=C.rows.filter(r=>pass(r,A));
+ sv.forEach(r=>r._s=score(r,A));
+ const ordered=sortMode=="time"?sv.slice().sort((a,b)=>a.f-b.f):sv.slice().sort((a,b)=>b._s-a._s);
+ const show=ordered.filter(r=>r.th).slice(0,96);
+ h+=`<div class="rowlbl">생존 풀 (A, ${sv.length}행 중 썸네일 ${show.length} 표시 · ${sortMode=='time'?'시간순':'점수순'})</div>
+  <div class="strip sm">`+show.map(r=>cellHTML(C.clip,r,"")).join("")+`</div>`;
+ document.getElementById("main").innerHTML=h;
+
  const st=document.getElementById("selftest");
- if(JSON.stringify(A)==JSON.stringify(DEF)){
-  st.textContent=st_ok?"selftest OK — JS ≡ python (기본 설정)":"selftest FAIL: "+st_msg.join(",");
-  st.className=st_ok?"ok":"bad";
- }else{st.textContent="탐색 중 (기본 설정 아님 — selftest는 기본값에서만)";st.className="";}
- const gs=document.getElementById("gtscore");
+ if(isDef){st.textContent=st_ok?"selftest OK — JS ≡ python (기본 설정)":"selftest FAIL: "+st_msg.join(",");
+  st.className=st_ok?"ok":"bad";}
+ else{st.textContent="탐색 중 (기본 설정 아님 — selftest는 기본값에서만)";st.className="";}
  const tot=Object.keys(GT).length;
- gs.textContent=tot?`GT ${tot}개 · A: +${gtP}/−${gtN}`+(Bcfg?` · B: +${gtPB}/−${gtNB}`:""):"";
+ document.getElementById("gtscore").textContent=
+  tot?`GT ${tot}개 · A: +${gtP}/−${gtN}`+(Bcfg?` · B: +${gtPB}/−${gtNB}`:""):"";
+ for(const d of DIALS){if(d.length==1)continue;const k=d[0];
+  const el=document.getElementById("d_"+k);
+  if(el)el.className="dial"+(A[k]!=DEF[k]?" mod":"");}
 }
 function cyc(clip,f){const k=clip+":"+f;GT[k]=GT[k]=="pos"?"neg":GT[k]=="neg"?undefined:"pos";
  if(!GT[k])delete GT[k];render();}
@@ -361,9 +400,9 @@ function snapshotB(){Bcfg={...A};render();}
 function clearB(){Bcfg=null;render();}
 function resetA(){A={...DEF};buildPanel();render();}
 function exportGT(){
- const lines=Object.entries(GT).map(([k,v])=>{const [c,f]=k.split(":");
-  return JSON.stringify({schema:"momentscan.workbench-gt/v0",clip:c,frame:+f,role:"center",
-    flag:v,corpus:"output/l2",ts:new Date().toISOString()});});
+ const lines=Object.entries(GT).map(([k,v])=>{const i=k.indexOf(":");
+  return JSON.stringify({schema:"momentscan.workbench-gt/v0",clip:k.slice(0,i),frame:+k.slice(i+1),
+    role:"center",flag:v,corpus:"output/l2",ts:new Date().toISOString()});});
  const blob=new Blob([lines.join("\\n")+"\\n"],{type:"application/jsonl"});
  const a=document.createElement("a");a.href=URL.createObjectURL(blob);
  a.download="workbench_gt.jsonl";a.click();}
@@ -376,10 +415,15 @@ function buildPanel(){
  for(const d of DIALS){
   if(d.length==1){h+=`<div class="grp">${d[0]}</div>`;continue;}
   const [k,lbl,mn,mx,stp]=d;
-  h+=`<div class="dial"><label>${lbl}<span id="v_${k}">${A[k]}</span></label>
+  h+=`<div class="dial" id="d_${k}"><label>${lbl}<span id="v_${k}">${A[k]}</span></label>
    <input type="range" min="${mn}" max="${mx}" step="${stp}" value="${A[k]}"
     oninput="A['${k}']=+this.value;document.getElementById('v_${k}').textContent=this.value;render()"></div>`;}
+ h+=`<div class="note" style="margin-top:12px">주황 라벨 • = 기본값에서 움직인 다이얼</div>`;
  p.innerHTML=h;}
+document.addEventListener("keydown",e=>{
+ if(e.target.tagName=="INPUT")return;
+ if(e.key=="ArrowRight"){cur=(cur+1)%WB.clips.length;render();}
+ if(e.key=="ArrowLeft"){cur=(cur+WB.clips.length-1)%WB.clips.length;render();}});
 buildPanel();render();
 </script></body></html>
 """
@@ -387,7 +431,7 @@ buildPanel();render();
 if __name__ == "__main__":
     out_root = Path("output/l2")
     dst = Path(sys.argv[1]) if len(sys.argv) > 1 else Path("workbench_out")
-    wb = dst / "workbench"
+    wb = dst
     wb.mkdir(parents=True, exist_ok=True)
     clips = []
     for clip in CLIPS:
