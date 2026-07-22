@@ -1,11 +1,14 @@
 """workbench HTML 템플릿 — 서버가 데이터(payload)를 주입하는 순수 렌더러.
 
 _inspector_html.py 관례: 템플릿은 이 모듈, 데이터 주입(__WB__ 등 치환)은 서버.
-워크벤치 페이지의 다이얼/퍼널/픽 JS 는 scratchpad_workbench.py v0.6 (2026-07-22,
-main 1fb0da2: 단일-클립 탭 뷰·타임라인 스트립·포즈 그라운딩·pitch 다이얼·다이얼
-분포 지도·yaw 부호-있는 밴드·공평 우주[유령 레인·전 행 썸네일]) 이식 —
-**의미론(firstFail/pass/funnel/score/picks·DEF)은 파이썬 workbench.compute_picks /
-DEFAULT_CFG 와 문자 그대로 동일해야 한다**(로드 시 셀프테스트가 이 짝을 감시).
+워크벤치 페이지의 다이얼/퍼널/픽 JS 는 scratchpad_workbench.py v0.9 (2026-07-22,
+main 7573af8: 단일-클립 탭 뷰·타임라인 스트립·포즈 그라운딩·pitch 다이얼·다이얼
+분포 지도·yaw 부호-있는 밴드·공평 우주[유령 레인·전 행 썸네일]·상태 5그룹[포즈/
+표정·얼굴/빛/영상/왜곡 — 퍼널·타임라인·패널 그룹 단위]·빛-심층 dp/hh/sp·빛 판별력
+lf 표시+ATT 감쇠 토글·상태-쿼리[stateScores 4종 종합·ex 밴드]) 이식 —
+**의미론(firstFail/pass/funnel/stateScores/score/picks·DEF)은 파이썬
+workbench.compute_picks / state_scores / DEFAULT_CFG 와 문자 그대로 동일해야
+한다**(로드 시 셀프테스트가 이 짝을 감시).
 v0.x 대비 서버판 변경 3: data.js → const WB 인라인 · GT 클릭 = POST /api/gt 즉시
 저장(로드 시 서버 GT 복원, export/import 는 백업용) · 썸네일 src 절대경로(/thumbs/...).
 """
@@ -90,57 +93,67 @@ const WB=__WB__;
 const GT0=__GT0__;
 const CORPUS=__CORPUS__;
 const DIALS=[
- ["1단 · 품질 스크린 (결정경계)"],
+ ["1단 · 포즈의 상태"],
  ["sym_max","보이는-정면 sym <",0.3,2.0,0.05],
  ["dev_lo","yaw dev 하한 > (밴드)",-90,89,1],
  ["dev_hi","yaw dev 상한 < (밴드)",-89,90,1],
  ["pt_max","|pitch dev| < (클립상대·99=off)",3,99,1],
+ ["1단 · 표정·얼굴의 상태"],
  ["pu_min","눈동자 pupil >=",0,0.8,0.01],
+ ["ex_min","표정 ex 하한 >= (밴드)",0,0.8,0.05],
+ ["ex_max","표정 ex 상한 <= (밴드)",0.2,1.0,0.05],
+ ["1단 · 빛의 상태 (얼굴면)"],
+ ["lt_min","조도·생동 lt pct >=",0,90,5],
+ ["dp_min","입체감 dp pct >= (방향성)",0,90,5],
+ ["hh_max","거칠기 hh pct <=",10,100,5],
+ ["1단 · 영상의 상태"],
+ ["sp_min","선명 sp pct >=",0,90,5],
+ ["1단 · 왜곡의 상태 (판독성·가림)"],
  ["cs_min","정체성 cs pct >=",0,90,5],
  ["mv_min","입-가시 mv pct >=",0,90,5],
- ["lt_min","조도·생동 lt pct >=",0,90,5],
- ["ex_max","표정 ex <= (상한)",0.2,1.0,0.05],
- ["2단 · 대표성 랭킹 (깃발)"],
- ["w_expr","w 무표정",0,0.6,0.05],
- ["w_pu","w 눈동자",0,0.6,0.05],
- ["w_q3","w 품질3축",0,0.6,0.05],
- ["w_vis2","w 판독성·입",0,0.6,0.05],
- ["w_light","w 조도·생동",0,0.6,0.05],
+ ["2단 · 종합 (상태 가중 — 포즈=밴드 쿼리, 점수 없음)"],
+ ["w_face","w 표정·얼굴 상태",0,0.8,0.05],
+ ["w_light","w 빛 상태",0,0.8,0.05],
+ ["w_image","w 영상 상태",0,0.8,0.05],
+ ["w_distort","w 왜곡(판독성) 상태",0,0.8,0.05],
  ["시간 다양성"],
  ["gap_min","픽 간 최소 프레임 gap",0,60,2],
 ];
-const DEF={sym_max:0.6,dev_lo:-15,dev_hi:15,pt_max:99,pu_min:0.4,cs_min:0,mv_min:0,lt_min:0,ex_max:1.0,gap_min:12,
-           w_expr:0.30,w_pu:0.15,w_q3:0.20,w_vis2:0.15,w_light:0.20};
-let A={...DEF}, Bcfg=null, GT={}, cur=0, sortMode="time", poseOpen=false;
+const DEF={sym_max:0.6,dev_lo:-15,dev_hi:15,pt_max:99,pu_min:0.4,cs_min:0,mv_min:0,lt_min:0,
+           ex_min:0,ex_max:1.0,gap_min:12,dp_min:0,hh_max:100,sp_min:0,
+           w_face:0.45,w_light:0.20,w_image:0.15,w_distort:0.20};
+let A={...DEF}, Bcfg=null, GT={}, cur=0, sortMode="time", poseOpen=false, ATT=false;   // ATT=빛 분산-감쇠(시험)
 for(const o of GT0){if((o.role||"center")=="center"&&(o.flag=="pos"||o.flag=="neg")
  &&o.corpus==CORPUS)GT[o.clip+":"+o.frame]=o.flag;}
-const STAGES=["정면","pitch","눈동자","cs","입","빛","표정"];
-const SCOL=["#c98a4a","#7fa85c","#d95555","#b070d0","#55aacc","#d8c455","#e08aa8"];
+const STAGES=["포즈","표정·얼굴","빛","영상","왜곡"];   // 상태 5그룹(원장 ⑪ 재편) = 퍼널·타임라인 단위
+const SCOL=["#c98a4a","#e08aa8","#d8c455","#55aacc","#b070d0"];
 const SURV="#69d069";
 
 function firstFail(r,c){
- if(!(r.sy<c.sym_max&&r.dv>c.dev_lo&&r.dv<c.dev_hi))return 0;
- if(!(Math.abs(r.pc)<c.pt_max))return 1;
- if(!(r.pu>=c.pu_min))return 2;
- if(!(r.cs==null||r.cs>=c.cs_min))return 3;
- if(!(r.mv==null||r.mv>=c.mv_min))return 4;
- if(!(r.lt==null||r.lt>=c.lt_min))return 5;
- if(!(r.ex<=c.ex_max))return 6;
+ if(!(r.sy<c.sym_max&&r.dv>c.dev_lo&&r.dv<c.dev_hi&&Math.abs(r.pc)<c.pt_max))return 0;
+ if(!(r.pu>=c.pu_min&&r.ex>=c.ex_min&&r.ex<=c.ex_max))return 1;
+ if(!((r.lt==null||r.lt>=c.lt_min)&&(r.dp==null||r.dp>=c.dp_min)&&(r.hh==null||r.hh<=c.hh_max)))return 2;
+ if(!(r.sp==null||r.sp>=c.sp_min))return 3;
+ if(!((r.cs==null||r.cs>=c.cs_min)&&(r.mv==null||r.mv>=c.mv_min)))return 4;
  return -1;}
 function pass(r,c){return firstFail(r,c)<0;}
 function funnel(rows,c){
- const s1=rows.filter(r=>r.sy<c.sym_max&&r.dv>c.dev_lo&&r.dv<c.dev_hi);
- const s1p=s1.filter(r=>Math.abs(r.pc)<c.pt_max);
- const s2=s1p.filter(r=>r.pu>=c.pu_min);
- const s3=s2.filter(r=>r.cs==null||r.cs>=c.cs_min);
- const s4=s3.filter(r=>r.mv==null||r.mv>=c.mv_min);
- const s5=s4.filter(r=>r.lt==null||r.lt>=c.lt_min);
- const s6=s5.filter(r=>r.ex<=c.ex_max);
- return [rows.length,s1.length,s1p.length,s2.length,s3.length,s4.length,s5.length,s6.length];}
-function score(r,c){return c.w_expr*r.r[0]+c.w_pu*r.r[1]+c.w_q3*r.r[2]+c.w_vis2*r.r[3]+c.w_light*r.r[4];}
-function picks(rows,c){
+ const s1=rows.filter(r=>r.sy<c.sym_max&&r.dv>c.dev_lo&&r.dv<c.dev_hi&&Math.abs(r.pc)<c.pt_max);
+ const s2=s1.filter(r=>r.pu>=c.pu_min&&r.ex>=c.ex_min&&r.ex<=c.ex_max);
+ const s3=s2.filter(r=>(r.lt==null||r.lt>=c.lt_min)&&(r.dp==null||r.dp>=c.dp_min)&&(r.hh==null||r.hh<=c.hh_max));
+ const s4=s3.filter(r=>r.sp==null||r.sp>=c.sp_min);
+ const s5=s4.filter(r=>(r.cs==null||r.cs>=c.cs_min)&&(r.mv==null||r.mv>=c.mv_min));
+ return [rows.length,s1.length,s2.length,s3.length,s4.length,s5.length];}
+function stateScores(rr){
+ // rr=[무표정,눈동자,선명,micro,norm,cs,입가시,빛] rank01 — python state_scores 미러
+ return [(2*rr[0]+rr[1])/3, rr[7], (rr[2]+rr[3])/2, (rr[5]+rr[6]+rr[4])/3];}
+function score(r,c,lf){
+ const [sf,sl,si,sd]=stateScores(r.r);
+ const wl=ATT?c.w_light*(lf==null?1:lf):c.w_light;   // ⑪-e v3: 판별력-비례 감쇠(시험)
+ return c.w_face*sf+wl*sl+c.w_image*si+c.w_distort*sd;}
+function picks(rows,c,lf){
  const sv=rows.filter(r=>pass(r,c));
- sv.forEach(r=>r._s=score(r,c));
+ sv.forEach(r=>r._s=score(r,c,lf));
  sv.sort((a,b)=>b._s-a._s);
  const got=[];
  for(const r of sv){if(got.every(o=>Math.abs(r.f-o.f)>=c.gap_min))got.push(r);if(got.length==3)break;}
@@ -180,8 +193,8 @@ function render(){
  let st_ok=true,st_msg=[],gtP=0,gtN=0,gtPB=0,gtNB=0;
  const isDef=JSON.stringify(A)==JSON.stringify(DEF);
  const meta=WB.clips.map(C=>{
-  const pA=picks(C.rows,A), fn=funnel(C.rows,A);
-  const pB=Bcfg?picks(C.rows,Bcfg):null;
+  const pA=picks(C.rows,A,C.lf), fn=funnel(C.rows,A);
+  const pB=Bcfg?picks(C.rows,Bcfg,C.lf):null;
   if(isDef){const same=JSON.stringify(pA.slice().sort((a,b)=>a-b))==JSON.stringify(C.selftest.slice().sort((a,b)=>a-b));
    if(!same){st_ok=false;st_msg.push(C.clip);}}
   pA.forEach(f=>{const g=GT[C.clip+":"+f];if(g=="pos")gtP++;if(g=="neg")gtN++;});
@@ -201,9 +214,11 @@ function render(){
        gAbs=C.absent.reduce((a,r)=>a+r[1]-r[0]+1,0);
  let h=`<div id="tabs">${tabs}</div><b>${C.clip}</b> t${C.tid} <span class="note">비디오 ${C.vf}f = 측정 ${C.n}`+
   (gInv?` + 무효 ${gInv}`:"")+(gDet?` + 미측정 ${gDet}`:"")+(gFrag?` + 파편 ${gFrag}`:"")+(gAbs?` + 무검출 ${gAbs}`:"")+
-  ` · 풀 정렬:</span>
+  ` · <b>빛 판별력 lf=${C.lf==null?"?":C.lf}</b>${ATT?` <span style="color:#fc6">(감쇠 적용: w_light ${A.w_light}→${(A.w_light*(C.lf==null?1:C.lf)).toFixed(2)})</span>`:""} · 풀 정렬:</span>
   <button onclick="sortMode=sortMode=='time'?'score':'time';render()">${sortMode=='time'?'시간순':'점수순'}</button>
-  <button onclick="poseOpen=!poseOpen;render()">포즈 눈금 ${poseOpen?'닫기':'보기'}</button>`;
+  <button onclick="poseOpen=!poseOpen;render()">포즈 눈금 ${poseOpen?'닫기':'보기'}</button>
+  <label style="font-size:12px;color:#bbb;margin-left:6px"><input type="checkbox" ${ATT?"checked":""}
+   onchange="ATT=this.checked;render()"> 빛 분산-감쇠(시험)</label>`;
  h+=funnelHTML(m.fn);
  h+=`<div id="tl"><canvas id="tlc" width="1000" height="44"></canvas><div id="tlTip"></div></div>`+legendHTML();
  if(poseOpen){
@@ -225,7 +240,7 @@ function render(){
  if(m.pB)h+=`<div class="rowlbl">B 픽</div><div class="strip big">`+
    m.pB.map(f=>cellHTML(C.clip,byf[f],"pickB"+(!setA.has(f)?" diff":""))).join("")+`</div>`;
  const sv=C.rows.filter(r=>pass(r,A));
- sv.forEach(r=>r._s=score(r,A));
+ sv.forEach(r=>r._s=score(r,A,C.lf));
  const ordered=sortMode=="time"?sv.slice().sort((a,b)=>a.f-b.f):sv.slice().sort((a,b)=>b._s-a._s);
  const show=ordered.slice(0,400);                            // v0.6: 썸네일 필터 제거(공평)
  h+=`<div class="rowlbl">생존 풀 (A, ${sv.length}행 중 ${show.length} 표시 · ${sortMode=='time'?'시간순':'점수순'})</div>
@@ -292,8 +307,9 @@ function drawTimeline(C,m){
   if(o.row){
    const r=o.row, ff=firstFail(r,A);
    const st=ff<0?`<span style="color:${SURV}">생존</span>`:`<span style="color:${SCOL[ff]}">${STAGES[ff]}에 걸러짐</span>`;
+   const ss=stateScores(r.r);
    tip.innerHTML=(r.th?`<img src="/${r.th}" loading="lazy">`:"")+
-    `f${r.f} ${st}${gs}<br>ex${r.ex} pu${r.pu} sy${r.sy} dv${r.dv}<br>pt${r.pt==null?"--":r.pt}(Δ${r.pc}) cs${r.cs==null?"--":r.cs} mv${r.mv==null?"--":r.mv} lt${r.lt==null?"--":r.lt}`;
+    `f${r.f} ${st}${gs}<br>ex${r.ex} pu${r.pu} sy${r.sy} dv${r.dv}<br>pt${r.pt==null?"--":r.pt}(Δ${r.pc}) cs${r.cs==null?"--":r.cs} mv${r.mv==null?"--":r.mv} lt${r.lt==null?"--":r.lt}<br>dp${r.dp==null?"--":r.dp} hh${r.hh==null?"--":r.hh} sp${r.sp==null?"--":r.sp}<br><span style="color:#9ad">상태: 얼굴${ss[0].toFixed(2)} 빛${ss[1].toFixed(2)} 영상${ss[2].toFixed(2)} 왜곡${ss[3].toFixed(2)}</span>`;
   }else{
    const g=o.g;
    tip.innerHTML=(g.th?`<img src="/${g.th}" loading="lazy">`:"")+
@@ -317,7 +333,10 @@ const HSPEC={
  cs_min:{f:r=>r.cs,dir:"above"},
  mv_min:{f:r=>r.mv,dir:"above"},
  lt_min:{f:r=>r.lt,dir:"above"},
- ex_max:{f:r=>r.ex,dir:"below"},
+ dp_min:{f:r=>r.dp,dir:"above"},
+ hh_max:{f:r=>r.hh,dir:"below"},
+ sp_min:{f:r=>r.sp,dir:"above"},
+ ex_max:{f:r=>r.ex,band:["ex_min","ex_max"]},   // 표정 밴드(v0.9 — 쿼리 가능)
 };
 function drawDialHists(C,m){
  const byf={};C.rows.forEach(r=>byf[r.f]=r);
