@@ -1,53 +1,23 @@
-"""샘플링 워크벤치 v0.4 (2026-07-22) — 원장 ⑫ 계기. v0 대비 UI 개정(user 피드백
-"여러 비디오 동시 표시 = 과복잡" → v0.1 / "다이얼에 따라 타임라인 어디가 선택·
-걸러지는지 보이게" → v0.2 / "원하는 헤드포즈로 그라운딩" → v0.3 / "다이얼과 연관된
-분포 지도 + 우리 조작이 어디쯤인지" → v0.4):
-  v0.3: Shift+클릭=포즈 그라운딩(예시-쿼리) · 포즈 눈금 사다리(클릭=그라운딩) ·
-  pitch 다이얼(클립-중앙값 상대 |pc|, 기본 off=셀프테스트 불변, 결측=통과).
-  v0.4: **다이얼 분포 지도** — 각 스크린 다이얼 아래 현재 클립의 신호 히스토그램
-  (x축=슬라이더와 동일 스케일 → 위치 대응 직관), 노랑 선=현재 값·초록=통과 측·
-  파랑 ▲=A 픽 위치·우상단 %=측정치 중 통과율. 사람마다 다른 포즈/신호 분포 위에서
-  경계를 정한다(per-clip 상대 원칙의 UI 형).
-  v0.5: **yaw = 부호-있는 밴드 다이얼**(dev_lo/dev_hi, portrait 쿼리 대비 — "yaw 60~90"
-  같은 측면 구간 선택 가능; 수렴 스크린=밴드의 특수형, 기본 (−15,15)=구 |dev|<15 동치
-  =셀프테스트 불변) · 포즈 눈금=좌측면→정면→우측면 스윕 · 그라운딩=밴드 확장 의미론.
-  v0.9: **상태-쿼리 구조**(user: "각 상태를 판별하고 종합하는 수준 높은 스크리닝") —
-  1단=상태별 스크린/밴드(포즈=밴드가 곧 쿼리·표정도 ex_min~ex_max 밴드화) · 2단=**상태
-  점수 4종의 종합**(표정·얼굴=(2무표정+눈동자)/3 · 빛=조도생동[×lf 옵션] · 영상=(선명+
-  micro)/2 · 왜곡=(cs+입가시+norm)/3[q3 분해 판정 반영]) — 가중이 신호가 아닌 상태
-  단위(w_face/w_light/w_image/w_distort). 점수 기준 재정의=v7.2 브리지 종료(⑪ 후보
-  정책의 진화; 가드=JS≡python 셀프테스트 유지). 툴팁에 상태 점수 판독 추가.
-  v0.8: **빛 판별력 계수 lf + 분산-감쇠 시험 토글**(⑪-e v3, user 관찰 "test_3=흐린 날
-  → 조명 영향 적어야": 풀-상대 랭크는 분산을 지워 저분산 클립에서 축이 과대발언 —
-  lf=robust (p90−p10)/p50 정규화[test_4급≈1.0], ATT 토글 시 w_light×lf. 기본 off=
-  셀프테스트 불변; 채택 시 lk-sampling2 파이썬 확정 구현).
-  v0.7: **상태 5그룹 재편**(user 정식화: 포즈/표정·얼굴/빛/영상/왜곡 — 원장 ⑪ 봉인
-  좌표계) — 다이얼 패널·퍼널·타임라인이 그룹 단위로 정렬(분류=역학). 빛-심층 축 신설:
-  dp=입체감(|face_light_lr|+|tb| 방향성, relight '입체감 floor' 예약석)·hh=거칠기
-  (face_light_harsh)·sp=선명(face_blur pct, 영상 그룹) — 전부 기본 off=셀프테스트 불변.
-  ②글레어+⑤cs floor 병합(왜곡 그룹: cs=판독성이 가림·글레어·역광-왜곡 겸직)·③hair
-  각도=쿼리 세트로 재정의(다이얼 아님).
-  v0.6: **공평 우주**(user: "선택받지 못한 프레임도 보여줘야 선택받게 만들 수 있다") —
-  썸네일 표본화 제거(전 행 저장, lazy 로딩)·풀 그리드 썸네일-필터 제거·타임라인 축=
-  비디오 전체(0..vf)·**유령 레인**: 무효(측정됐으나 valid 밖)/미측정(검출만, 랜드마크
-  없음 — dual_2 182f 실측)/파편(동일 subject 타 트랙)/무검출을 하단 6px에 존재 표시,
-  호버=bbox 크롭 썸네일, 클릭=GT 깃발(우주 밖 프레임에 "뽑혀야 한다" 표시 가능).
-  yaw 슬라이더 ±90 확장.
-  v0.1: 단일-클립 탭 뷰(←→ 키보드 전환·탭에 GT/생존 배지) · 썸네일 224px(픽=원치수,
-  풀=112 축소+호버 2× 확대) · 퍼널 막대 · 풀 정렬 토글(시간순/점수순 — 랭커 취향
-  노출) · A/B diff 하이라이트(주황 외곽) · 변경-다이얼 하이라이트.
-  v0.2: **비디오 타임라인 스트립** — 프레임 틱 색 = 생존(초록) / 그 프레임을 먹은
-  첫 스크린 색(정면·눈·cs·입·빛·표정 6색, 퍼널 막대와 동일 팔레트) · boarding 배경
-  밴드 · A(파랑)/B(호박 점선) 픽 마커 · GT 점 · 호버=썸네일+수치 미리보기 · 클릭=GT
-  깃발(어디서든 클릭=GT 일관).
+"""샘플링 워크벤치 v0.10 (2026-07-22) — 원장 ⑪⑫ 계기. 참조 구현(콘솔 파리티의 정본).
 
-층 구성(v0과 동일): frame_table(조인 단일홈, stash 읽기-전용 파생) + HTML 다이얼
-시뮬레이터(1단 품질 스크린=floor/퍼널 · 2단 대표성 랭킹=가중) + 클릭 GT(pos/neg →
-export → fixtures/eval/, 스키마 momentscan.workbench-gt/v0).
-드리프트 방어: 명시-floor 의미론(사다리는 생산 상세) + 로드 시 셀프테스트(JS가 기본
-설정으로 뽑은 픽 ≡ 파이썬 동일-데이터 픽). 봉인 전 최종 확인=파이썬 카드 재실행.
-스코프 v0.x = center 픽만(hair 빈은 v1). 표시 썸네일은 표본화(수치는 전 행 기준).
-승격(2026-07-22 track/lk-workbench): 정식 표면 = `momentscan workbench` (surface/workbench*.py) — 이 스크립트는 값-동일 참조 구현으로 보존.
+v0.10 **상태 검사 뷰 + 3열 골격**(user: "다이얼마다 서로 다른 분석 시각화 — 빛=SH가
+얼굴에 그리는 조명, 포즈=오버레이로 추정 검증"): 좌=다이얼(상태 아코디언·조작 시
+해당 상태 모드로 자동 전환) / 중=타임라인+픽+풀 / 우=**상태 검사 패널**(선택 프레임
+큰 이미지 + 모드별 렌더). 검사 모드: 포즈=랜드마크 와이어+ypr(픽 프레임 한정 선적,
+전 프레임은 콘솔 온디맨드 확장 예정) · 표정=blendshape 상위 막대(픽 한정)+pu/ex ·
+빛=**SH 구면 렌더**(face_sh_0..8, DPR 9계수→JS 실시간)+lr/tb 방향 화살표 · 영상=
+Laplacian 선명 히트맵(픽 한정 사전렌더) · 왜곡=cs/mv 시계열 궤적+선택 마커.
+**클릭 의미 변경**: 클릭=프레임 선택(검사 패널 갱신) · GT=검사 패널의 ＋/−/지움
+버튼(오클릭 방지) · Shift+클릭=포즈 그라운딩 유지.
+
+v0.9 상태-쿼리: 1단=상태별 스크린/밴드(포즈=밴드가 곧 쿼리·표정 ex_min~ex_max 밴드)
+· 2단=상태 점수 4종 종합(얼굴=(2무표정+눈동자)/3·빛=조도생동[×lf]·영상=(선명+micro)/2
+·왜곡=(cs+입가시+norm)/3) — v7.2 브리지 종료, 가드=JS≡python 셀프테스트.
+v0.8 빛 판별력 lf(+분산-감쇠 ATT 토글) · v0.7 상태 5그룹(퍼널·타임라인 5색) ·
+v0.6 공평 우주(전 행 썸네일·유령 레인·축=0..vf) · v0.5 yaw 부호-밴드 ·
+v0.4 다이얼 분포 지도 · v0.3 포즈 그라운딩·pitch · v0.2 타임라인 · v0.1 단일-클립 탭.
+층: frame_table(stash 읽기-전용 파생) + 시뮬레이터 + 클릭 GT(fixtures/eval, workbench-gt/v0).
+승격(track/lk-workbench): 정식 표면 = momentscan workbench — 이 스크립트가 값-동일 참조 구현.
 """
 import json
 import sys
@@ -58,6 +28,10 @@ import numpy as np
 import polars as pl
 
 sys.path.insert(0, "apps/momentscan/src")
+from mediapipe.tasks.python.vision.face_landmarker import (
+    FaceLandmarksConnections as _FLC,
+)
+
 from momentscan.infra.store.stash import read_landmarks, read_features, read_tubelets
 from momentscan.perception.readings.geometry import canonicalize
 from momentscan.preset import resolve
@@ -71,12 +45,9 @@ RACE = resolve("race981")
 FRONTAL_DEG = RACE.camera.frontal_deg
 CLIPS = ("test_3", "test_12", "dual_2", "test_4", "test_0", "international_1")
 THUMB = 224     # 저장 원치수 — 픽 행은 원치수, 풀은 112 축소 표시+호버 확대
+EDGES = [[c.start, c.end] for c in (*_FLC.FACE_LANDMARKS_CONTOURS, *_FLC.FACE_LANDMARKS_NOSE)]
 
 # 기본 설정 — JS DEF와 문자 그대로 동일해야 함 (셀프테스트 = JS≡python 가드)
-# v0.9 상태-쿼리 구조: 1단=상태별 스크린/밴드(포즈는 밴드=쿼리, 점수 없음) ·
-#   2단=상태 점수 종합(w_face·w_light·w_image·w_distort — 상태-내 구성은 고정 평균,
-#   세부 sub-가중은 v0.9.x). 점수 기준 재정의 = v7.2 등가 브리지 종료(⑪ 후보 정책의 진화).
-# ex 밴드(ex_min~ex_max): 표정 상태도 쿼리 가능(portrait 웃음-구간 등). 기본 ex_min=0.
 DEFAULT_CFG = {"sym_max": 0.6, "dev_lo": -15.0, "dev_hi": 15.0, "pt_max": 99.0, "pu_min": 0.4,
                "cs_min": 0.0, "mv_min": 0.0, "lt_min": 0.0, "ex_min": 0.0, "ex_max": 1.0,
                "gap_min": 12, "dp_min": 0.0, "hh_max": 100.0, "sp_min": 0.0,
@@ -84,9 +55,7 @@ DEFAULT_CFG = {"sym_max": 0.6, "dev_lo": -15.0, "dev_hi": 15.0, "pt_max": 99.0, 
 
 
 def state_scores(r):
-    """상태 점수 4종 — r = [re,rp,rs,rm,rn,rc,rv,rl] (rank01 8축).
-    표정·얼굴=(2·무표정+눈동자)/3 · 빛=조도생동 · 영상=(선명+micro)/2 ·
-    왜곡=(cs+입가시+norm)/3 (q3 분해 판정: norm→왜곡)."""
+    """상태 점수 4종 — r=[무표정,눈동자,선명,micro,norm,cs,입가시,빛] rank01."""
     re_, rp_, rs_, rm_, rn_, rc_, rv_, rl_ = r
     return ((2 * re_ + rp_) / 3, rl_, (rs_ + rm_) / 2, (rc_ + rv_ + rn_) / 3)
 
@@ -118,11 +87,10 @@ def rank01(x, flip=False):
 
 
 def frame_table(clip_id: str, out_root: Path):
-    """클립 main rider의 전 신호 와이드 테이블 (+유령 우주 컨텍스트, v0.6)."""
+    """클립 main rider의 전 신호 와이드 테이블 (+유령 우주·검사 뷰 컨텍스트)."""
     rec = json.load(open(out_root / clip_id / "likeness.json"))
     tid, rider = next((int(t), r) for t, r in rec["riders"].items() if r.get("role") == "main")
     lmr = read_landmarks(out_root, clip_id).filter(pl.col("track_id") == tid).sort("frame_idx")
-    # 유령 우주 재료: 무효(valid-필터로 빠질 lm 행)의 crop_box — 전량 보존 후 필터
     lm_all_cb = {int(f): tuple(float(v) for v in b)
                  for f, b in zip(lmr["frame_idx"].to_list(), lmr["crop_box"].to_list())}
     gt = pl.read_parquet(out_root / clip_id / "gate_trace.parquet").filter(pl.col("track_id") == tid)
@@ -144,11 +112,12 @@ def frame_table(clip_id: str, out_root: Path):
     sel = np.array([pos[f] for f in fx])
     yaw = M[sel, INDEX["head_yaw_dev"]]
     pitch = M[sel, INDEX["head_pitch"]]
+    roll = M[sel, INDEX["head_roll"]]
     blur = M[sel, INDEX["face_blur"]]
-    # v0.7 빛-심층(얼굴면 광학, relight '입체감 floor' 예약석): 방향성·거칠기
     light_lr = M[sel, INDEX["face_light_lr"]]
     light_tb = M[sel, INDEX["face_light_tb"]]
     light_hh = M[sel, INDEX["face_light_harsh"]]
+    SH = np.stack([M[sel, INDEX[f"face_sh_{k}"]] for k in range(9)], axis=1)   # 검사 뷰(빛)
 
     pq = pl.read_parquet(out_root / clip_id / "parse.parquet").filter(pl.col("track_id") == tid)
     g = lambda col: (dict(zip(pq["frame_idx"].to_list(), pq[col].to_list())) if col in pq.columns else {})
@@ -195,10 +164,11 @@ def frame_table(clip_id: str, out_root: Path):
              if nm_ != "_neutral" and not nm_.startswith("eyeLook")]
     expr = B[:, ecols].max(axis=1)
     pupil, sym = face_signals(P)
-    return dict(tid=tid, rider=rider, fx=fx, cb=cb, P=P, yaw=yaw, pitch=pitch, blur=blur,
-                micro=micro, mv=mv, lum_eff=lum_eff, cs=cs, nrm=nrm, board=board, expr=expr,
-                pupil=pupil, sym=sym, lm_all_cb=lm_all_cb, det_bbox=det_bbox, frag_bbox=frag_bbox,
-                light_lr=light_lr, light_tb=light_tb, light_hh=light_hh)
+    return dict(tid=tid, rider=rider, fx=fx, cb=cb, P=P, yaw=yaw, pitch=pitch, roll=roll,
+                blur=blur, micro=micro, mv=mv, lum_eff=lum_eff, cs=cs, nrm=nrm, board=board,
+                expr=expr, pupil=pupil, sym=sym, lm_all_cb=lm_all_cb, det_bbox=det_bbox,
+                frag_bbox=frag_bbox, light_lr=light_lr, light_tb=light_tb, light_hh=light_hh,
+                SH=SH, B=B)
 
 
 def compute_picks(rows, cfg):
@@ -233,19 +203,18 @@ def build_clip(clip_id, out_root, wb_dir):
     fx, cb, P = t["fx"], t["cb"], t["P"]
     n = len(fx)
 
-    # chroma + 썸네일(v0.6: 전 행 = 공평 우주) + 유령 썸네일: 한 번의 순차 디코드
     dev = t["yaw"] - FRONTAL_DEG
     cur = [f for f in t["rider"]["samples"]["center_nearest"]]
+    bins = t["rider"]["samples"].get("pose_bins", {})
     row_of = {int(f): i for i, f in enumerate(fx)}
     fxset = set(row_of)
-    # 유령 우주: inv=측정됐으나 valid 밖 · det=검출만(랜드마크 없음) · frag=동일-subject 타 트랙
     inv_f = sorted(set(t["lm_all_cb"]) - fxset)
     det_f = sorted(set(t["det_bbox"]) - set(t["lm_all_cb"]))
     frag_f = sorted(set(t["frag_bbox"]) - set(t["det_bbox"]) - set(t["lm_all_cb"]))
     ghost_kind = {**{f: "inv" for f in inv_f}, **{f: "det" for f in det_f},
                   **{f: "frag" for f in frag_f}}
     ghost_thumb = set()
-    for kfs in (inv_f, det_f, frag_f):                          # 종류별 썸네일 ≤60 표본
+    for kfs in (inv_f, det_f, frag_f):
         if len(kfs) > 60:
             ghost_thumb |= {kfs[i] for i in np.unique(np.linspace(0, len(kfs) - 1, 60).astype(int))}
         else:
@@ -311,12 +280,9 @@ def build_clip(clip_id, out_root, wb_dir):
     micro_pct, sharp_pct = pct_rank(t["micro"]), pct_rank(t["blur"])
     norm_pct, cs_pct, mv_pct = pct_rank(t["nrm"]), pct_rank(t["cs"]), pct_rank(t["mv"])
     light_pct = np.nanmean(np.vstack([pct_rank(t["lum_eff"]), pct_rank(chroma)]), axis=0)
-    # v0.7 빛-심층·영상: 입체감=|lr|+|tb|(방향성 총량, flat→저값)·거칠기 harsh·선명
     dp_pct = pct_rank(np.abs(t["light_lr"]) + np.abs(t["light_tb"]))
     hh_pct = pct_rank(t["light_hh"])
 
-    # v0.8 빛 판별력 계수(⑪-e v3): 흐린 날=저분산 → 랭크 과대발언 감쇠용.
-    # robust (p90−p10)/p50, test_4급 동적범위(≈0.8)를 1.0으로 정규화.
     def _spread(v):
         fin = v[np.isfinite(v)]
         if len(fin) < 10:
@@ -324,7 +290,7 @@ def build_clip(clip_id, out_root, wb_dir):
         p10, p50, p90 = np.percentile(fin, [10, 50, 90])
         return float((p90 - p10) / (abs(p50) + 1e-6))
     lf = round(min(1.0, 0.5 * (_spread(t["lum_eff"]) + _spread(chroma)) / 0.8), 2)
-    # v0.9 상태-쿼리: 축별 rank01 8종 — [무표정, 눈동자, 선명, micro, norm, cs, 입가시, 빛]
+
     R = np.stack([rank01(t["expr"], flip=True), rank01(t["pupil"]),
                   rank01(sharp_pct), rank01(micro_pct), rank01(norm_pct),
                   rank01(cs_pct), rank01(mv_pct), rank01(light_pct)], axis=1)
@@ -336,10 +302,13 @@ def build_clip(clip_id, out_root, wb_dir):
     pt_med = float(np.nanmedian(pt)) if np.isfinite(pt).any() else 0.0
     rows = []
     for i in range(n):
+        sh_i = t["SH"][i]
         rows.append({"f": int(fx[i]), "b": int(t["board"][i]),
-                     "pt": round(float(pt[i]), 1) if np.isfinite(pt[i]) else None,
-                     # pc = 클립-중앙값 상대 pitch(스크린용) — 결측=0(통과), 절대 비교 금지 원칙
+                     "pt": num(pt[i], 1),
                      "pc": round(float(pt[i] - pt_med), 1) if np.isfinite(pt[i]) else 0.0,
+                     "rl": num(t["roll"][i], 1),
+                     "lr": num(t["light_lr"][i], 3), "tb": num(t["light_tb"][i], 3),
+                     "sh": ([round(float(v), 3) for v in sh_i] if np.isfinite(sh_i).all() else None),
                      "sy": round(float(t["sym"][i]), 3) if np.isfinite(t["sym"][i]) else 9.9,
                      "dv": round(float(dev[i]), 1) if np.isfinite(dev[i]) else 99.0,
                      "pu": round(float(t["pupil"][i]), 3) if np.isfinite(t["pupil"][i]) else 0.0,
@@ -349,12 +318,40 @@ def build_clip(clip_id, out_root, wb_dir):
                      "r": [round(float(v), 4) for v in R[i]],
                      "th": (f"thumbs/{clip_id}/f{int(fx[i]):05d}.jpg" if int(fx[i]) in thumb_ok else None)})
     selftest = compute_picks([dict(r) for r in rows], DEFAULT_CFG)
+
+    # ── 검사 뷰(픽 한정) 자산: 랜드마크 2D·blendshape 상위·Laplacian 히트맵 ──
+    pickset = sorted({int(f) for f in (*cur, *selftest, *bins.values()) if int(f) in row_of})
+    pv = {}
+    cap = cv2.VideoCapture(str(out_root / clip_id / "detect.mp4"))
+    for f in pickset:
+        i = row_of[f]
+        lm2 = [[round(float(x), 3), round(float(y), 3)] for x, y in P[i, :, :2]]
+        bs_row = t["B"][i]
+        top = np.argsort(-bs_row)
+        bs_top = [[BLENDSHAPE_ORDER[j], round(float(bs_row[j]), 3)]
+                  for j in top if BLENDSHAPE_ORDER[j] != "_neutral"][:8]
+        lap_ok = 0
+        cbv = cb[i]
+        x1, y1, x2, y2 = (int(v) for v in cbv)
+        cap.set(cv2.CAP_PROP_POS_FRAMES, f)
+        ok, frm = cap.read()
+        if ok and x2 - x1 > 1 and y2 - y1 > 1:
+            gray = cv2.cvtColor(frm[max(0, y1):y2, max(0, x1):x2], cv2.COLOR_BGR2GRAY)
+            lap = np.abs(cv2.Laplacian(gray, cv2.CV_32F, ksize=3))
+            hi = np.percentile(lap, 99) + 1e-6
+            lapu = np.clip(lap / hi * 255, 0, 255).astype(np.uint8)
+            cv2.imwrite(str(tdir / f"f{f:05d}_lap.jpg"),
+                        cv2.resize(lapu, (THUMB, THUMB)), [cv2.IMWRITE_JPEG_QUALITY, 80])
+            lap_ok = 1
+        pv[str(f)] = {"lm": lm2, "bs": bs_top, "rl": num(t["roll"][i], 1), "lap": lap_ok}
+    cap.release()
+
     return {"clip": clip_id, "tid": t["tid"], "n": n, "vf": vf, "cur": cur, "lf": lf,
-            "selftest": selftest, "rows": rows, "ghost": ghost, "absent": absent}
+            "selftest": selftest, "rows": rows, "ghost": ghost, "absent": absent, "pv": pv}
 
 
 HTML = """<!DOCTYPE html>
-<html lang="ko"><head><meta charset="utf-8"><title>likeness sampling workbench v0.1</title>
+<html lang="ko"><head><meta charset="utf-8"><title>likeness sampling workbench v0.10</title>
 <style>
 body{background:#161616;color:#ddd;font:13px/1.45 system-ui,sans-serif;margin:0}
 #top{position:sticky;top:0;background:#1d1d1d;border-bottom:1px solid #333;padding:8px 14px;z-index:9}
@@ -362,8 +359,11 @@ body{background:#161616;color:#ddd;font:13px/1.45 system-ui,sans-serif;margin:0}
 .ok{color:#7c6} .bad{color:#e66}
 #panel{position:fixed;left:0;top:78px;bottom:0;width:270px;overflow:auto;background:#1b1b1b;
   border-right:1px solid #333;padding:10px 14px;box-sizing:border-box}
-#main{margin-left:270px;padding:10px 16px}
-.grp{margin:10px 0 4px;color:#9ad;font-weight:600;font-size:12px;text-transform:uppercase}
+#insp{position:fixed;right:0;top:78px;bottom:0;width:340px;overflow:auto;background:#1b1b1b;
+  border-left:1px solid #333;padding:10px 12px;box-sizing:border-box}
+#main{margin-left:270px;margin-right:340px;padding:10px 16px}
+.grp{margin:10px 0 4px;color:#9ad;font-weight:600;font-size:12px;text-transform:uppercase;cursor:pointer}
+.grp .arr{color:#678}
 .dial{margin:6px 0}
 .dial label{display:flex;justify-content:space-between;font-size:12px;color:#bbb}
 .dial.mod label{color:#fc6}
@@ -376,9 +376,8 @@ body{background:#161616;color:#ddd;font:13px/1.45 system-ui,sans-serif;margin:0}
 .tab .b{color:#9a8} .tab .g{color:#cb8}
 .funnel{margin:6px 0 10px;max-width:560px}
 .fr{display:flex;align-items:center;gap:8px;font-size:11px;color:#9a8;margin:1px 0}
-.fr .lbl{width:44px;text-align:right;color:#8b9}
-.fr .bar{height:9px;background:#3f6b52;border-radius:2px}
-.fr.last .bar{background:#6fae7c}
+.fr .lbl{width:52px;text-align:right;color:#8b9}
+.fr .bar{height:9px;border-radius:2px}
 .fr .cnt{color:#bcb}
 .rowlbl{color:#89b;font-size:11px;margin-top:12px}
 .strip{display:flex;gap:6px;flex-wrap:wrap;margin:4px 0}
@@ -395,6 +394,7 @@ body{background:#161616;color:#ddd;font:13px/1.45 system-ui,sans-serif;margin:0}
 .cell .cap{font-size:10px;color:#aaa;line-height:1.25;margin-top:1px}
 .cell.pos img,.cell.pos .noimg{border-color:#5c5}
 .cell.neg img,.cell.neg .noimg{border-color:#e55}
+.cell.selg img{box-shadow:0 0 0 2px #f90}
 .cell .flag{position:absolute;top:2px;right:2px;font-size:12px;color:#fff;text-shadow:0 0 3px #000}
 .pickA img{outline:2px solid #7ac} .pickB img{outline:2px dashed #ca7}
 .diff img{outline-color:#f80 !important}
@@ -406,6 +406,14 @@ body{background:#161616;color:#ddd;font:13px/1.45 system-ui,sans-serif;margin:0}
 .legend{font-size:10px;color:#999;margin:2px 0 10px}
 .legend span{display:inline-block;margin-right:11px}
 .legend i{display:inline-block;width:9px;height:9px;margin-right:3px;vertical-align:-1px}
+.itabs{display:flex;gap:4px;flex-wrap:wrap;margin:6px 0}
+.itab{padding:2px 8px;border:1px solid #444;border-radius:3px;cursor:pointer;font-size:11px;color:#aaa}
+.itab.cur{background:#3a3226;color:#fc6;border-color:#a86}
+#inspImg{width:300px;height:300px;display:block;border:1px solid #444;background:#111}
+.ibar{display:flex;align-items:center;gap:6px;font-size:11px;margin:2px 0}
+.ibar .nm{width:130px;color:#aab;text-align:right;overflow:hidden;white-space:nowrap}
+.ibar .bv{height:9px;background:#7a9ac0}
+.gtbtn button{margin-right:6px}
 button{background:#2a2a2a;color:#ddd;border:1px solid #555;border-radius:3px;
   padding:3px 10px;margin-right:6px;cursor:pointer}
 button:hover{background:#383838}
@@ -416,50 +424,54 @@ button:hover{background:#383838}
  <span id="selftest">selftest…</span>
  <button onclick="snapshotB()">현재 설정 → B 저장</button>
  <button onclick="clearB()">B 지우기</button>
- <button onclick="resetA()">A 기본값(v7.2)</button>
+ <button onclick="resetA()">A 기본값</button>
  <button onclick="exportGT()">GT export (.jsonl)</button>
  <input type="file" id="gtfile" style="display:none" onchange="importGT(this)">
  <button onclick="document.getElementById('gtfile').click()">GT import</button>
  <span class="gtscore" id="gtscore"></span>
- <div class="note">클릭=GT 깃발(없음→긍정→부정) · <b>Shift+클릭=포즈 그라운딩</b>(그 프레임이 통과하는 경계로 sym/yaw 세팅) · 호버=확대 · ←→=클립 전환 · 주황 외곽=A/B 불일치 픽 · 저장 홈=fixtures/eval/</div>
+ <div class="note"><b>클릭=프레임 선택(우측 검사)</b> · GT=검사 패널 ＋/− 버튼 · Shift+클릭=포즈 그라운딩 · 호버=확대 · ←→=클립 · 저장 홈=fixtures/eval/</div>
 </div>
-<div id="panel"></div><div id="main"></div>
+<div id="panel"></div><div id="main"></div><div id="insp"></div>
 <script src="data.js"></script>
 <script>
 const DIALS=[
- ["1단 · 포즈의 상태"],
+ ["포즈"],
  ["sym_max","보이는-정면 sym <",0.3,2.0,0.05],
  ["dev_lo","yaw dev 하한 > (밴드)",-90,89,1],
  ["dev_hi","yaw dev 상한 < (밴드)",-89,90,1],
  ["pt_max","|pitch dev| < (클립상대·99=off)",3,99,1],
- ["1단 · 표정·얼굴의 상태"],
+ ["표정·얼굴"],
  ["pu_min","눈동자 pupil >=",0,0.8,0.01],
  ["ex_min","표정 ex 하한 >= (밴드)",0,0.8,0.05],
  ["ex_max","표정 ex 상한 <= (밴드)",0.2,1.0,0.05],
- ["1단 · 빛의 상태 (얼굴면)"],
+ ["빛"],
  ["lt_min","조도·생동 lt pct >=",0,90,5],
  ["dp_min","입체감 dp pct >= (방향성)",0,90,5],
  ["hh_max","거칠기 hh pct <=",10,100,5],
- ["1단 · 영상의 상태"],
+ ["영상"],
  ["sp_min","선명 sp pct >=",0,90,5],
- ["1단 · 왜곡의 상태 (판독성·가림)"],
+ ["왜곡"],
  ["cs_min","정체성 cs pct >=",0,90,5],
  ["mv_min","입-가시 mv pct >=",0,90,5],
- ["2단 · 종합 (상태 가중 — 포즈=밴드 쿼리, 점수 없음)"],
+ ["종합"],
  ["w_face","w 표정·얼굴 상태",0,0.8,0.05],
  ["w_light","w 빛 상태",0,0.8,0.05],
  ["w_image","w 영상 상태",0,0.8,0.05],
  ["w_distort","w 왜곡(판독성) 상태",0,0.8,0.05],
- ["시간 다양성"],
  ["gap_min","픽 간 최소 프레임 gap",0,60,2],
 ];
 const DEF={sym_max:0.6,dev_lo:-15,dev_hi:15,pt_max:99,pu_min:0.4,cs_min:0,mv_min:0,lt_min:0,
            ex_min:0,ex_max:1.0,gap_min:12,dp_min:0,hh_max:100,sp_min:0,
            w_face:0.45,w_light:0.20,w_image:0.15,w_distort:0.20};
-let A={...DEF}, Bcfg=null, GT={}, cur=0, sortMode="time", poseOpen=false, ATT=false;   // ATT=빛 분산-감쇠(시험)
-const STAGES=["포즈","표정·얼굴","빛","영상","왜곡"];   // 상태 5그룹(원장 ⑪ 재편) = 퍼널·타임라인 단위
+let A={...DEF}, Bcfg=null, GT={}, cur=0, sortMode="time", poseOpen=false, ATT=false;
+let selF=null, iMode="포즈", collapsed={};
+const STAGES=["포즈","표정·얼굴","빛","영상","왜곡"];
 const SCOL=["#c98a4a","#e08aa8","#d8c455","#55aacc","#b070d0"];
 const SURV="#69d069";
+const K2G={sym_max:"포즈",dev_lo:"포즈",dev_hi:"포즈",pt_max:"포즈",
+ pu_min:"표정·얼굴",ex_min:"표정·얼굴",ex_max:"표정·얼굴",
+ lt_min:"빛",dp_min:"빛",hh_max:"빛",sp_min:"영상",cs_min:"왜곡",mv_min:"왜곡",
+ w_face:"표정·얼굴",w_light:"빛",w_image:"영상",w_distort:"왜곡"};
 
 function firstFail(r,c){
  if(!(r.sy<c.sym_max&&r.dv>c.dev_lo&&r.dv<c.dev_hi&&Math.abs(r.pc)<c.pt_max))return 0;
@@ -477,11 +489,10 @@ function funnel(rows,c){
  const s5=s4.filter(r=>(r.cs==null||r.cs>=c.cs_min)&&(r.mv==null||r.mv>=c.mv_min));
  return [rows.length,s1.length,s2.length,s3.length,s4.length,s5.length];}
 function stateScores(rr){
- // rr=[무표정,눈동자,선명,micro,norm,cs,입가시,빛] rank01 — python state_scores 미러
  return [(2*rr[0]+rr[1])/3, rr[7], (rr[2]+rr[3])/2, (rr[5]+rr[6]+rr[4])/3];}
 function score(r,c,lf){
  const [sf,sl,si,sd]=stateScores(r.r);
- const wl=ATT?c.w_light*(lf==null?1:lf):c.w_light;   // ⑪-e v3: 판별력-비례 감쇠(시험)
+ const wl=ATT?c.w_light*(lf==null?1:lf):c.w_light;
  return c.w_face*sf+wl*sl+c.w_image*si+c.w_distort*sd;}
 function picks(rows,c,lf){
  const sv=rows.filter(r=>pass(r,c));
@@ -493,15 +504,16 @@ function picks(rows,c,lf){
 
 function cellHTML(clip,r,cls){
  const k=clip+":"+r.f, fl=GT[k]||"";
+ const sel=(selF==r.f)?" selg":"";
  const img=r.th?`<img src="${r.th}" loading="lazy">`:`<div class="noimg">f${r.f}<br>(no thumb)</div>`;
  const cap=`f${r.f} ex${r.ex} pu${r.pu}<br>cs${r.cs==null?"--":r.cs} mv${r.mv==null?"--":r.mv} lt${r.lt==null?"--":r.lt}`;
  const mark=fl=="pos"?"O":fl=="neg"?"X":"";
- return `<div class="cell ${fl} ${cls||""}" onclick="cyc(event,'${clip}',${r.f})">${img}
+ return `<div class="cell ${fl} ${cls||""}${sel}" onclick="onCell(event,'${clip}',${r.f})">${img}
    <span class="flag">${mark}</span><div class="cap">${cap}</div></div>`;}
 
 function funnelHTML(fn){
  const names=["전체",...STAGES];
- const cols=["#666",...SCOL.slice(0,STAGES.length-1),SURV];  // 마지막 행=최종 생존(초록)
+ const cols=["#666",...SCOL.slice(0,STAGES.length-1),SURV];
  const mx=Math.max(fn[0],1), last=fn.length-1;
  return `<div class="funnel">`+fn.map((v,i)=>
   `<div class="fr${i==last?" last":""}"><span class="lbl">${names[i]}</span>
@@ -514,20 +526,18 @@ function legendHTML(){
   STAGES.map((s,i)=>`<span><i style="background:${SCOL[i]}"></i>${s}에 걸러짐</span>`).join("")+
   `<span><i style="background:rgba(80,170,180,.5)"></i>boarding</span>
    <span><i style="background:#7ac"></i>A 픽</span><span><i style="border:1px dashed #ca7;width:7px;height:7px"></i>B 픽</span>
-   <span style="color:#4e4">●</span><span style="color:#e44;margin-left:-8px">●</span> <span>GT ±</span>
-   <span style="margin-left:8px">하단 유령 레인:</span>
+   <span style="margin-left:8px">유령:</span>
    <span><i style="background:#a05244"></i>무효</span><span><i style="background:#5a78a0"></i>미측정</span>
-   <span><i style="background:#8a70b0"></i>파편</span><span><i style="background:#3a3a3a"></i>무검출</span>
-   · 호버=미리보기 · 클릭=GT 깃발</div>`;}
+   <span><i style="background:#8a70b0"></i>파편</span><span><i style="background:#3a3a3a"></i>무검출</span></div>`;}
 
 function render(){
- // 셀프테스트 + 탭 배지는 전 클립 계산 (표시만 단일 클립)
+ const sy0=window.scrollY;
  let st_ok=true,st_msg=[],gtP=0,gtN=0,gtPB=0,gtNB=0;
  const isDef=JSON.stringify(A)==JSON.stringify(DEF);
  const meta=WB.clips.map(C=>{
   const pA=picks(C.rows,A,C.lf), fn=funnel(C.rows,A);
   const pB=Bcfg?picks(C.rows,Bcfg,C.lf):null;
-  if(isDef){const same=JSON.stringify(pA.slice().sort((a,b)=>a-b))==JSON.stringify(C.selftest.slice().sort((a,b)=>a-b));
+  if(isDef&&!ATT){const same=JSON.stringify(pA.slice().sort((a,b)=>a-b))==JSON.stringify(C.selftest.slice().sort((a,b)=>a-b));
    if(!same){st_ok=false;st_msg.push(C.clip);}}
   pA.forEach(f=>{const g=GT[C.clip+":"+f];if(g=="pos")gtP++;if(g=="neg")gtN++;});
   if(pB)pB.forEach(f=>{const g=GT[C.clip+":"+f];if(g=="pos")gtPB++;if(g=="neg")gtNB++;});
@@ -535,10 +545,11 @@ function render(){
   return {pA,pB,fn,p,ng,alive:fn[fn.length-1]};});
 
  const tabs=WB.clips.map((C,i)=>
-  `<span class="tab${i==cur?" cur":""}" onclick="cur=${i};render()">${C.clip}
+  `<span class="tab${i==cur?" cur":""}" onclick="cur=${i};selF=null;render()">${C.clip}
    <span class="b">${meta[i].alive}</span>${meta[i].p+meta[i].ng?`<span class="g"> +${meta[i].p}/−${meta[i].ng}</span>`:""}</span>`).join("");
 
  const C=WB.clips[cur], m=meta[cur];
+ if(selF==null||!C.rows.some(r=>r.f==selF)) selF=(m.pA[0]!=null?m.pA[0]:(C.rows[0]&&C.rows[0].f));
  const byf={};C.rows.forEach(r=>byf[r.f]=r);
  const setA=new Set(m.pA), setB=m.pB?new Set(m.pB):null;
  const gInv=C.ghost.filter(g=>g.k=="inv").length, gDet=C.ghost.filter(g=>g.k=="det").length,
@@ -546,7 +557,7 @@ function render(){
        gAbs=C.absent.reduce((a,r)=>a+r[1]-r[0]+1,0);
  let h=`<div id="tabs">${tabs}</div><b>${C.clip}</b> t${C.tid} <span class="note">비디오 ${C.vf}f = 측정 ${C.n}`+
   (gInv?` + 무효 ${gInv}`:"")+(gDet?` + 미측정 ${gDet}`:"")+(gFrag?` + 파편 ${gFrag}`:"")+(gAbs?` + 무검출 ${gAbs}`:"")+
-  ` · <b>빛 판별력 lf=${C.lf==null?"?":C.lf}</b>${ATT?` <span style="color:#fc6">(감쇠 적용: w_light ${A.w_light}→${(A.w_light*(C.lf==null?1:C.lf)).toFixed(2)})</span>`:""} · 풀 정렬:</span>
+  ` · <b>빛 판별력 lf=${C.lf==null?"?":C.lf}</b>${ATT?` <span style="color:#fc6">(감쇠: w_light ${A.w_light}→${(A.w_light*(C.lf==null?1:C.lf)).toFixed(2)})</span>`:""} · 풀 정렬:</span>
   <button onclick="sortMode=sortMode=='time'?'score':'time';render()">${sortMode=='time'?'시간순':'점수순'}</button>
   <button onclick="poseOpen=!poseOpen;render()">포즈 눈금 ${poseOpen?'닫기':'보기'}</button>
   <label style="font-size:12px;color:#bbb;margin-left:6px"><input type="checkbox" ${ATT?"checked":""}
@@ -559,9 +570,9 @@ function render(){
   const byDev=samp(wt.slice().sort((a,b)=>a.dv-b.dv));
   const bySy=samp(wt.slice().sort((a,b)=>a.sy-b.sy));
   const pose=r=>{const ff=firstFail(r,A);const dim=(ff===0||ff===1)?"opacity:.35":"";
-   return `<div class="cell" style="${dim}" onclick="groundPose('${C.clip}',${r.f})"><img src="${r.th}">
+   return `<div class="cell" style="${dim}" onclick="groundPose('${C.clip}',${r.f})"><img src="${r.th}" loading="lazy">
     <div class="cap">dv${r.dv} sy${r.sy}<br>pt${r.pt==null?"--":r.pt} pc${r.pc}</div></div>`;};
-  h+=`<div class="rowlbl">포즈 눈금 — yaw 사다리 (좌측면 → 정면 → 우측면 · 타일 클릭 = 이 포즈가 포함되게 밴드 확장 · 흐림 = 현재 포즈 스크린에 걸러짐)</div>
+  h+=`<div class="rowlbl">포즈 눈금 — yaw 사다리 (좌→정면→우 · 클릭=밴드 확장 그라운딩 · 흐림=포즈 스크린에 걸러짐)</div>
    <div class="strip sm">`+byDev.map(pose).join("")+`</div>
    <div class="rowlbl">포즈 눈금 — sym 사다리</div><div class="strip sm">`+bySy.map(pose).join("")+`</div>`;
  }
@@ -574,15 +585,16 @@ function render(){
  const sv=C.rows.filter(r=>pass(r,A));
  sv.forEach(r=>r._s=score(r,A,C.lf));
  const ordered=sortMode=="time"?sv.slice().sort((a,b)=>a.f-b.f):sv.slice().sort((a,b)=>b._s-a._s);
- const show=ordered.slice(0,400);                            // v0.6: 썸네일 필터 제거(공평)
+ const show=ordered.slice(0,400);
  h+=`<div class="rowlbl">생존 풀 (A, ${sv.length}행 중 ${show.length} 표시 · ${sortMode=='time'?'시간순':'점수순'})</div>
   <div class="strip sm">`+show.map(r=>cellHTML(C.clip,r,"")).join("")+`</div>`;
  document.getElementById("main").innerHTML=h;
  drawTimeline(C,m);
  drawDialHists(C,m);
+ renderInsp(C,m);
 
  const st=document.getElementById("selftest");
- if(isDef){st.textContent=st_ok?"selftest OK — JS ≡ python (기본 설정)":"selftest FAIL: "+st_msg.join(",");
+ if(isDef&&!ATT){st.textContent=st_ok?"selftest OK — JS ≡ python (기본 설정)":"selftest FAIL: "+st_msg.join(",");
   st.className=st_ok?"ok":"bad";}
  else{st.textContent="탐색 중 (기본 설정 아님 — selftest는 기본값에서만)";st.className="";}
  const tot=Object.keys(GT).length;
@@ -591,75 +603,12 @@ function render(){
  for(const d of DIALS){if(d.length==1)continue;const k=d[0];
   const el=document.getElementById("d_"+k);
   if(el)el.className="dial"+(A[k]!=DEF[k]?" mod":"");}
+ window.scrollTo(0,sy0);
 }
-function drawTimeline(C,m){
- const cv=document.getElementById("tlc");
- if(!cv)return;
- const ctx=cv.getContext("2d"), W=cv.width, H=cv.height;
- ctx.clearRect(0,0,W,H);
- const fmin=0, fmax=Math.max(C.vf-1, 1);                     // v0.6: 축=비디오 전체(0..vf)
- const X=f=>4+(f-fmin)/(fmax-fmin)*(W-8);
- ctx.fillStyle="rgba(80,170,180,0.22)";                      // boarding 밴드
- for(const r of C.rows) if(r.b) ctx.fillRect(X(r.f)-1,0,2.2,H-8);
- for(const r of C.rows){                                     // 측정 행 틱
-  const ff=firstFail(r,A);
-  ctx.fillStyle=ff<0?SURV:SCOL[ff];
-  if(ff<0) ctx.fillRect(X(r.f),12,1.7,H-20);
-  else     ctx.fillRect(X(r.f),20,1.4,H-28);
- }
- // 유령 레인(하단): 우주 밖 프레임의 존재 — 회색 밴드=무검출
- ctx.fillStyle="#3a3a3a";
- for(const ab of C.absent) ctx.fillRect(X(ab[0]),H-7,Math.max(1.5,X(ab[1])-X(ab[0])+1.5),6);
- const GCOL={inv:"#a05244",det:"#5a78a0",frag:"#8a70b0"};
- for(const g of C.ghost){ctx.fillStyle=GCOL[g.k];ctx.fillRect(X(g.f),H-7,1.6,6);}
- ctx.fillStyle="#7ac";                                       // A 픽
- for(const f of m.pA) ctx.fillRect(X(f)-1.5,9,3,H-17);
- if(m.pB){ctx.strokeStyle="#ca7";ctx.setLineDash([3,2]);     // B 픽
-  for(const f of m.pB) ctx.strokeRect(X(f)-2.5,9,5,H-18);
-  ctx.setLineDash([]);}
- for(const r of C.rows){                                     // GT 점
-  const g=GT[C.clip+":"+r.f];
-  if(!g)continue;
-  ctx.fillStyle=g=="pos"?"#4e4":"#e44";
-  ctx.beginPath();ctx.arc(X(r.f),4.5,2.6,0,7);ctx.fill();
- }
- const tip=document.getElementById("tlTip");
- const GLBL={inv:"게이트-무효 (측정됨, valid 밖)",det:"미측정 — 검출만 (랜드마크 없음)",
-             frag:"트랙 파편 (동일 인물 추정)"};
- const uni=C.rows.map(r=>({f:r.f,row:r})).concat(C.ghost.map(g=>({f:g.f,g:g})))
-   .sort((a,b)=>a.f-b.f);
- const nearest=x=>{const fe=fmin+(x-4)/(W-8)*(fmax-fmin);
-  let bi=0,bd=1e9;
-  for(let i=0;i<uni.length;i++){const d=Math.abs(uni[i].f-fe);if(d<bd){bd=d;bi=i;}}
-  return uni[bi];};
- cv.onmousemove=e=>{
-  const rect=cv.getBoundingClientRect(), x=e.clientX-rect.left;
-  const o=nearest(x);
-  const gflag=GT[C.clip+":"+o.f], gs=gflag?` · GT:${gflag=="pos"?"＋":"−"}`:"";
-  if(o.row){
-   const r=o.row, ff=firstFail(r,A);
-   const st=ff<0?`<span style="color:${SURV}">생존</span>`:`<span style="color:${SCOL[ff]}">${STAGES[ff]}에 걸러짐</span>`;
-   const ss=stateScores(r.r);
-   tip.innerHTML=(r.th?`<img src="${r.th}" loading="lazy">`:"")+
-    `f${r.f} ${st}${gs}<br>ex${r.ex} pu${r.pu} sy${r.sy} dv${r.dv}<br>pt${r.pt==null?"--":r.pt}(Δ${r.pc}) cs${r.cs==null?"--":r.cs} mv${r.mv==null?"--":r.mv} lt${r.lt==null?"--":r.lt}<br>dp${r.dp==null?"--":r.dp} hh${r.hh==null?"--":r.hh} sp${r.sp==null?"--":r.sp}<br><span style="color:#9ad">상태: 얼굴${ss[0].toFixed(2)} 빛${ss[1].toFixed(2)} 영상${ss[2].toFixed(2)} 왜곡${ss[3].toFixed(2)}</span>`;
-  }else{
-   const g=o.g;
-   tip.innerHTML=(g.th?`<img src="${g.th}" loading="lazy">`:"")+
-    `f${g.f} <span style="color:${GCOL[g.k]}">${GLBL[g.k]}</span>${gs}<br>측정 신호 없음 — 클릭=GT 깃발 가능`;
-  }
-  tip.style.display="block";
-  tip.style.left=Math.min(x+14,W-140)+"px";
-  tip.style.top="46px";
- };
- cv.onmouseleave=()=>{tip.style.display="none";};
- cv.onclick=e=>{
-  const rect=cv.getBoundingClientRect();
-  cyc(e,C.clip,nearest(e.clientX-rect.left).f);
- };
-}
+
 const HSPEC={
  sym_max:{f:r=>r.sy,dir:"below"},
- dev_hi:{f:r=>r.dv,band:["dev_lo","dev_hi"]},   // 부호-있는 yaw 밴드(좌−/우+) 히스토그램
+ dev_hi:{f:r=>r.dv,band:["dev_lo","dev_hi"]},
  pt_max:{f:r=>Math.abs(r.pc),dir:"below"},
  pu_min:{f:r=>r.pu,dir:"above"},
  cs_min:{f:r=>r.cs,dir:"above"},
@@ -668,7 +617,7 @@ const HSPEC={
  dp_min:{f:r=>r.dp,dir:"above"},
  hh_max:{f:r=>r.hh,dir:"below"},
  sp_min:{f:r=>r.sp,dir:"above"},
- ex_max:{f:r=>r.ex,band:["ex_min","ex_max"]},   // 표정 밴드(v0.9 — 쿼리 가능)
+ ex_max:{f:r=>r.ex,band:["ex_min","ex_max"]},
 };
 function drawDialHists(C,m){
  const byf={};C.rows.forEach(r=>byf[r.f]=r);
@@ -695,10 +644,10 @@ function drawDialHists(C,m){
    ctx.fillStyle=inPass(mid)?"#6f9b6f":"#484848";
    ctx.fillRect(x0,H-3-bh,Math.max(1,(W-8)/NB-1),bh);
   }
-  ctx.fillStyle="#fc6";                                        // 현재 다이얼 위치(밴드=두 선)
+  ctx.fillStyle="#fc6";
   if(isBand){ctx.fillRect(tx(blo)-0.8,1,1.6,H-2);ctx.fillRect(tx(bhi)-0.8,1,1.6,H-2);}
   else ctx.fillRect(tx(thr)-0.8,1,1.6,H-2);
-  ctx.fillStyle="#7ac";                                        // A 픽 위치 ▲
+  ctx.fillStyle="#7ac";
   for(const f of m.pA){const r=byf[f];if(!r)continue;const v=sp.f(r);if(v==null||!isFinite(v))continue;
    const x=tx(v);ctx.beginPath();ctx.moveTo(x,H-2);ctx.lineTo(x-3,H-9);ctx.lineTo(x+3,H-9);ctx.closePath();ctx.fill();}
   let np=0;
@@ -708,17 +657,180 @@ function drawDialHists(C,m){
   ctx.textAlign="left";
  }
 }
-function cyc(e,clip,f){
+
+function drawTimeline(C,m){
+ const cv=document.getElementById("tlc");
+ if(!cv)return;
+ const ctx=cv.getContext("2d"), W=cv.width, H=cv.height;
+ ctx.clearRect(0,0,W,H);
+ const fmin=0, fmax=Math.max(C.vf-1, 1);
+ const X=f=>4+(f-fmin)/(fmax-fmin)*(W-8);
+ ctx.fillStyle="rgba(80,170,180,0.22)";
+ for(const r of C.rows) if(r.b) ctx.fillRect(X(r.f)-1,0,2.2,H-8);
+ for(const r of C.rows){
+  const ff=firstFail(r,A);
+  ctx.fillStyle=ff<0?SURV:SCOL[ff];
+  if(ff<0) ctx.fillRect(X(r.f),12,1.7,H-20);
+  else     ctx.fillRect(X(r.f),20,1.4,H-28);
+ }
+ ctx.fillStyle="#3a3a3a";
+ for(const ab of C.absent) ctx.fillRect(X(ab[0]),H-7,Math.max(1.5,X(ab[1])-X(ab[0])+1.5),6);
+ const GCOL={inv:"#a05244",det:"#5a78a0",frag:"#8a70b0"};
+ for(const g of C.ghost){ctx.fillStyle=GCOL[g.k];ctx.fillRect(X(g.f),H-7,1.6,6);}
+ ctx.fillStyle="#7ac";
+ for(const f of m.pA) ctx.fillRect(X(f)-1.5,9,3,H-17);
+ if(m.pB){ctx.strokeStyle="#ca7";ctx.setLineDash([3,2]);
+  for(const f of m.pB) ctx.strokeRect(X(f)-2.5,9,5,H-18);
+  ctx.setLineDash([]);}
+ if(selF!=null){ctx.strokeStyle="#f90";ctx.strokeRect(X(selF)-2.5,1,5,H-2);}
+ for(const r of C.rows){
+  const g=GT[C.clip+":"+r.f];
+  if(!g)continue;
+  ctx.fillStyle=g=="pos"?"#4e4":"#e44";
+  ctx.beginPath();ctx.arc(X(r.f),4.5,2.6,0,7);ctx.fill();
+ }
+ const tip=document.getElementById("tlTip");
+ const GLBL={inv:"게이트-무효 (측정됨, valid 밖)",det:"미측정 — 검출만 (랜드마크 없음)",
+             frag:"트랙 파편 (동일 인물 추정)"};
+ const uni=C.rows.map(r=>({f:r.f,row:r})).concat(C.ghost.map(g=>({f:g.f,g:g})))
+   .sort((a,b)=>a.f-b.f);
+ const nearest=x=>{const fe=fmin+(x-4)/(W-8)*(fmax-fmin);
+  let bi=0,bd=1e9;
+  for(let i=0;i<uni.length;i++){const d=Math.abs(uni[i].f-fe);if(d<bd){bd=d;bi=i;}}
+  return uni[bi];};
+ cv.onmousemove=e=>{
+  const rect=cv.getBoundingClientRect(), x=e.clientX-rect.left;
+  const o=nearest(x);
+  const gflag=GT[C.clip+":"+o.f], gs=gflag?` · GT:${gflag=="pos"?"＋":"−"}`:"";
+  if(o.row){
+   const r=o.row, ff=firstFail(r,A);
+   const st=ff<0?`<span style="color:${SURV}">생존</span>`:`<span style="color:${SCOL[ff]}">${STAGES[ff]}에 걸러짐</span>`;
+   const ss=stateScores(r.r);
+   tip.innerHTML=(r.th?`<img src="${r.th}" loading="lazy">`:"")+
+    `f${r.f} ${st}${gs}<br>ex${r.ex} pu${r.pu} sy${r.sy} dv${r.dv}<br>상태: 얼굴${ss[0].toFixed(2)} 빛${ss[1].toFixed(2)} 영상${ss[2].toFixed(2)} 왜곡${ss[3].toFixed(2)}`;
+  }else{
+   const g=o.g;
+   tip.innerHTML=(g.th?`<img src="${g.th}" loading="lazy">`:"")+
+    `f${g.f} <span style="color:${GCOL[g.k]}">${GLBL[g.k]}</span>${gs}<br>측정 신호 없음`;
+  }
+  tip.style.display="block";
+  tip.style.left=Math.min(x+14,W-140)+"px";
+  tip.style.top="46px";
+ };
+ cv.onmouseleave=()=>{tip.style.display="none";};
+ cv.onclick=e=>{
+  const rect=cv.getBoundingClientRect();
+  const o=nearest(e.clientX-rect.left);
+  if(e.shiftKey&&o.row){groundPose(C.clip,o.f);return;}
+  selF=o.f;render();
+ };
+}
+
+// ── 검사 패널(v0.10): 활성 상태의 분석 시각화 ─────────────────────────
+function shEval(sh,x,y,z){
+ return sh[0]*0.2821+sh[1]*0.4886*y+sh[2]*0.4886*z+sh[3]*0.4886*x
+  +sh[4]*1.0925*x*y+sh[5]*1.0925*y*z+sh[6]*0.3154*(3*z*z-1)
+  +sh[7]*1.0925*x*z+sh[8]*0.5462*(x*x-y*y);}
+function renderInsp(C,m){
+ const el=document.getElementById("insp");
+ const r=C.rows.find(r=>r.f==selF);
+ if(!r){el.innerHTML=`<div class="note">프레임을 클릭해 선택하세요.</div>`;return;}
+ const ss=stateScores(r.r), pv=(C.pv||{})[String(r.f)];
+ const gflag=GT[C.clip+":"+r.f]||"";
+ const tabs=STAGES.map(s=>`<span class="itab${s==iMode?" cur":""}" onclick="iMode='${s}';render()">${s}</span>`).join("");
+ let body="";
+ if(iMode=="포즈"){
+  body=`<canvas id="ovl" width="300" height="300" style="border:1px solid #444"></canvas>
+   <div class="note">yaw dev ${r.dv}° · pitch ${r.pt==null?"--":r.pt}°(Δ${r.pc}) · roll ${r.rl==null?"--":r.rl}° · sym ${r.sy}</div>
+   <div class="note">${pv?"랜드마크 오버레이 = 추정 검증":"오버레이는 픽 프레임 한정 (콘솔 온디맨드 확장 예정)"}</div>`;
+ }else if(iMode=="표정·얼굴"){
+  body=pv?`<div>${pv.bs.map(([nm,v])=>`<div class="ibar"><span class="nm">${nm}</span>
+    <span class="bv" style="width:${Math.round(v*150)}px"></span> ${v}</div>`).join("")}</div>
+    <div class="note">pupil ${r.pu} · ex(비 eyeLook 최대) ${r.ex}</div>`
+   :`<div class="note">blendshape 상세는 픽 프레임 한정. pupil ${r.pu} · ex ${r.ex}</div>`;
+ }else if(iMode=="빛"){
+  body=`<div style="display:flex;gap:10px;align-items:flex-start">
+    <div><canvas id="shc" width="96" height="96" style="border:1px solid #444"></canvas>
+     <div class="note" style="text-align:center">SH 조명 구면</div></div>
+    <div><canvas id="lrc" width="96" height="96" style="border:1px solid #444"></canvas>
+     <div class="note" style="text-align:center">lr/tb 방향</div></div></div>
+   <div class="note">lt ${r.lt==null?"--":r.lt}% · 입체감 dp ${r.dp==null?"--":r.dp}% · 거칠기 hh ${r.hh==null?"--":r.hh}%<br>
+    lr ${r.lr==null?"--":r.lr} · tb ${r.tb==null?"--":r.tb} · 클립 판별력 lf=${C.lf}</div>`;
+ }else if(iMode=="영상"){
+  body=(pv&&pv.lap)?`<img src="thumbs/${C.clip}/f${String(r.f).padStart(5,"0")}_lap.jpg" style="width:224px;border:1px solid #444">
+    <div class="note">Laplacian 선명 히트맵 (밝음=엣지 살아있음)</div>
+    <div class="note">선명 sp ${r.sp==null?"--":r.sp}%</div>`
+   :`<div class="note">선명 히트맵은 픽 프레임 한정. sp ${r.sp==null?"--":r.sp}%</div>`;
+ }else{ // 왜곡
+  body=`<canvas id="csc" width="300" height="80" style="border:1px solid #444"></canvas>
+   <div class="note">실선=cs(정체성 판독성 pct) · 점선=mv(입-가시 pct) · 주황=선택 프레임</div>
+   <div class="note">cs ${r.cs==null?"--":r.cs}% · mv ${r.mv==null?"--":r.mv}% · norm rank ${(r.r[4]*100).toFixed(0)}%</div>`;
+ }
+ el.innerHTML=`<div class="rowlbl">검사 — f${r.f} ${r.b?"(boarding)":""}</div>
+  <img id="inspImg" src="${r.th||""}" ${r.th?"":'style="opacity:.2"'}>
+  <div class="note" style="margin:4px 0">상태점수: 얼굴 <b>${ss[0].toFixed(2)}</b> · 빛 <b>${ss[1].toFixed(2)}</b> · 영상 <b>${ss[2].toFixed(2)}</b> · 왜곡 <b>${ss[3].toFixed(2)}</b></div>
+  <div class="gtbtn">GT: <button onclick="setGT('pos')" ${gflag=="pos"?'style="border-color:#5c5;color:#5c5"':''}>＋ 긍정</button>
+   <button onclick="setGT('neg')" ${gflag=="neg"?'style="border-color:#e55;color:#e55"':''}>− 부정</button>
+   <button onclick="setGT(null)">지움</button></div>
+  <div class="itabs">${tabs}</div>${body}`;
+ if(iMode=="포즈"){
+  const cv=document.getElementById("ovl"), ctx=cv.getContext("2d");
+  const img=new Image();
+  img.onload=()=>{ctx.drawImage(img,0,0,300,300);
+   if(pv){ctx.strokeStyle="rgba(80,255,120,0.8)";ctx.lineWidth=1;
+    for(const [a,b] of WB.edges){const p=pv.lm[a],q=pv.lm[b];
+     ctx.beginPath();ctx.moveTo(p[0]*300,p[1]*300);ctx.lineTo(q[0]*300,q[1]*300);ctx.stroke();}}};
+  if(r.th)img.src=r.th;
+ }else if(iMode=="빛"&&r.sh){
+  const cv=document.getElementById("shc"), ctx=cv.getContext("2d");
+  const im=ctx.createImageData(96,96);
+  let lo=1e9,hi=-1e9;const vals=new Float32Array(96*96).fill(NaN);
+  for(let py=0;py<96;py++)for(let px=0;px<96;px++){
+   const x=(px-48)/46,y=(py-48)/46,r2=x*x+y*y;
+   if(r2>1)continue;
+   const z=Math.sqrt(1-r2);
+   const v=shEval(r.sh,x,-y,z);
+   vals[py*96+px]=v;if(v<lo)lo=v;if(v>hi)hi=v;}
+  for(let i=0;i<96*96;i++){const v=vals[i];
+   const g=isNaN(v)?22:Math.round((v-lo)/(hi-lo+1e-9)*235+20);
+   im.data[i*4]=g;im.data[i*4+1]=g;im.data[i*4+2]=g;im.data[i*4+3]=255;}
+  ctx.putImageData(im,0,0);
+  const lc=document.getElementById("lrc"), c2=lc.getContext("2d");
+  c2.fillStyle="#222";c2.fillRect(0,0,96,96);
+  c2.strokeStyle="#555";c2.strokeRect(20,20,56,56);
+  if(r.lr!=null&&r.tb!=null){
+   c2.strokeStyle="#d8c455";c2.lineWidth=2;c2.beginPath();c2.moveTo(48,48);
+   c2.lineTo(48+r.lr*40,48-r.tb*40);c2.stroke();
+   c2.fillStyle="#d8c455";c2.beginPath();c2.arc(48+r.lr*40,48-r.tb*40,3,0,7);c2.fill();}
+ }else if(iMode=="왜곡"){
+  const cv=document.getElementById("csc"), ctx=cv.getContext("2d");
+  ctx.fillStyle="#141414";ctx.fillRect(0,0,300,80);
+  const X=f=>4+f/Math.max(C.vf-1,1)*292;
+  const plot=(get,style,dash)=>{ctx.strokeStyle=style;ctx.setLineDash(dash||[]);
+   ctx.beginPath();let started=false;
+   for(const q of C.rows){const v=get(q);if(v==null)continue;
+    const x=X(q.f),y=76-v/100*72;
+    if(!started){ctx.moveTo(x,y);started=true;}else ctx.lineTo(x,y);}
+   ctx.stroke();ctx.setLineDash([]);};
+  plot(q=>q.cs,"#b070d0");
+  plot(q=>q.mv,"#55aacc",[3,2]);
+  ctx.strokeStyle="#f90";ctx.beginPath();ctx.moveTo(X(r.f),2);ctx.lineTo(X(r.f),78);ctx.stroke();
+ }
+}
+function onCell(e,clip,f){
  if(e&&e.shiftKey){groundPose(clip,f);return;}
- const k=clip+":"+f;GT[k]=GT[k]=="pos"?"neg":GT[k]=="neg"?undefined:"pos";
- if(!GT[k])delete GT[k];render();}
+ selF=f;render();}
+function setGT(v){
+ const C=WB.clips[cur];
+ const k=C.clip+":"+selF;
+ if(v)GT[k]=v;else delete GT[k];
+ render();}
 function groundPose(clip,f){
- // 예시-그라운딩: 이 프레임이 포즈 스크린을 통과하는 최소 경계로 세팅 (쿼리 바이 예시)
  const C=WB.clips.find(c=>c.clip==clip);
  const r=C&&C.rows.find(r=>r.f==f);
  if(!r)return;
  A.sym_max=Math.min(2.0,Math.round((Math.floor(r.sy/0.05)+1)*5)/100);
- A.dev_lo=Math.min(A.dev_lo,Math.max(-90,Math.floor(r.dv)-1));   // 밴드 확장(포함되게)
+ A.dev_lo=Math.min(A.dev_lo,Math.max(-90,Math.floor(r.dv)-1));
  A.dev_hi=Math.max(A.dev_hi,Math.min(90,Math.floor(r.dv)+1));
  if(A.pt_max<99)A.pt_max=Math.max(A.pt_max,Math.min(99,Math.floor(Math.abs(r.pc))+1));
  buildPanel();render();}
@@ -737,21 +849,25 @@ function importGT(inp){const fr=new FileReader();fr.onload=()=>{
   if(o.flag)GT[o.clip+":"+o.frame]=o.flag;}catch(e){}});render();};
  fr.readAsText(inp.files[0]);}
 function buildPanel(){
- const p=document.getElementById("panel");let h="";
+ const p=document.getElementById("panel");let h="";let grp=null;
  for(const d of DIALS){
-  if(d.length==1){h+=`<div class="grp">${d[0]}</div>`;continue;}
+  if(d.length==1){grp=d[0];
+   h+=`<div class="grp" onclick="collapsed['${grp}']=!collapsed['${grp}'];buildPanel();render()">
+     <span class="arr">${collapsed[grp]?"▸":"▾"}</span> ${grp}</div>`;continue;}
+  if(grp&&collapsed[grp])continue;
   const [k,lbl,mn,mx,stp]=d;
   h+=`<div class="dial" id="d_${k}"><label>${lbl}<span id="v_${k}">${A[k]}</span></label>
    <input type="range" min="${mn}" max="${mx}" step="${stp}" value="${A[k]}"
-    oninput="A['${k}']=+this.value;document.getElementById('v_${k}').textContent=this.value;render()">`+
+    oninput="A['${k}']=+this.value;document.getElementById('v_${k}').textContent=this.value;
+     if(K2G['${k}']&&STAGES.includes(K2G['${k}']))iMode=K2G['${k}'];render()">`+
    (HSPEC[k]?`<canvas class="dh" id="h_${k}" width="236" height="36"></canvas>`:``)+`</div>`;}
- h+=`<div class="note" style="margin-top:12px">주황 라벨 • = 기본값에서 움직인 다이얼<br>
-  분포 지도 = 현재 클립의 신호 분포(초록=통과 측 · 노랑 선=현재 값 · ▲=A 픽 · %=측정치 중 통과율)</div>`;
+ h+=`<div class="note" style="margin-top:12px">그룹 제목 클릭=접기 · 주황 •=기본값에서 이동<br>
+  다이얼 조작 → 우측 검사 뷰가 그 상태 모드로 전환</div>`;
  p.innerHTML=h;}
 document.addEventListener("keydown",e=>{
  if(e.target.tagName=="INPUT")return;
- if(e.key=="ArrowRight"){cur=(cur+1)%WB.clips.length;render();}
- if(e.key=="ArrowLeft"){cur=(cur+WB.clips.length-1)%WB.clips.length;render();}});
+ if(e.key=="ArrowRight"){cur=(cur+1)%WB.clips.length;selF=null;render();}
+ if(e.key=="ArrowLeft"){cur=(cur+WB.clips.length-1)%WB.clips.length;selF=null;render();}});
 buildPanel();render();
 </script></body></html>
 """
@@ -768,7 +884,8 @@ if __name__ == "__main__":
             print(f"{clip}: rows={clips[-1]['n']} selftest={clips[-1]['selftest']}")
         except Exception as e:
             print(f"{clip}: FAIL {type(e).__name__}: {e}")
-    (wb / "data.js").write_text("const WB=" + json.dumps({"clips": clips}, ensure_ascii=False)
-                                + ";", encoding="utf-8")
+    (wb / "data.js").write_text(
+        "const WB=" + json.dumps({"clips": clips, "edges": EDGES}, ensure_ascii=False) + ";",
+        encoding="utf-8")
     (wb / "workbench.html").write_text(HTML, encoding="utf-8")
     print("workbench:", wb / "workbench.html")
