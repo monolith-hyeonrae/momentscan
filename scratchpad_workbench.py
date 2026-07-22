@@ -11,6 +11,12 @@
   v0.5: **yaw = 부호-있는 밴드 다이얼**(dev_lo/dev_hi, portrait 쿼리 대비 — "yaw 60~90"
   같은 측면 구간 선택 가능; 수렴 스크린=밴드의 특수형, 기본 (−15,15)=구 |dev|<15 동치
   =셀프테스트 불변) · 포즈 눈금=좌측면→정면→우측면 스윕 · 그라운딩=밴드 확장 의미론.
+  v0.6: **공평 우주**(user: "선택받지 못한 프레임도 보여줘야 선택받게 만들 수 있다") —
+  썸네일 표본화 제거(전 행 저장, lazy 로딩)·풀 그리드 썸네일-필터 제거·타임라인 축=
+  비디오 전체(0..vf)·**유령 레인**: 무효(측정됐으나 valid 밖)/미측정(검출만, 랜드마크
+  없음 — dual_2 182f 실측)/파편(동일 subject 타 트랙)/무검출을 하단 6px에 존재 표시,
+  호버=bbox 크롭 썸네일, 클릭=GT 깃발(우주 밖 프레임에 "뽑혀야 한다" 표시 가능).
+  yaw 슬라이더 ±90 확장.
   v0.1: 단일-클립 탭 뷰(←→ 키보드 전환·탭에 GT/생존 배지) · 썸네일 224px(픽=원치수,
   풀=112 축소+호버 2× 확대) · 퍼널 막대 · 풀 정렬 토글(시간순/점수순 — 랭커 취향
   노출) · A/B diff 하이라이트(주황 외곽) · 변경-다이얼 하이라이트.
@@ -85,12 +91,16 @@ def rank01(x, flip=False):
 
 
 def frame_table(clip_id: str, out_root: Path):
-    """클립 main rider의 전 신호 와이드 테이블 (+썸네일용 컨텍스트)."""
+    """클립 main rider의 전 신호 와이드 테이블 (+유령 우주 컨텍스트, v0.6)."""
     rec = json.load(open(out_root / clip_id / "likeness.json"))
     tid, rider = next((int(t), r) for t, r in rec["riders"].items() if r.get("role") == "main")
-    lm = read_landmarks(out_root, clip_id).filter(pl.col("track_id") == tid).sort("frame_idx")
+    lmr = read_landmarks(out_root, clip_id).filter(pl.col("track_id") == tid).sort("frame_idx")
+    # 유령 우주 재료: 무효(valid-필터로 빠질 lm 행)의 crop_box — 전량 보존 후 필터
+    lm_all_cb = {int(f): tuple(float(v) for v in b)
+                 for f, b in zip(lmr["frame_idx"].to_list(), lmr["crop_box"].to_list())}
     gt = pl.read_parquet(out_root / clip_id / "gate_trace.parquet").filter(pl.col("track_id") == tid)
     valid = set(gt.filter(pl.col("valid"))["frame_idx"].to_list())
+    lm = lmr
     keep = lm["frame_idx"].is_in(list(valid))
     if int(keep.sum()) >= 10:
         lm = lm.filter(keep)
@@ -118,7 +128,17 @@ def frame_table(clip_id: str, out_root: Path):
     chi = np.array([hi_of.get(int(f), np.nan) for f in fx], float)
     lum_eff = lum * (1.0 - np.nan_to_num(chi, nan=0.0))
 
-    det = pl.read_parquet(out_root / clip_id / "detections.parquet").filter(pl.col("track_id") == tid)
+    det_all = pl.read_parquet(out_root / clip_id / "detections.parquet")
+    det = det_all.filter(pl.col("track_id") == tid)
+    det_bbox = {int(f): tuple(float(v) for v in b)
+                for f, b in zip(det["frame_idx"].to_list(), det["bbox"].to_list()) if b is not None}
+    frag_bbox = {}
+    if "subject_id" in det_all.columns:
+        sids = det["subject_id"].drop_nulls().unique().to_list()
+        if sids:
+            fr = det_all.filter(pl.col("subject_id").is_in(sids) & (pl.col("track_id") != tid))
+            frag_bbox = {int(f): tuple(float(v) for v in b)
+                         for f, b in zip(fr["frame_idx"].to_list(), fr["bbox"].to_list()) if b is not None}
     erows = [(int(f), np.asarray(e, float)) for f, e in
              zip(det["frame_idx"].to_list(), det["embedding"].to_list()) if e is not None]
     cs = np.full(n, np.nan)
@@ -146,7 +166,7 @@ def frame_table(clip_id: str, out_root: Path):
     pupil, sym = face_signals(P)
     return dict(tid=tid, rider=rider, fx=fx, cb=cb, P=P, yaw=yaw, pitch=pitch, blur=blur,
                 micro=micro, mv=mv, lum_eff=lum_eff, cs=cs, nrm=nrm, board=board, expr=expr,
-                pupil=pupil, sym=sym)
+                pupil=pupil, sym=sym, lm_all_cb=lm_all_cb, det_bbox=det_bbox, frag_bbox=frag_bbox)
 
 
 def compute_picks(rows, cfg):
@@ -178,26 +198,43 @@ def build_clip(clip_id, out_root, wb_dir):
     fx, cb, P = t["fx"], t["cb"], t["P"]
     n = len(fx)
 
-    # chroma + 썸네일: 한 번의 순차 디코드
+    # chroma + 썸네일(v0.6: 전 행 = 공평 우주) + 유령 썸네일: 한 번의 순차 디코드
     dev = t["yaw"] - FRONTAL_DEG
-    thumbable = (t["sym"] < 1.3) & (t["pupil"] >= 0.25) & (np.abs(dev) < 25)
-    tidx = np.where(thumbable)[0]
-    if len(tidx) > 120:
-        tidx = tidx[np.unique(np.linspace(0, len(tidx) - 1, 120).astype(int))]
     cur = [f for f in t["rider"]["samples"]["center_nearest"]]
-    tset = set(int(fx[i]) for i in tidx) | set(int(c) for c in cur if c in set(fx.tolist()))
     row_of = {int(f): i for i, f in enumerate(fx)}
+    fxset = set(row_of)
+    # 유령 우주: inv=측정됐으나 valid 밖 · det=검출만(랜드마크 없음) · frag=동일-subject 타 트랙
+    inv_f = sorted(set(t["lm_all_cb"]) - fxset)
+    det_f = sorted(set(t["det_bbox"]) - set(t["lm_all_cb"]))
+    frag_f = sorted(set(t["frag_bbox"]) - set(t["det_bbox"]) - set(t["lm_all_cb"]))
+    ghost_kind = {**{f: "inv" for f in inv_f}, **{f: "det" for f in det_f},
+                  **{f: "frag" for f in frag_f}}
+    ghost_thumb = set()
+    for kfs in (inv_f, det_f, frag_f):                          # 종류별 썸네일 ≤60 표본
+        if len(kfs) > 60:
+            ghost_thumb |= {kfs[i] for i in np.unique(np.linspace(0, len(kfs) - 1, 60).astype(int))}
+        else:
+            ghost_thumb |= set(kfs)
+
+    def _sq(b, W0, H0, pad=1.3):
+        x1, y1, x2, y2 = b
+        cx, cy, s = (x1 + x2) / 2, (y1 + y2) / 2, max(x2 - x1, y2 - y1) * pad / 2
+        return max(0, int(cx - s)), max(0, int(cy - s)), min(W0, int(cx + s)), min(H0, int(cy + s))
+
     chroma = np.full(n, np.nan)
     tdir = wb_dir / "thumbs" / clip_id
     tdir.mkdir(parents=True, exist_ok=True)
     thumb_ok = set()
     cap = cv2.VideoCapture(str(out_root / clip_id / "detect.mp4"))
+    vf = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
     fidx = 0
     while True:
         ok, frm = cap.read()
         if not ok:
             break
+        H0, W0 = frm.shape[:2]
         i = row_of.get(fidx)
+        box = None
         if i is not None:
             cbv = cb[i]
             pts = np.stack([cbv[0] + P[i, :, 0] * (cbv[2] - cbv[0]),
@@ -205,15 +242,36 @@ def build_clip(clip_id, out_root, wb_dir):
             r = skin_sv(frm, pts, cbv)
             if r is not None:
                 chroma[i] = r[3]
-            if fidx in tset:
-                x1, y1, x2, y2 = (int(v) for v in cbv)
-                if x2 - x1 > 1 and y2 - y1 > 1:
-                    tile = cv2.resize(frm[max(0, y1):y2, max(0, x1):x2], (THUMB, THUMB))
-                    cv2.imwrite(str(tdir / f"f{fidx:05d}.jpg"), tile,
-                                [cv2.IMWRITE_JPEG_QUALITY, 82])
-                    thumb_ok.add(fidx)
+            box = tuple(cbv)
+        elif fidx in ghost_thumb:
+            k = ghost_kind[fidx]
+            box = (t["lm_all_cb"].get(fidx) if k == "inv"
+                   else _sq(t["det_bbox"].get(fidx) or t["frag_bbox"].get(fidx), W0, H0))
+        if box is not None:
+            x1, y1, x2, y2 = (int(v) for v in box)
+            if x2 - x1 > 1 and y2 - y1 > 1:
+                tile = cv2.resize(frm[max(0, y1):y2, max(0, x1):x2], (THUMB, THUMB))
+                cv2.imwrite(str(tdir / f"f{fidx:05d}.jpg"), tile,
+                            [cv2.IMWRITE_JPEG_QUALITY, 82])
+                thumb_ok.add(fidx)
         fidx += 1
     cap.release()
+    vf = max(vf, fidx)
+    covered = fxset | set(ghost_kind)
+    absent = []
+    _st = None
+    for f in range(vf):
+        if f not in covered:
+            if _st is None:
+                _st = f
+        elif _st is not None:
+            absent.append([_st, f - 1])
+            _st = None
+    if _st is not None:
+        absent.append([_st, vf - 1])
+    ghost = [{"f": f, "k": k,
+              "th": (f"thumbs/{clip_id}/f{f:05d}.jpg" if f in thumb_ok else None)}
+             for f, k in sorted(ghost_kind.items())]
 
     micro_pct, sharp_pct = pct_rank(t["micro"]), pct_rank(t["blur"])
     norm_pct, cs_pct, mv_pct = pct_rank(t["nrm"]), pct_rank(t["cs"]), pct_rank(t["mv"])
@@ -242,8 +300,8 @@ def build_clip(clip_id, out_root, wb_dir):
                      "r": [round(float(v), 4) for v in R[i]],
                      "th": (f"thumbs/{clip_id}/f{int(fx[i]):05d}.jpg" if int(fx[i]) in thumb_ok else None)})
     selftest = compute_picks([dict(r) for r in rows], DEFAULT_CFG)
-    return {"clip": clip_id, "tid": t["tid"], "n": n, "cur": cur, "selftest": selftest,
-            "rows": rows}
+    return {"clip": clip_id, "tid": t["tid"], "n": n, "vf": vf, "cur": cur,
+            "selftest": selftest, "rows": rows, "ghost": ghost, "absent": absent}
 
 
 HTML = """<!DOCTYPE html>
@@ -322,8 +380,8 @@ button:hover{background:#383838}
 const DIALS=[
  ["1단 · 품질 스크린 (결정경계)"],
  ["sym_max","보이는-정면 sym <",0.3,2.0,0.05],
- ["dev_lo","yaw dev 하한 > (밴드)",-45,44,1],
- ["dev_hi","yaw dev 상한 < (밴드)",-44,45,1],
+ ["dev_lo","yaw dev 하한 > (밴드)",-90,89,1],
+ ["dev_hi","yaw dev 상한 < (밴드)",-89,90,1],
  ["pt_max","|pitch dev| < (클립상대·99=off)",3,99,1],
  ["pu_min","눈동자 pupil >=",0,0.8,0.01],
  ["cs_min","정체성 cs pct >=",0,90,5],
@@ -376,7 +434,7 @@ function picks(rows,c){
 
 function cellHTML(clip,r,cls){
  const k=clip+":"+r.f, fl=GT[k]||"";
- const img=r.th?`<img src="${r.th}">`:`<div class="noimg">f${r.f}<br>(no thumb)</div>`;
+ const img=r.th?`<img src="${r.th}" loading="lazy">`:`<div class="noimg">f${r.f}<br>(no thumb)</div>`;
  const cap=`f${r.f} ex${r.ex} pu${r.pu}<br>cs${r.cs==null?"--":r.cs} mv${r.mv==null?"--":r.mv} lt${r.lt==null?"--":r.lt}`;
  const mark=fl=="pos"?"O":fl=="neg"?"X":"";
  return `<div class="cell ${fl} ${cls||""}" onclick="cyc(event,'${clip}',${r.f})">${img}
@@ -398,6 +456,9 @@ function legendHTML(){
   `<span><i style="background:rgba(80,170,180,.5)"></i>boarding</span>
    <span><i style="background:#7ac"></i>A 픽</span><span><i style="border:1px dashed #ca7;width:7px;height:7px"></i>B 픽</span>
    <span style="color:#4e4">●</span><span style="color:#e44;margin-left:-8px">●</span> <span>GT ±</span>
+   <span style="margin-left:8px">하단 유령 레인:</span>
+   <span><i style="background:#a05244"></i>무효</span><span><i style="background:#5a78a0"></i>미측정</span>
+   <span><i style="background:#8a70b0"></i>파편</span><span><i style="background:#3a3a3a"></i>무검출</span>
    · 호버=미리보기 · 클릭=GT 깃발</div>`;}
 
 function render(){
@@ -421,7 +482,12 @@ function render(){
  const C=WB.clips[cur], m=meta[cur];
  const byf={};C.rows.forEach(r=>byf[r.f]=r);
  const setA=new Set(m.pA), setB=m.pB?new Set(m.pB):null;
- let h=`<div id="tabs">${tabs}</div><b>${C.clip}</b> t${C.tid} <span class="note">n=${C.n} · 풀 정렬:</span>
+ const gInv=C.ghost.filter(g=>g.k=="inv").length, gDet=C.ghost.filter(g=>g.k=="det").length,
+       gFrag=C.ghost.filter(g=>g.k=="frag").length,
+       gAbs=C.absent.reduce((a,r)=>a+r[1]-r[0]+1,0);
+ let h=`<div id="tabs">${tabs}</div><b>${C.clip}</b> t${C.tid} <span class="note">비디오 ${C.vf}f = 측정 ${C.n}`+
+  (gInv?` + 무효 ${gInv}`:"")+(gDet?` + 미측정 ${gDet}`:"")+(gFrag?` + 파편 ${gFrag}`:"")+(gAbs?` + 무검출 ${gAbs}`:"")+
+  ` · 풀 정렬:</span>
   <button onclick="sortMode=sortMode=='time'?'score':'time';render()">${sortMode=='time'?'시간순':'점수순'}</button>
   <button onclick="poseOpen=!poseOpen;render()">포즈 눈금 ${poseOpen?'닫기':'보기'}</button>`;
  h+=funnelHTML(m.fn);
@@ -447,8 +513,8 @@ function render(){
  const sv=C.rows.filter(r=>pass(r,A));
  sv.forEach(r=>r._s=score(r,A));
  const ordered=sortMode=="time"?sv.slice().sort((a,b)=>a.f-b.f):sv.slice().sort((a,b)=>b._s-a._s);
- const show=ordered.filter(r=>r.th).slice(0,96);
- h+=`<div class="rowlbl">생존 풀 (A, ${sv.length}행 중 썸네일 ${show.length} 표시 · ${sortMode=='time'?'시간순':'점수순'})</div>
+ const show=ordered.slice(0,400);                            // v0.6: 썸네일 필터 제거(공평)
+ h+=`<div class="rowlbl">생존 풀 (A, ${sv.length}행 중 ${show.length} 표시 · ${sortMode=='time'?'시간순':'점수순'})</div>
   <div class="strip sm">`+show.map(r=>cellHTML(C.clip,r,"")).join("")+`</div>`;
  document.getElementById("main").innerHTML=h;
  drawTimeline(C,m);
@@ -470,20 +536,25 @@ function drawTimeline(C,m){
  if(!cv)return;
  const ctx=cv.getContext("2d"), W=cv.width, H=cv.height;
  ctx.clearRect(0,0,W,H);
- const fmin=C.rows[0].f, fmax=Math.max(C.rows[C.rows.length-1].f, fmin+1);
+ const fmin=0, fmax=Math.max(C.vf-1, 1);                     // v0.6: 축=비디오 전체(0..vf)
  const X=f=>4+(f-fmin)/(fmax-fmin)*(W-8);
  ctx.fillStyle="rgba(80,170,180,0.22)";                      // boarding 밴드
- for(const r of C.rows) if(r.b) ctx.fillRect(X(r.f)-1,0,2.2,H);
- for(const r of C.rows){                                     // 프레임 틱
+ for(const r of C.rows) if(r.b) ctx.fillRect(X(r.f)-1,0,2.2,H-8);
+ for(const r of C.rows){                                     // 측정 행 틱
   const ff=firstFail(r,A);
   ctx.fillStyle=ff<0?SURV:SCOL[ff];
-  if(ff<0) ctx.fillRect(X(r.f),12,1.7,H-14);
-  else     ctx.fillRect(X(r.f),20,1.4,H-22);
+  if(ff<0) ctx.fillRect(X(r.f),12,1.7,H-20);
+  else     ctx.fillRect(X(r.f),20,1.4,H-28);
  }
+ // 유령 레인(하단): 우주 밖 프레임의 존재 — 회색 밴드=무검출
+ ctx.fillStyle="#3a3a3a";
+ for(const ab of C.absent) ctx.fillRect(X(ab[0]),H-7,Math.max(1.5,X(ab[1])-X(ab[0])+1.5),6);
+ const GCOL={inv:"#a05244",det:"#5a78a0",frag:"#8a70b0"};
+ for(const g of C.ghost){ctx.fillStyle=GCOL[g.k];ctx.fillRect(X(g.f),H-7,1.6,6);}
  ctx.fillStyle="#7ac";                                       // A 픽
- for(const f of m.pA) ctx.fillRect(X(f)-1.5,9,3,H-9);
+ for(const f of m.pA) ctx.fillRect(X(f)-1.5,9,3,H-17);
  if(m.pB){ctx.strokeStyle="#ca7";ctx.setLineDash([3,2]);     // B 픽
-  for(const f of m.pB) ctx.strokeRect(X(f)-2.5,9,5,H-10);
+  for(const f of m.pB) ctx.strokeRect(X(f)-2.5,9,5,H-18);
   ctx.setLineDash([]);}
  for(const r of C.rows){                                     // GT 점
   const g=GT[C.clip+":"+r.f];
@@ -492,17 +563,28 @@ function drawTimeline(C,m){
   ctx.beginPath();ctx.arc(X(r.f),4.5,2.6,0,7);ctx.fill();
  }
  const tip=document.getElementById("tlTip");
+ const GLBL={inv:"게이트-무효 (측정됨, valid 밖)",det:"미측정 — 검출만 (랜드마크 없음)",
+             frag:"트랙 파편 (동일 인물 추정)"};
+ const uni=C.rows.map(r=>({f:r.f,row:r})).concat(C.ghost.map(g=>({f:g.f,g:g})))
+   .sort((a,b)=>a.f-b.f);
  const nearest=x=>{const fe=fmin+(x-4)/(W-8)*(fmax-fmin);
   let bi=0,bd=1e9;
-  for(let i=0;i<C.rows.length;i++){const d=Math.abs(C.rows[i].f-fe);if(d<bd){bd=d;bi=i;}}
-  return C.rows[bi];};
+  for(let i=0;i<uni.length;i++){const d=Math.abs(uni[i].f-fe);if(d<bd){bd=d;bi=i;}}
+  return uni[bi];};
  cv.onmousemove=e=>{
   const rect=cv.getBoundingClientRect(), x=e.clientX-rect.left;
-  const r=nearest(x), ff=firstFail(r,A);
-  const st=ff<0?`<span style="color:${SURV}">생존</span>`:`<span style="color:${SCOL[ff]}">${STAGES[ff]}에 걸러짐</span>`;
-  const g=GT[C.clip+":"+r.f], gs=g?` · GT:${g=="pos"?"＋":"−"}`:"";
-  tip.innerHTML=(r.th?`<img src="${r.th}">`:"")+
-   `f${r.f} ${st}${gs}<br>ex${r.ex} pu${r.pu} sy${r.sy} dv${r.dv}<br>pt${r.pt==null?"--":r.pt}(Δ${r.pc}) cs${r.cs==null?"--":r.cs} mv${r.mv==null?"--":r.mv} lt${r.lt==null?"--":r.lt}`;
+  const o=nearest(x);
+  const gflag=GT[C.clip+":"+o.f], gs=gflag?` · GT:${gflag=="pos"?"＋":"−"}`:"";
+  if(o.row){
+   const r=o.row, ff=firstFail(r,A);
+   const st=ff<0?`<span style="color:${SURV}">생존</span>`:`<span style="color:${SCOL[ff]}">${STAGES[ff]}에 걸러짐</span>`;
+   tip.innerHTML=(r.th?`<img src="${r.th}" loading="lazy">`:"")+
+    `f${r.f} ${st}${gs}<br>ex${r.ex} pu${r.pu} sy${r.sy} dv${r.dv}<br>pt${r.pt==null?"--":r.pt}(Δ${r.pc}) cs${r.cs==null?"--":r.cs} mv${r.mv==null?"--":r.mv} lt${r.lt==null?"--":r.lt}`;
+  }else{
+   const g=o.g;
+   tip.innerHTML=(g.th?`<img src="${g.th}" loading="lazy">`:"")+
+    `f${g.f} <span style="color:${GCOL[g.k]}">${GLBL[g.k]}</span>${gs}<br>측정 신호 없음 — 클릭=GT 깃발 가능`;
+  }
   tip.style.display="block";
   tip.style.left=Math.min(x+14,W-140)+"px";
   tip.style.top="46px";
@@ -571,8 +653,8 @@ function groundPose(clip,f){
  const r=C&&C.rows.find(r=>r.f==f);
  if(!r)return;
  A.sym_max=Math.min(2.0,Math.round((Math.floor(r.sy/0.05)+1)*5)/100);
- A.dev_lo=Math.min(A.dev_lo,Math.max(-45,Math.floor(r.dv)-1));   // 밴드 확장(포함되게)
- A.dev_hi=Math.max(A.dev_hi,Math.min(45,Math.floor(r.dv)+1));
+ A.dev_lo=Math.min(A.dev_lo,Math.max(-90,Math.floor(r.dv)-1));   // 밴드 확장(포함되게)
+ A.dev_hi=Math.max(A.dev_hi,Math.min(90,Math.floor(r.dv)+1));
  if(A.pt_max<99)A.pt_max=Math.max(A.pt_max,Math.min(99,Math.floor(Math.abs(r.pc))+1));
  buildPanel();render();}
 function snapshotB(){Bcfg={...A};render();}
