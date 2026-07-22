@@ -294,19 +294,29 @@ crop이 부적절해 결정된 likeness에 신뢰가 없다"; 실증 계기=풀 
    위임** — frame_table이 80%, 실험이 코호트-횡단·시맨틱 검색으로 자라면 "stash=진실 +
    pixeltable=분석 렌즈"(additive·가역, stash를 import하는 소비자)로 재상정. visualstack
    내장 = R16 ArtifactNode 자리의 **엔진 후보**로 소비자-지불 시 검토(우산 bead 후보).
+   (정체성 문장, user 2026-07-22) **inspect vs workbench**: "inspect=시스템이 처리한
+   결과를 잘 보여주는 데 집중 / workbench=사람이 신호에 대한 쿼리를 직접 조작해 결과가
+   어떻게 나오는지 보며 **통계적 결정을 디자인**하는 도구" — v1 콘솔 문서/도움말 문안
+   후보. v0.1~v0.3 부속(2026-07-22, user 피드백 왕복): 단일-클립 탭 뷰(동시 6클립=과복잡)
+   ·224px 썸네일/호버 확대·타임라인 스트립(프레임 틱=생존/첫-실패 스크린 7색·boarding
+   밴드·픽 마커·GT 점·호버 미리보기·클릭 GT) · **포즈 그라운딩**(예시-쿼리: Shift+클릭=
+   그 프레임이 통과하는 최소 경계로 sym/yaw 세팅 · 포즈 눈금 사다리[yaw/sym 오름 8장,
+   타일 클릭=그라운딩] — render-query "시각→기준=저작"의 동형) · **pitch 다이얼 신설**
+   (head_pitch 클립-중앙값 상대 |pc|, 기본 off=셀프테스트 불변; test_0 하방 케이스 과녁,
+   결측=통과 — 절대 비교 금지 원칙 유지).
    → **v1 표면 승격 착지 (2026-07-22, track/lk-workbench)**: `momentscan workbench
    [--out --port(8902) --gt --no-jobs]` — 비디오 등록(JobRunner 본체 재사용, likeness
    클로저 잡)→기판 완료 클립 다이얼 해석→클릭 GT 즉시 저장(fixtures/eval 병합-쓰기,
-   재기동 복원)의 연구 콘솔. frame_table 단일홈=`surface/workbench.py`(v0.1 값-동일
+   재기동 복원)의 연구 콘솔. frame_table 단일홈=`surface/workbench.py`(v0.3 값-동일
    승격 — 전 행 파리티 0 diff·셀프테스트 픽 test_3=[29,511,352]·dual_2=[34,1052,662]
    재현; pupil/sym=face_signals 단일홈 소비), 캐시=`<out>/workbench/cache` mtime+버전
    (stash 아님=freshness 비등재), chroma=detect.mp4 디코드(이음매: lk-sampling2 가
    parse 에 skin_chroma 착지 시 읽기 교체). 서버=`surface/workbench_server.py` 경량
    신설(C1 면 무접촉 — api 19/19 불변; 몰튼 내부 스키마를 계약면에 동결시키지 않기
-   위해), 프런트=v0.1 이식(`_workbench_html.py`, const WB 주입=순수 렌더러). 봉인=
-   test_workbench.py 16종(GT 병합·픽 의미론·JS DEF≡python 상수 짝·재기동 복원·등록
-   배선 + 코퍼스-게이트 셀프테스트 픽 고정). 이연(v1.1): hair 빈 role 뷰·15클립 UI
-   최적화·S3 등록. 스크래치 코퍼스 E2E(등록→완주→열람)는 트랙 보고 참조.
+   위해), 프런트=v0.3 이식(`_workbench_html.py`, const WB 주입=순수 렌더러; 타임라인·
+   포즈 그라운딩·pitch 포함). 봉인=test_workbench.py(GT 병합·픽 의미론·JS DEF≡python
+   상수 짝·재기동 복원·등록 배선 + 코퍼스-게이트 셀프테스트 픽 고정). 이연(v1.1):
+   hair 빈 role 뷰·15클립 UI 최적화·S3 등록. 스크래치 E2E(등록→완주→열람)=트랙 보고.
 
 ### (완료 기록) P1-④까지의 트랙 — ③ 동결 완료, P1-④ 실패 모드
 
