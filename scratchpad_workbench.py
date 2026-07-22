@@ -8,6 +8,9 @@
   (x축=슬라이더와 동일 스케일 → 위치 대응 직관), 노랑 선=현재 값·초록=통과 측·
   파랑 ▲=A 픽 위치·우상단 %=측정치 중 통과율. 사람마다 다른 포즈/신호 분포 위에서
   경계를 정한다(per-clip 상대 원칙의 UI 형).
+  v0.5: **yaw = 부호-있는 밴드 다이얼**(dev_lo/dev_hi, portrait 쿼리 대비 — "yaw 60~90"
+  같은 측면 구간 선택 가능; 수렴 스크린=밴드의 특수형, 기본 (−15,15)=구 |dev|<15 동치
+  =셀프테스트 불변) · 포즈 눈금=좌측면→정면→우측면 스윕 · 그라운딩=밴드 확장 의미론.
   v0.1: 단일-클립 탭 뷰(←→ 키보드 전환·탭에 GT/생존 배지) · 썸네일 224px(픽=원치수,
   풀=112 축소+호버 2× 확대) · 퍼널 막대 · 풀 정렬 토글(시간순/점수순 — 랭커 취향
   노출) · A/B diff 하이라이트(주황 외곽) · 변경-다이얼 하이라이트.
@@ -49,8 +52,10 @@ THUMB = 224     # 저장 원치수 — 픽 행은 원치수, 풀은 112 축소 �
 
 # 기본 설정 = v7.2 등가(단일-floor 의미론) — JS DEF와 문자 그대로 동일해야 함
 # pt_max=99 = pitch 스크린 off(신설 다이얼, 클립-중앙값 상대 |pc| — 기본 off라 셀프테스트 불변)
-DEFAULT_CFG = {"sym_max": 0.6, "dev_max": 15.0, "pt_max": 99.0, "pu_min": 0.4, "cs_min": 0.0,
-               "mv_min": 0.0, "lt_min": 0.0, "ex_max": 1.0, "gap_min": 12,
+# yaw = 부호-있는 밴드(v0.5, portrait 쿼리 대비: [60,90] 같은 측면 구간 선택 가능) —
+#   기본 (−15,15) = 구 |dev|<15와 동치(셀프테스트 불변). 수렴=밴드의 특수형.
+DEFAULT_CFG = {"sym_max": 0.6, "dev_lo": -15.0, "dev_hi": 15.0, "pt_max": 99.0, "pu_min": 0.4,
+               "cs_min": 0.0, "mv_min": 0.0, "lt_min": 0.0, "ex_max": 1.0, "gap_min": 12,
                "w_expr": 0.30, "w_pu": 0.15, "w_q3": 0.20, "w_vis2": 0.15, "w_light": 0.20}
 
 
@@ -148,7 +153,7 @@ def frame_table(clip_id: str, out_root: Path):
 def compute_picks(rows, cfg):
     """JS 시뮬레이터와 문자 그대로 동일한 의미론 (반올림된 shipped 값 위에서)."""
     surv = [r for r in rows
-            if r["sy"] < cfg["sym_max"] and abs(r["dv"]) < cfg["dev_max"]
+            if r["sy"] < cfg["sym_max"] and cfg["dev_lo"] < r["dv"] < cfg["dev_hi"]
             and abs(r["pc"]) < cfg["pt_max"]
             and r["pu"] >= cfg["pu_min"]
             and (r["cs"] is None or r["cs"] >= cfg["cs_min"])
@@ -318,7 +323,8 @@ button:hover{background:#383838}
 const DIALS=[
  ["1단 · 품질 스크린 (결정경계)"],
  ["sym_max","보이는-정면 sym <",0.3,2.0,0.05],
- ["dev_max","|yaw dev| <",5,45,1],
+ ["dev_lo","yaw dev 하한 > (밴드)",-45,44,1],
+ ["dev_hi","yaw dev 상한 < (밴드)",-44,45,1],
  ["pt_max","|pitch dev| < (클립상대·99=off)",3,99,1],
  ["pu_min","눈동자 pupil >=",0,0.8,0.01],
  ["cs_min","정체성 cs pct >=",0,90,5],
@@ -334,7 +340,7 @@ const DIALS=[
  ["시간 다양성"],
  ["gap_min","픽 간 최소 프레임 gap",0,60,2],
 ];
-const DEF={sym_max:0.6,dev_max:15,pt_max:99,pu_min:0.4,cs_min:0,mv_min:0,lt_min:0,ex_max:1.0,gap_min:12,
+const DEF={sym_max:0.6,dev_lo:-15,dev_hi:15,pt_max:99,pu_min:0.4,cs_min:0,mv_min:0,lt_min:0,ex_max:1.0,gap_min:12,
            w_expr:0.30,w_pu:0.15,w_q3:0.20,w_vis2:0.15,w_light:0.20};
 let A={...DEF}, Bcfg=null, GT={}, cur=0, sortMode="time", poseOpen=false;
 const STAGES=["정면","pitch","눈동자","cs","입","빛","표정"];
@@ -342,7 +348,7 @@ const SCOL=["#c98a4a","#7fa85c","#d95555","#b070d0","#55aacc","#d8c455","#e08aa8
 const SURV="#69d069";
 
 function firstFail(r,c){
- if(!(r.sy<c.sym_max&&Math.abs(r.dv)<c.dev_max))return 0;
+ if(!(r.sy<c.sym_max&&r.dv>c.dev_lo&&r.dv<c.dev_hi))return 0;
  if(!(Math.abs(r.pc)<c.pt_max))return 1;
  if(!(r.pu>=c.pu_min))return 2;
  if(!(r.cs==null||r.cs>=c.cs_min))return 3;
@@ -352,7 +358,7 @@ function firstFail(r,c){
  return -1;}
 function pass(r,c){return firstFail(r,c)<0;}
 function funnel(rows,c){
- const s1=rows.filter(r=>r.sy<c.sym_max&&Math.abs(r.dv)<c.dev_max);
+ const s1=rows.filter(r=>r.sy<c.sym_max&&r.dv>c.dev_lo&&r.dv<c.dev_hi);
  const s1p=s1.filter(r=>Math.abs(r.pc)<c.pt_max);
  const s2=s1p.filter(r=>r.pu>=c.pu_min);
  const s3=s2.filter(r=>r.cs==null||r.cs>=c.cs_min);
@@ -424,12 +430,12 @@ function render(){
  if(poseOpen){
   const wt=C.rows.filter(r=>r.th);
   const samp=a=>{if(a.length<=8)return a;const o=[];for(let i=0;i<8;i++)o.push(a[Math.round(i*(a.length-1)/7)]);return [...new Set(o)];};
-  const byDev=samp(wt.slice().sort((a,b)=>Math.abs(a.dv)-Math.abs(b.dv)));
+  const byDev=samp(wt.slice().sort((a,b)=>a.dv-b.dv));
   const bySy=samp(wt.slice().sort((a,b)=>a.sy-b.sy));
   const pose=r=>{const ff=firstFail(r,A);const dim=(ff===0||ff===1)?"opacity:.35":"";
    return `<div class="cell" style="${dim}" onclick="groundPose('${C.clip}',${r.f})"><img src="${r.th}">
-    <div class="cap">|dv|${Math.abs(r.dv).toFixed(0)} sy${r.sy}<br>pt${r.pt==null?"--":r.pt} pc${r.pc}</div></div>`;};
-  h+=`<div class="rowlbl">포즈 눈금 — yaw 사다리 (타일 클릭 = 이 포즈까지 허용으로 그라운딩 · 흐림 = 현재 포즈 스크린에 걸러짐)</div>
+    <div class="cap">dv${r.dv} sy${r.sy}<br>pt${r.pt==null?"--":r.pt} pc${r.pc}</div></div>`;};
+  h+=`<div class="rowlbl">포즈 눈금 — yaw 사다리 (좌측면 → 정면 → 우측면 · 타일 클릭 = 이 포즈가 포함되게 밴드 확장 · 흐림 = 현재 포즈 스크린에 걸러짐)</div>
    <div class="strip sm">`+byDev.map(pose).join("")+`</div>
    <div class="rowlbl">포즈 눈금 — sym 사다리</div><div class="strip sm">`+bySy.map(pose).join("")+`</div>`;
  }
@@ -510,7 +516,7 @@ function drawTimeline(C,m){
 }
 const HSPEC={
  sym_max:{f:r=>r.sy,dir:"below"},
- dev_max:{f:r=>Math.abs(r.dv),dir:"below"},
+ dev_hi:{f:r=>r.dv,band:["dev_lo","dev_hi"]},   // 부호-있는 yaw 밴드(좌−/우+) 히스토그램
  pt_max:{f:r=>Math.abs(r.pc),dir:"below"},
  pu_min:{f:r=>r.pu,dir:"above"},
  cs_min:{f:r=>r.cs,dir:"above"},
@@ -534,20 +540,23 @@ function drawDialHists(C,m){
   for(const v of vals){let b=Math.floor((Math.min(mx,Math.max(mn,v))-mn)/(mx-mn)*NB);
    if(b>=NB)b=NB-1;if(b<0)b=0;bins[b]++;}
   const bm=Math.max(...bins,1), thr=A[k];
+  const isBand=!!sp.band, blo=isBand?A[sp.band[0]]:null, bhi=isBand?A[sp.band[1]]:null;
   const tx=v=>4+(Math.min(mx,Math.max(mn,v))-mn)/(mx-mn)*(W-8);
+  const inPass=v=>isBand?(v>blo&&v<bhi):(sp.dir=="below"?v<thr:v>=thr);
   for(let i=0;i<NB;i++){
    const x0=4+i*(W-8)/NB, bh=Math.round((H-13)*bins[i]/bm);
    const mid=mn+(i+0.5)*(mx-mn)/NB;
-   const pass=sp.dir=="below"?mid<thr:mid>=thr;
-   ctx.fillStyle=pass?"#6f9b6f":"#484848";
+   ctx.fillStyle=inPass(mid)?"#6f9b6f":"#484848";
    ctx.fillRect(x0,H-3-bh,Math.max(1,(W-8)/NB-1),bh);
   }
-  ctx.fillStyle="#fc6";ctx.fillRect(tx(thr)-0.8,1,1.6,H-2);   // 현재 다이얼 위치
+  ctx.fillStyle="#fc6";                                        // 현재 다이얼 위치(밴드=두 선)
+  if(isBand){ctx.fillRect(tx(blo)-0.8,1,1.6,H-2);ctx.fillRect(tx(bhi)-0.8,1,1.6,H-2);}
+  else ctx.fillRect(tx(thr)-0.8,1,1.6,H-2);
   ctx.fillStyle="#7ac";                                        // A 픽 위치 ▲
   for(const f of m.pA){const r=byf[f];if(!r)continue;const v=sp.f(r);if(v==null||!isFinite(v))continue;
    const x=tx(v);ctx.beginPath();ctx.moveTo(x,H-2);ctx.lineTo(x-3,H-9);ctx.lineTo(x+3,H-9);ctx.closePath();ctx.fill();}
   let np=0;
-  for(const v of vals){if(sp.dir=="below"?v<thr:v>=thr)np++;}
+  for(const v of vals){if(inPass(v))np++;}
   ctx.fillStyle="#bbb";ctx.font="9px sans-serif";ctx.textAlign="right";
   ctx.fillText(Math.round(100*np/Math.max(vals.length,1))+"%",W-3,9);
   ctx.textAlign="left";
@@ -563,7 +572,8 @@ function groundPose(clip,f){
  const r=C&&C.rows.find(r=>r.f==f);
  if(!r)return;
  A.sym_max=Math.min(2.0,Math.round((Math.floor(r.sy/0.05)+1)*5)/100);
- A.dev_max=Math.min(45,Math.floor(Math.abs(r.dv))+1);
+ A.dev_lo=Math.min(A.dev_lo,Math.max(-45,Math.floor(r.dv)-1));   // 밴드 확장(포함되게)
+ A.dev_hi=Math.max(A.dev_hi,Math.min(45,Math.floor(r.dv)+1));
  if(A.pt_max<99)A.pt_max=Math.max(A.pt_max,Math.min(99,Math.floor(Math.abs(r.pc))+1));
  buildPanel();render();}
 function snapshotB(){Bcfg={...A};render();}
