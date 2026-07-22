@@ -300,6 +300,20 @@ blendshape·signals·gates·parse) 부재 = likeness 우주 밖. **정확히 절
 절단된 절반-우주 위의 판정 — 수리 후 재평가. 발견 경로=워크벤치 v0.6 유령 레인(user
 "선택받지 못한 프레임도 보여줘야" 원칙이 하루 만에 파이프라인 결함을 적발한 첫 사례).
 트랙 밖 발견 = 기록만, 수리는 별도 소형 트랙(landmarks-절단 재현 스크립트부터).
+→ **원인 확정(2026-07-22, user 지시 검증)**: 현재 코드+현재 파일 = **재현 불가**
+(FileSource fps=6 → 703 완주·t=117.0s·원본 3514f PTS 스캔 이상 0건) — 절단물은
+**2026-06-24 화석**(landmarks/features mtime; detections=06-10). 당시 = p981 마이그레이션
+(07-07) **이전의 FileSource**(현행엔 _PTS_TOLERANCE_NS 경계-skip 수리 주석 존재).
+화석 형태 판별 = 저장 랜드마크를 f350/f700 크롭에 오버레이 → **f350 정합·f700 부정합**
+= 전구간-스트라이드 오염이 아닌 **깨끗한 전반부-절단**(저장된 0~351 측정은 유효).
+**생존 원인 = freshness 이중 사각**: ①D4(landmarks 생산자=features 플러그인으로만
+추적)에서 플러그인 파일이 06-24 이후 불변 → 영원-fresh ②**visualbus=크로스-레포
+editable 의존이라 import 클로저 밖** — FileSource가 고쳐져도 산출물이 stale로 안 잡힘.
+처방 후보: visualbus 소비 모듈에 _external_deps식 lazy 등재 or R14/격리사다리 몫.
+수리 = test_4 features/landmarks 재계산(현행 코드로 완주 확인됨) + 하류 연쇄 + 워크벤치
+재생성 + ⑪ test_4 재판정. 특성화 핀에 test_4 없음 = 핀 안전. (노트, user 2026-07-22:
+landmarks는 likeness의 결정 신호지만 **portrait·highlight는 landmark-없는 우주(검출/
+tubelet 수준)도 소비 가능** — 제품별 우주 요구 분리, 유령 레인 GT가 그 작업 목록.)
 
 **when-home·T7·decl-guards 착지 (2026-07-20)**: fc80717(WHEN 단일홈)·556e89e
 (A″: infra/perception/products+evals — user 그림의 시공)·decl-guards 머지
