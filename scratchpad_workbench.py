@@ -1,9 +1,13 @@
-"""샘플링 워크벤치 v0.1 (2026-07-22) — 원장 ⑫ 계기. v0 대비 UI 개정(user 피드백
-"여러 비디오 동시 표시 = 과복잡"):
-  단일-클립 탭 뷰(←→ 키보드 전환·탭에 GT/생존 배지) · 썸네일 224px(픽=원치수,
-  풀=112 축소+호버 2× 확대) · 퍼널 막대(결정경계가 좁아지는 게 보임) · 풀 정렬
-  토글(시간순/점수순 — 랭커가 뭘 좋아하는지 노출) · A/B diff 하이라이트(주황 외곽)
-  · 기본값에서 움직인 다이얼 하이라이트.
+"""샘플링 워크벤치 v0.2 (2026-07-22) — 원장 ⑫ 계기. v0 대비 UI 개정(user 피드백
+"여러 비디오 동시 표시 = 과복잡" → v0.1 / "다이얼에 따라 타임라인 어디가 선택·
+걸러지는지 보이게" → v0.2):
+  v0.1: 단일-클립 탭 뷰(←→ 키보드 전환·탭에 GT/생존 배지) · 썸네일 224px(픽=원치수,
+  풀=112 축소+호버 2× 확대) · 퍼널 막대 · 풀 정렬 토글(시간순/점수순 — 랭커 취향
+  노출) · A/B diff 하이라이트(주황 외곽) · 변경-다이얼 하이라이트.
+  v0.2: **비디오 타임라인 스트립** — 프레임 틱 색 = 생존(초록) / 그 프레임을 먹은
+  첫 스크린 색(정면·눈·cs·입·빛·표정 6색, 퍼널 막대와 동일 팔레트) · boarding 배경
+  밴드 · A(파랑)/B(호박 점선) 픽 마커 · GT 점 · 호버=썸네일+수치 미리보기 · 클릭=GT
+  깃발(어디서든 클릭=GT 일관).
 
 층 구성(v0과 동일): frame_table(조인 단일홈, stash 읽기-전용 파생) + HTML 다이얼
 시뮬레이터(1단 품질 스크린=floor/퍼널 · 2단 대표성 랭킹=가중) + 클릭 GT(pos/neg →
@@ -266,6 +270,14 @@ body{background:#161616;color:#ddd;font:13px/1.45 system-ui,sans-serif;margin:0}
 .cell .flag{position:absolute;top:2px;right:2px;font-size:12px;color:#fff;text-shadow:0 0 3px #000}
 .pickA img{outline:2px solid #7ac} .pickB img{outline:2px dashed #ca7}
 .diff img{outline-color:#f80 !important}
+#tl{position:relative;margin:8px 0 2px;max-width:1004px}
+#tl canvas{display:block;background:#101010;border:1px solid #333;cursor:crosshair}
+#tlTip{position:absolute;display:none;background:#222;border:1px solid #555;padding:4px;
+  z-index:20;pointer-events:none;font-size:10px;color:#ccc;line-height:1.3}
+#tlTip img{width:112px;height:112px;display:block;border:1px solid #444;margin-bottom:2px}
+.legend{font-size:10px;color:#999;margin:2px 0 10px}
+.legend span{display:inline-block;margin-right:11px}
+.legend i{display:inline-block;width:9px;height:9px;margin-right:3px;vertical-align:-1px}
 button{background:#2a2a2a;color:#ddd;border:1px solid #555;border-radius:3px;
   padding:3px 10px;margin-right:6px;cursor:pointer}
 button:hover{background:#383838}
@@ -307,10 +319,19 @@ const DIALS=[
 const DEF={sym_max:0.6,dev_max:15,pu_min:0.4,cs_min:0,mv_min:0,lt_min:0,ex_max:1.0,gap_min:12,
            w_expr:0.30,w_pu:0.15,w_q3:0.20,w_vis2:0.15,w_light:0.20};
 let A={...DEF}, Bcfg=null, GT={}, cur=0, sortMode="time";
+const STAGES=["정면","눈동자","cs","입","빛","표정"];
+const SCOL=["#c98a4a","#d95555","#b070d0","#55aacc","#d8c455","#e08aa8"];
+const SURV="#69d069";
 
-function pass(r,c){return r.sy<c.sym_max&&Math.abs(r.dv)<c.dev_max&&r.pu>=c.pu_min
- &&(r.cs==null||r.cs>=c.cs_min)&&(r.mv==null||r.mv>=c.mv_min)&&(r.lt==null||r.lt>=c.lt_min)
- &&r.ex<=c.ex_max;}
+function firstFail(r,c){
+ if(!(r.sy<c.sym_max&&Math.abs(r.dv)<c.dev_max))return 0;
+ if(!(r.pu>=c.pu_min))return 1;
+ if(!(r.cs==null||r.cs>=c.cs_min))return 2;
+ if(!(r.mv==null||r.mv>=c.mv_min))return 3;
+ if(!(r.lt==null||r.lt>=c.lt_min))return 4;
+ if(!(r.ex<=c.ex_max))return 5;
+ return -1;}
+function pass(r,c){return firstFail(r,c)<0;}
 function funnel(rows,c){
  const s1=rows.filter(r=>r.sy<c.sym_max&&Math.abs(r.dv)<c.dev_max);
  const s2=s1.filter(r=>r.pu>=c.pu_min);
@@ -338,12 +359,21 @@ function cellHTML(clip,r,cls){
 
 function funnelHTML(fn){
  const names=["전체","정면","눈동자","cs","입","빛","표정"];
+ const cols=["#666",...SCOL.slice(0,5),SURV];   // 행 i = i번째 스크린 적용 후 생존(색=그 스크린)
  const mx=Math.max(fn[0],1);
  return `<div class="funnel">`+fn.map((v,i)=>
   `<div class="fr${i==6?" last":""}"><span class="lbl">${names[i]}</span>
-   <span class="bar" style="width:${Math.max(2,Math.round(280*v/mx))}px"></span>
+   <span class="bar" style="width:${Math.max(2,Math.round(280*v/mx))}px;background:${cols[i]}"></span>
    <span class="cnt">${v}</span></div>`).join("")+
   (fn[6]<3?`<div class="fr"><span class="lbl"></span><span style="color:#e66">⚠ 풀&lt;3</span></div>`:``)+`</div>`;}
+
+function legendHTML(){
+ return `<div class="legend"><span><i style="background:${SURV}"></i>생존</span>`+
+  STAGES.map((s,i)=>`<span><i style="background:${SCOL[i]}"></i>${s}에 걸러짐</span>`).join("")+
+  `<span><i style="background:rgba(80,170,180,.5)"></i>boarding</span>
+   <span><i style="background:#7ac"></i>A 픽</span><span><i style="border:1px dashed #ca7;width:7px;height:7px"></i>B 픽</span>
+   <span style="color:#4e4">●</span><span style="color:#e44;margin-left:-8px">●</span> <span>GT ±</span>
+   · 호버=미리보기 · 클릭=GT 깃발</div>`;}
 
 function render(){
  // 셀프테스트 + 탭 배지는 전 클립 계산 (표시만 단일 클립)
@@ -369,6 +399,7 @@ function render(){
  let h=`<div id="tabs">${tabs}</div><b>${C.clip}</b> t${C.tid} <span class="note">n=${C.n} · 풀 정렬:</span>
   <button onclick="sortMode=sortMode=='time'?'score':'time';render()">${sortMode=='time'?'시간순':'점수순'}</button>`;
  h+=funnelHTML(m.fn);
+ h+=`<div id="tl"><canvas id="tlc" width="1000" height="44"></canvas><div id="tlTip"></div></div>`+legendHTML();
  h+=`<div class="rowlbl">CURRENT (생산 likeness.json)</div><div class="strip sm">`+
    C.cur.map(f=>byf[f]?cellHTML(C.clip,byf[f],""):"").join("")+`</div>`;
  h+=`<div class="rowlbl">A 픽</div><div class="strip big">`+
@@ -382,6 +413,7 @@ function render(){
  h+=`<div class="rowlbl">생존 풀 (A, ${sv.length}행 중 썸네일 ${show.length} 표시 · ${sortMode=='time'?'시간순':'점수순'})</div>
   <div class="strip sm">`+show.map(r=>cellHTML(C.clip,r,"")).join("")+`</div>`;
  document.getElementById("main").innerHTML=h;
+ drawTimeline(C,m);
 
  const st=document.getElementById("selftest");
  if(isDef){st.textContent=st_ok?"selftest OK — JS ≡ python (기본 설정)":"selftest FAIL: "+st_msg.join(",");
@@ -393,6 +425,54 @@ function render(){
  for(const d of DIALS){if(d.length==1)continue;const k=d[0];
   const el=document.getElementById("d_"+k);
   if(el)el.className="dial"+(A[k]!=DEF[k]?" mod":"");}
+}
+function drawTimeline(C,m){
+ const cv=document.getElementById("tlc");
+ if(!cv)return;
+ const ctx=cv.getContext("2d"), W=cv.width, H=cv.height;
+ ctx.clearRect(0,0,W,H);
+ const fmin=C.rows[0].f, fmax=Math.max(C.rows[C.rows.length-1].f, fmin+1);
+ const X=f=>4+(f-fmin)/(fmax-fmin)*(W-8);
+ ctx.fillStyle="rgba(80,170,180,0.22)";                      // boarding 밴드
+ for(const r of C.rows) if(r.b) ctx.fillRect(X(r.f)-1,0,2.2,H);
+ for(const r of C.rows){                                     // 프레임 틱
+  const ff=firstFail(r,A);
+  ctx.fillStyle=ff<0?SURV:SCOL[ff];
+  if(ff<0) ctx.fillRect(X(r.f),12,1.7,H-14);
+  else     ctx.fillRect(X(r.f),20,1.4,H-22);
+ }
+ ctx.fillStyle="#7ac";                                       // A 픽
+ for(const f of m.pA) ctx.fillRect(X(f)-1.5,9,3,H-9);
+ if(m.pB){ctx.strokeStyle="#ca7";ctx.setLineDash([3,2]);     // B 픽
+  for(const f of m.pB) ctx.strokeRect(X(f)-2.5,9,5,H-10);
+  ctx.setLineDash([]);}
+ for(const r of C.rows){                                     // GT 점
+  const g=GT[C.clip+":"+r.f];
+  if(!g)continue;
+  ctx.fillStyle=g=="pos"?"#4e4":"#e44";
+  ctx.beginPath();ctx.arc(X(r.f),4.5,2.6,0,7);ctx.fill();
+ }
+ const tip=document.getElementById("tlTip");
+ const nearest=x=>{const fe=fmin+(x-4)/(W-8)*(fmax-fmin);
+  let bi=0,bd=1e9;
+  for(let i=0;i<C.rows.length;i++){const d=Math.abs(C.rows[i].f-fe);if(d<bd){bd=d;bi=i;}}
+  return C.rows[bi];};
+ cv.onmousemove=e=>{
+  const rect=cv.getBoundingClientRect(), x=e.clientX-rect.left;
+  const r=nearest(x), ff=firstFail(r,A);
+  const st=ff<0?`<span style="color:${SURV}">생존</span>`:`<span style="color:${SCOL[ff]}">${STAGES[ff]}에 걸러짐</span>`;
+  const g=GT[C.clip+":"+r.f], gs=g?` · GT:${g=="pos"?"＋":"−"}`:"";
+  tip.innerHTML=(r.th?`<img src="${r.th}">`:"")+
+   `f${r.f} ${st}${gs}<br>ex${r.ex} pu${r.pu} sy${r.sy}<br>cs${r.cs==null?"--":r.cs} mv${r.mv==null?"--":r.mv} lt${r.lt==null?"--":r.lt}`;
+  tip.style.display="block";
+  tip.style.left=Math.min(x+14,W-140)+"px";
+  tip.style.top="46px";
+ };
+ cv.onmouseleave=()=>{tip.style.display="none";};
+ cv.onclick=e=>{
+  const rect=cv.getBoundingClientRect();
+  cyc(C.clip,nearest(e.clientX-rect.left).f);
+ };
 }
 function cyc(clip,f){const k=clip+":"+f;GT[k]=GT[k]=="pos"?"neg":GT[k]=="neg"?undefined:"pos";
  if(!GT[k])delete GT[k];render();}
