@@ -290,6 +290,17 @@ stash 루트(`output/` 하위, 이미 ignored) 기준으로 — 다른 표면 �
 서브파서 충돌). highlight-lang 선례 따름. `viz` positional 을 옵션화하면 `viz recipe`
 서브 구조로 흡수 가능하나 기존 `viz <path>` 호출 호환 깨짐 — 별도 CLI 조정 트랙 후보.
 
+**접수 #13 (워크벤치 공평-우주 레인 적발, 2026-07-22)**: **test_4 landmarks 절단** —
+detect=703 샘플(fps6) 완주·tubelet 357/357 생존인데 landmarks.parquet가 **f351(58.6s)
+에서 중단**(소스=CFR 30fps·117.1s·3514f 정상, ffprobe 확정 — VFR 아님; 6클립 중 test_4
+유일; f352 실물=멀쩡한 ¾ 측면 얼굴). 후반 357f는 landmarks 하류 전 계측(정준 기하·
+blendshape·signals·gates·parse) 부재 = likeness 우주 밖. **정확히 절반**이라는 비율이
+단서 — features 백엔드(landmarks 생산자, D4 유령 스테이지)의 프레임 반복자/타임스탬프
+처리 조사 필요. **부수 재심**: 원장 ⑪의 test_4 "소재 한계(gaze-clean 14/97)" 판정은
+절단된 절반-우주 위의 판정 — 수리 후 재평가. 발견 경로=워크벤치 v0.6 유령 레인(user
+"선택받지 못한 프레임도 보여줘야" 원칙이 하루 만에 파이프라인 결함을 적발한 첫 사례).
+트랙 밖 발견 = 기록만, 수리는 별도 소형 트랙(landmarks-절단 재현 스크립트부터).
+
 **when-home·T7·decl-guards 착지 (2026-07-20)**: fc80717(WHEN 단일홈)·556e89e
 (A″: infra/perception/products+evals — user 그림의 시공)·decl-guards 머지
 (registry 패키지 분할·kw_only·question/scorer·G2 warn 활성[likeness 노랑=E1
