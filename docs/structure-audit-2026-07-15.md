@@ -311,7 +311,15 @@ blendshape·signals·gates·parse) 부재 = likeness 우주 밖. **정확히 절
 editable 의존이라 import 클로저 밖** — FileSource가 고쳐져도 산출물이 stale로 안 잡힘.
 처방 후보: visualbus 소비 모듈에 _external_deps식 lazy 등재 or R14/격리사다리 몫.
 수리 = test_4 features/landmarks 재계산(현행 코드로 완주 확인됨) + 하류 연쇄 + 워크벤치
-재생성 + ⑪ test_4 재판정. 특성화 핀에 test_4 없음 = 핀 안전. (노트, user 2026-07-22:
+재생성 + ⑪ test_4 재판정. 특성화 핀에 test_4 없음 = 핀 안전.
+→ **수리 완료(2026-07-22, user 승인)**: features --force(23s) → 하류 15스테이지 연쇄
+재계산 226s — 전부 "upstream artifact newer"로 발화(**R5 artifact-edge freshness의
+교과서 실증**). 효과: landmarks 346→**696행**(f702까지, 우주 2배)·미측정 357→**7**
+(잔여=진짜 per-frame MP 실패)·**likeness center 픽 전면 교체 [143,285,204]→[305,286,570]**
+— f570=구 절단선(f351) 너머에서 픽 진입, "후반에 더 나은 재료" 추정 적중·pose_bins
+전면 이동(right f376 등)·n_obs 696·pytest 227 green. **잔여 2**: ⓐ⑪ test_4 "소재 한계"
+재심 = user 동행(워크벤치, 새 픽 판정) ⓑ근본 방지 = visualbus를 features 소비처의
+external-dep로 freshness 등재(크로스-레포 사각 봉합) — 별도 소형 트랙. (노트, user 2026-07-22:
 landmarks는 likeness의 결정 신호지만 **portrait·highlight는 landmark-없는 우주(검출/
 tubelet 수준)도 소비 가능** — 제품별 우주 요구 분리, 유령 레인 GT가 그 작업 목록.)
 
