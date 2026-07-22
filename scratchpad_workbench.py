@@ -40,7 +40,8 @@ CLIPS = ("test_3", "test_12", "dual_2", "test_4", "test_0", "international_1")
 THUMB = 224     # 저장 원치수 — 픽 행은 원치수, 풀은 112 축소 표시+호버 확대
 
 # 기본 설정 = v7.2 등가(단일-floor 의미론) — JS DEF와 문자 그대로 동일해야 함
-DEFAULT_CFG = {"sym_max": 0.6, "dev_max": 15.0, "pu_min": 0.4, "cs_min": 0.0,
+# pt_max=99 = pitch 스크린 off(신설 다이얼, 클립-중앙값 상대 |pc| — 기본 off라 셀프테스트 불변)
+DEFAULT_CFG = {"sym_max": 0.6, "dev_max": 15.0, "pt_max": 99.0, "pu_min": 0.4, "cs_min": 0.0,
                "mv_min": 0.0, "lt_min": 0.0, "ex_max": 1.0, "gap_min": 12,
                "w_expr": 0.30, "w_pu": 0.15, "w_q3": 0.20, "w_vis2": 0.15, "w_light": 0.20}
 
@@ -93,6 +94,7 @@ def frame_table(clip_id: str, out_root: Path):
     M = np.array(feats["feature"].to_list(), dtype=np.float64)
     sel = np.array([pos[f] for f in fx])
     yaw = M[sel, INDEX["head_yaw_dev"]]
+    pitch = M[sel, INDEX["head_pitch"]]
     blur = M[sel, INDEX["face_blur"]]
 
     pq = pl.read_parquet(out_root / clip_id / "parse.parquet").filter(pl.col("track_id") == tid)
@@ -130,8 +132,8 @@ def frame_table(clip_id: str, out_root: Path):
              if nm_ != "_neutral" and not nm_.startswith("eyeLook")]
     expr = B[:, ecols].max(axis=1)
     pupil, sym = face_signals(P)
-    return dict(tid=tid, rider=rider, fx=fx, cb=cb, P=P, yaw=yaw, blur=blur, micro=micro,
-                mv=mv, lum_eff=lum_eff, cs=cs, nrm=nrm, board=board, expr=expr,
+    return dict(tid=tid, rider=rider, fx=fx, cb=cb, P=P, yaw=yaw, pitch=pitch, blur=blur,
+                micro=micro, mv=mv, lum_eff=lum_eff, cs=cs, nrm=nrm, board=board, expr=expr,
                 pupil=pupil, sym=sym)
 
 
@@ -139,6 +141,7 @@ def compute_picks(rows, cfg):
     """JS 시뮬레이터와 문자 그대로 동일한 의미론 (반올림된 shipped 값 위에서)."""
     surv = [r for r in rows
             if r["sy"] < cfg["sym_max"] and abs(r["dv"]) < cfg["dev_max"]
+            and abs(r["pc"]) < cfg["pt_max"]
             and r["pu"] >= cfg["pu_min"]
             and (r["cs"] is None or r["cs"] >= cfg["cs_min"])
             and (r["mv"] is None or r["mv"] >= cfg["mv_min"])
@@ -211,9 +214,14 @@ def build_clip(clip_id, out_root, wb_dir):
     def num(v, nd=2):
         return None if not np.isfinite(v) else round(float(v), nd)
 
+    pt = t["pitch"]
+    pt_med = float(np.nanmedian(pt)) if np.isfinite(pt).any() else 0.0
     rows = []
     for i in range(n):
         rows.append({"f": int(fx[i]), "b": int(t["board"][i]),
+                     "pt": round(float(pt[i]), 1) if np.isfinite(pt[i]) else None,
+                     # pc = 클립-중앙값 상대 pitch(스크린용) — 결측=0(통과), 절대 비교 금지 원칙
+                     "pc": round(float(pt[i] - pt_med), 1) if np.isfinite(pt[i]) else 0.0,
                      "sy": round(float(t["sym"][i]), 3) if np.isfinite(t["sym"][i]) else 9.9,
                      "dv": round(float(dev[i]), 1) if np.isfinite(dev[i]) else 99.0,
                      "pu": round(float(t["pupil"][i]), 3) if np.isfinite(t["pupil"][i]) else 0.0,
@@ -293,7 +301,7 @@ button:hover{background:#383838}
  <input type="file" id="gtfile" style="display:none" onchange="importGT(this)">
  <button onclick="document.getElementById('gtfile').click()">GT import</button>
  <span class="gtscore" id="gtscore"></span>
- <div class="note">클릭=GT 깃발(없음→긍정→부정) · 호버=확대 · ←→=클립 전환 · 주황 외곽=A/B 불일치 픽 · 저장 홈=fixtures/eval/</div>
+ <div class="note">클릭=GT 깃발(없음→긍정→부정) · <b>Shift+클릭=포즈 그라운딩</b>(그 프레임이 통과하는 경계로 sym/yaw 세팅) · 호버=확대 · ←→=클립 전환 · 주황 외곽=A/B 불일치 픽 · 저장 홈=fixtures/eval/</div>
 </div>
 <div id="panel"></div><div id="main"></div>
 <script src="data.js"></script>
@@ -302,6 +310,7 @@ const DIALS=[
  ["1단 · 품질 스크린 (결정경계)"],
  ["sym_max","보이는-정면 sym <",0.3,2.0,0.05],
  ["dev_max","|yaw dev| <",5,45,1],
+ ["pt_max","|pitch dev| < (클립상대·99=off)",3,99,1],
  ["pu_min","눈동자 pupil >=",0,0.8,0.01],
  ["cs_min","정체성 cs pct >=",0,90,5],
  ["mv_min","입-가시 mv pct >=",0,90,5],
@@ -316,30 +325,32 @@ const DIALS=[
  ["시간 다양성"],
  ["gap_min","픽 간 최소 프레임 gap",0,60,2],
 ];
-const DEF={sym_max:0.6,dev_max:15,pu_min:0.4,cs_min:0,mv_min:0,lt_min:0,ex_max:1.0,gap_min:12,
+const DEF={sym_max:0.6,dev_max:15,pt_max:99,pu_min:0.4,cs_min:0,mv_min:0,lt_min:0,ex_max:1.0,gap_min:12,
            w_expr:0.30,w_pu:0.15,w_q3:0.20,w_vis2:0.15,w_light:0.20};
-let A={...DEF}, Bcfg=null, GT={}, cur=0, sortMode="time";
-const STAGES=["정면","눈동자","cs","입","빛","표정"];
-const SCOL=["#c98a4a","#d95555","#b070d0","#55aacc","#d8c455","#e08aa8"];
+let A={...DEF}, Bcfg=null, GT={}, cur=0, sortMode="time", poseOpen=false;
+const STAGES=["정면","pitch","눈동자","cs","입","빛","표정"];
+const SCOL=["#c98a4a","#7fa85c","#d95555","#b070d0","#55aacc","#d8c455","#e08aa8"];
 const SURV="#69d069";
 
 function firstFail(r,c){
  if(!(r.sy<c.sym_max&&Math.abs(r.dv)<c.dev_max))return 0;
- if(!(r.pu>=c.pu_min))return 1;
- if(!(r.cs==null||r.cs>=c.cs_min))return 2;
- if(!(r.mv==null||r.mv>=c.mv_min))return 3;
- if(!(r.lt==null||r.lt>=c.lt_min))return 4;
- if(!(r.ex<=c.ex_max))return 5;
+ if(!(Math.abs(r.pc)<c.pt_max))return 1;
+ if(!(r.pu>=c.pu_min))return 2;
+ if(!(r.cs==null||r.cs>=c.cs_min))return 3;
+ if(!(r.mv==null||r.mv>=c.mv_min))return 4;
+ if(!(r.lt==null||r.lt>=c.lt_min))return 5;
+ if(!(r.ex<=c.ex_max))return 6;
  return -1;}
 function pass(r,c){return firstFail(r,c)<0;}
 function funnel(rows,c){
  const s1=rows.filter(r=>r.sy<c.sym_max&&Math.abs(r.dv)<c.dev_max);
- const s2=s1.filter(r=>r.pu>=c.pu_min);
+ const s1p=s1.filter(r=>Math.abs(r.pc)<c.pt_max);
+ const s2=s1p.filter(r=>r.pu>=c.pu_min);
  const s3=s2.filter(r=>r.cs==null||r.cs>=c.cs_min);
  const s4=s3.filter(r=>r.mv==null||r.mv>=c.mv_min);
  const s5=s4.filter(r=>r.lt==null||r.lt>=c.lt_min);
  const s6=s5.filter(r=>r.ex<=c.ex_max);
- return [rows.length,s1.length,s2.length,s3.length,s4.length,s5.length,s6.length];}
+ return [rows.length,s1.length,s1p.length,s2.length,s3.length,s4.length,s5.length,s6.length];}
 function score(r,c){return c.w_expr*r.r[0]+c.w_pu*r.r[1]+c.w_q3*r.r[2]+c.w_vis2*r.r[3]+c.w_light*r.r[4];}
 function picks(rows,c){
  const sv=rows.filter(r=>pass(r,c));
@@ -354,18 +365,18 @@ function cellHTML(clip,r,cls){
  const img=r.th?`<img src="${r.th}">`:`<div class="noimg">f${r.f}<br>(no thumb)</div>`;
  const cap=`f${r.f} ex${r.ex} pu${r.pu}<br>cs${r.cs==null?"--":r.cs} mv${r.mv==null?"--":r.mv} lt${r.lt==null?"--":r.lt}`;
  const mark=fl=="pos"?"O":fl=="neg"?"X":"";
- return `<div class="cell ${fl} ${cls||""}" onclick="cyc('${clip}',${r.f})">${img}
+ return `<div class="cell ${fl} ${cls||""}" onclick="cyc(event,'${clip}',${r.f})">${img}
    <span class="flag">${mark}</span><div class="cap">${cap}</div></div>`;}
 
 function funnelHTML(fn){
- const names=["전체","정면","눈동자","cs","입","빛","표정"];
- const cols=["#666",...SCOL.slice(0,5),SURV];   // 행 i = i번째 스크린 적용 후 생존(색=그 스크린)
- const mx=Math.max(fn[0],1);
+ const names=["전체",...STAGES];
+ const cols=["#666",...SCOL.slice(0,STAGES.length-1),SURV];  // 마지막 행=최종 생존(초록)
+ const mx=Math.max(fn[0],1), last=fn.length-1;
  return `<div class="funnel">`+fn.map((v,i)=>
-  `<div class="fr${i==6?" last":""}"><span class="lbl">${names[i]}</span>
+  `<div class="fr${i==last?" last":""}"><span class="lbl">${names[i]}</span>
    <span class="bar" style="width:${Math.max(2,Math.round(280*v/mx))}px;background:${cols[i]}"></span>
    <span class="cnt">${v}</span></div>`).join("")+
-  (fn[6]<3?`<div class="fr"><span class="lbl"></span><span style="color:#e66">⚠ 풀&lt;3</span></div>`:``)+`</div>`;}
+  (fn[last]<3?`<div class="fr"><span class="lbl"></span><span style="color:#e66">⚠ 풀&lt;3</span></div>`:``)+`</div>`;}
 
 function legendHTML(){
  return `<div class="legend"><span><i style="background:${SURV}"></i>생존</span>`+
@@ -387,19 +398,32 @@ function render(){
   pA.forEach(f=>{const g=GT[C.clip+":"+f];if(g=="pos")gtP++;if(g=="neg")gtN++;});
   if(pB)pB.forEach(f=>{const g=GT[C.clip+":"+f];if(g=="pos")gtPB++;if(g=="neg")gtNB++;});
   let p=0,ng=0;for(const k in GT){if(k.startsWith(C.clip+":")){GT[k]=="pos"?p++:ng++;}}
-  return {pA,pB,fn,p,ng};});
+  return {pA,pB,fn,p,ng,alive:fn[fn.length-1]};});
 
  const tabs=WB.clips.map((C,i)=>
   `<span class="tab${i==cur?" cur":""}" onclick="cur=${i};render()">${C.clip}
-   <span class="b">${meta[i].fn[6]}</span>${meta[i].p+meta[i].ng?`<span class="g"> +${meta[i].p}/−${meta[i].ng}</span>`:""}</span>`).join("");
+   <span class="b">${meta[i].alive}</span>${meta[i].p+meta[i].ng?`<span class="g"> +${meta[i].p}/−${meta[i].ng}</span>`:""}</span>`).join("");
 
  const C=WB.clips[cur], m=meta[cur];
  const byf={};C.rows.forEach(r=>byf[r.f]=r);
  const setA=new Set(m.pA), setB=m.pB?new Set(m.pB):null;
  let h=`<div id="tabs">${tabs}</div><b>${C.clip}</b> t${C.tid} <span class="note">n=${C.n} · 풀 정렬:</span>
-  <button onclick="sortMode=sortMode=='time'?'score':'time';render()">${sortMode=='time'?'시간순':'점수순'}</button>`;
+  <button onclick="sortMode=sortMode=='time'?'score':'time';render()">${sortMode=='time'?'시간순':'점수순'}</button>
+  <button onclick="poseOpen=!poseOpen;render()">포즈 눈금 ${poseOpen?'닫기':'보기'}</button>`;
  h+=funnelHTML(m.fn);
  h+=`<div id="tl"><canvas id="tlc" width="1000" height="44"></canvas><div id="tlTip"></div></div>`+legendHTML();
+ if(poseOpen){
+  const wt=C.rows.filter(r=>r.th);
+  const samp=a=>{if(a.length<=8)return a;const o=[];for(let i=0;i<8;i++)o.push(a[Math.round(i*(a.length-1)/7)]);return [...new Set(o)];};
+  const byDev=samp(wt.slice().sort((a,b)=>Math.abs(a.dv)-Math.abs(b.dv)));
+  const bySy=samp(wt.slice().sort((a,b)=>a.sy-b.sy));
+  const pose=r=>{const ff=firstFail(r,A);const dim=(ff===0||ff===1)?"opacity:.35":"";
+   return `<div class="cell" style="${dim}" onclick="groundPose('${C.clip}',${r.f})"><img src="${r.th}">
+    <div class="cap">|dv|${Math.abs(r.dv).toFixed(0)} sy${r.sy}<br>pt${r.pt==null?"--":r.pt} pc${r.pc}</div></div>`;};
+  h+=`<div class="rowlbl">포즈 눈금 — yaw 사다리 (타일 클릭 = 이 포즈까지 허용으로 그라운딩 · 흐림 = 현재 포즈 스크린에 걸러짐)</div>
+   <div class="strip sm">`+byDev.map(pose).join("")+`</div>
+   <div class="rowlbl">포즈 눈금 — sym 사다리</div><div class="strip sm">`+bySy.map(pose).join("")+`</div>`;
+ }
  h+=`<div class="rowlbl">CURRENT (생산 likeness.json)</div><div class="strip sm">`+
    C.cur.map(f=>byf[f]?cellHTML(C.clip,byf[f],""):"").join("")+`</div>`;
  h+=`<div class="rowlbl">A 픽</div><div class="strip big">`+
@@ -463,7 +487,7 @@ function drawTimeline(C,m){
   const st=ff<0?`<span style="color:${SURV}">생존</span>`:`<span style="color:${SCOL[ff]}">${STAGES[ff]}에 걸러짐</span>`;
   const g=GT[C.clip+":"+r.f], gs=g?` · GT:${g=="pos"?"＋":"−"}`:"";
   tip.innerHTML=(r.th?`<img src="${r.th}">`:"")+
-   `f${r.f} ${st}${gs}<br>ex${r.ex} pu${r.pu} sy${r.sy}<br>cs${r.cs==null?"--":r.cs} mv${r.mv==null?"--":r.mv} lt${r.lt==null?"--":r.lt}`;
+   `f${r.f} ${st}${gs}<br>ex${r.ex} pu${r.pu} sy${r.sy} dv${r.dv}<br>pt${r.pt==null?"--":r.pt}(Δ${r.pc}) cs${r.cs==null?"--":r.cs} mv${r.mv==null?"--":r.mv} lt${r.lt==null?"--":r.lt}`;
   tip.style.display="block";
   tip.style.left=Math.min(x+14,W-140)+"px";
   tip.style.top="46px";
@@ -471,11 +495,22 @@ function drawTimeline(C,m){
  cv.onmouseleave=()=>{tip.style.display="none";};
  cv.onclick=e=>{
   const rect=cv.getBoundingClientRect();
-  cyc(C.clip,nearest(e.clientX-rect.left).f);
+  cyc(e,C.clip,nearest(e.clientX-rect.left).f);
  };
 }
-function cyc(clip,f){const k=clip+":"+f;GT[k]=GT[k]=="pos"?"neg":GT[k]=="neg"?undefined:"pos";
+function cyc(e,clip,f){
+ if(e&&e.shiftKey){groundPose(clip,f);return;}
+ const k=clip+":"+f;GT[k]=GT[k]=="pos"?"neg":GT[k]=="neg"?undefined:"pos";
  if(!GT[k])delete GT[k];render();}
+function groundPose(clip,f){
+ // 예시-그라운딩: 이 프레임이 포즈 스크린을 통과하는 최소 경계로 세팅 (쿼리 바이 예시)
+ const C=WB.clips.find(c=>c.clip==clip);
+ const r=C&&C.rows.find(r=>r.f==f);
+ if(!r)return;
+ A.sym_max=Math.min(2.0,Math.round((Math.floor(r.sy/0.05)+1)*5)/100);
+ A.dev_max=Math.min(45,Math.floor(Math.abs(r.dv))+1);
+ if(A.pt_max<99)A.pt_max=Math.max(A.pt_max,Math.min(99,Math.floor(Math.abs(r.pc))+1));
+ buildPanel();render();}
 function snapshotB(){Bcfg={...A};render();}
 function clearB(){Bcfg=null;render();}
 function resetA(){A={...DEF};buildPanel();render();}
