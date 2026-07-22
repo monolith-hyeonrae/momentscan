@@ -68,24 +68,43 @@ def test_read_gt_merges_duplicate_lines_later_wins(tmp_path):
 
 
 # ── compute_picks 의미론 (명시-floor + 가중 + gap) ───────────────────────────
-def _row(f, *, sy=0.1, dv=0.0, pu=0.9, ex=0.1, cs=50.0, mv=50.0, lt=50.0, r=None):
-    return {"f": f, "sy": sy, "dv": dv, "pu": pu, "ex": ex, "cs": cs, "mv": mv, "lt": lt,
-            "r": r or [0.5, 0.5, 0.5, 0.5, 0.5]}
+def _row(f, *, sy=0.1, dv=0.0, pc=0.0, pu=0.9, ex=0.1, cs=50.0, mv=50.0, lt=50.0, r=None):
+    return {"f": f, "sy": sy, "dv": dv, "pc": pc, "pu": pu, "ex": ex,
+            "cs": cs, "mv": mv, "lt": lt, "r": r or [0.5, 0.5, 0.5, 0.5, 0.5]}
 
 
 def test_picks_explicit_floor_screen():
     rows = [
         _row(0),                       # 통과
         _row(1, sy=0.7),               # sym floor 탈락
-        _row(2, dv=20.0),              # yaw dev 탈락
+        _row(2, dv=20.0),              # yaw 밴드 상한(dev_hi=15) 탈락
         _row(3, pu=0.1),               # pupil floor 탈락
         _row(4, ex=0.99, r=[1, 1, 1, 1, 1]),   # ex_max=1.0 이하라 통과 + 최고점
         _row(5, cs=None, mv=None, lt=None),    # 측정 부재(None) = 스크린 통과
+        _row(6, pc=120.0),             # 극단 pitch 도 기본(99=off 상한 미만만 통과)에 걸림
+        _row(7, dv=-20.0),             # yaw 밴드 하한(dev_lo=−15) 탈락 (v0.5 부호-있는 밴드)
     ]
     got = wb.compute_picks([dict(r) for r in rows], dict(wb.DEFAULT_CFG, gap_min=1))
-    assert 1 not in got and 2 not in got and 3 not in got
+    assert not {1, 2, 3, 6, 7} & set(got)
     assert got[0] == 4                 # 가중합 최대가 1순위
     assert set(got) <= {0, 4, 5}
+
+
+def test_picks_yaw_band_side_query():
+    """v0.5: 밴드를 측면 구간으로 옮기면 측면 프레임 선택 (portrait 쿼리 대비)."""
+    rows = [_row(0, dv=0.0), _row(30, dv=70.0)]
+    side = dict(wb.DEFAULT_CFG, dev_lo=60.0, dev_hi=90.0)
+    assert wb.compute_picks([dict(r) for r in rows], side) == [30]
+
+
+def test_picks_pitch_dial_default_off():
+    """pt_max 기본 99 = 실질 off (|pc|<99 통과) · 조이면 스크린 (v0.3, 결측 pc=0=통과)."""
+    rows = [_row(0, pc=0.0, r=[0.1] * 5), _row(30, pc=20.0, r=[1.0] * 5)]
+    got_def = wb.compute_picks([dict(r) for r in rows], wb.DEFAULT_CFG)
+    assert got_def[0] == 30            # 기본 = pitch 무영향, 점수 우선
+    tight = dict(wb.DEFAULT_CFG, pt_max=10.0)
+    got_tight = wb.compute_picks([dict(r) for r in rows], tight)
+    assert got_tight == [0]            # |pc|=20 스크린 탈락
 
 
 def test_picks_gap_min_time_diversity():
@@ -107,7 +126,7 @@ def test_picks_weights_reorder():
 def test_js_def_matches_python_default_cfg():
     m = re.search(r"const DEF=\{(.*?)\};", WORKBENCH_PAGE, re.S)
     assert m, "workbench 페이지에 const DEF 블록이 없다"
-    js = dict(re.findall(r"(\w+):([0-9.]+)", m.group(1)))
+    js = dict(re.findall(r"(\w+):(-?[0-9.]+)", m.group(1)))   # dev_lo 음수 허용
     assert set(js) == set(wb.DEFAULT_CFG)
     for k, v in wb.DEFAULT_CFG.items():
         assert float(js[k]) == pytest.approx(float(v)), k

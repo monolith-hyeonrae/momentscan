@@ -1,8 +1,9 @@
 """workbench — likeness 표본 샘플링 연구 콘솔의 데이터층 (원장 ⑫ 승격).
 
-참조 구현 = scratchpad_workbench.py v0.1 (2026-07-22) 을 값-동일하게 승격한 것.
-다이얼 의미론(명시-floor 스크린 + 가중 랭킹)과 셀프테스트 픽은 v0.x 와 문자 그대로
-같아야 한다 — 검증 좌표: test_3=[29,511,352] · dual_2=[34,1052,662].
+참조 구현 = scratchpad_workbench.py v0.5 (2026-07-22, main 5f1bdd9) 을 값-동일하게
+승격한 것. 다이얼 의미론(명시-floor 스크린 + 가중 랭킹)과 셀프테스트 픽은 v0.x 와
+문자 그대로 같아야 한다 — 검증 좌표: test_3=[29,511,352] · dual_2=[34,1052,662]
+(pitch pt_max 기본 99=off · yaw 밴드 기본 (−15,15)=구 |dev|<15 동치라 전부 불변).
 
 층 구성 (원장 ⑫ — user 도구 3종의 세 층):
   frame_table    클립 main rider 의 전 신호 와이드 행 — 프로브 4종이 반복한 조인의
@@ -44,12 +45,15 @@ from momentscan.perception.readings.face_signals import pupil_visibility, visual
 # ── 상수 (v0.x 와 문자 그대로 동일해야 하는 것들) ────────────────────────────
 THUMB = 224                       # 저장 원치수 px — 픽 행은 원치수, 풀은 112 축소 표시
 THUMB_MAX = 120                   # 클립당 표본 썸네일 상한 (수치는 전 행 기준)
-CACHE_VERSION = 1                 # 의미론 변경 시 올린다 → 전 캐시 무효화
+CACHE_VERSION = 2                 # 의미론 변경 시 올린다 → 전 캐시 무효화 (2=v0.3 pt/pc 행 편입)
 
 # 기본 설정 = v7.2 등가(단일-floor 의미론) — _workbench_html.js 의 DEF 와 문자 그대로
 # 동일해야 한다 (로드 시 셀프테스트가 이 짝을 감시).
-DEFAULT_CFG = {"sym_max": 0.6, "dev_max": 15.0, "pu_min": 0.4, "cs_min": 0.0,
-               "mv_min": 0.0, "lt_min": 0.0, "ex_max": 1.0, "gap_min": 12,
+# pt_max=99 = pitch 스크린 off(v0.3 신설 다이얼, 클립-중앙값 상대 |pc| — 기본 off 라 셀프테스트 불변)
+# yaw = 부호-있는 밴드(v0.5, portrait 쿼리 대비: [60,90] 같은 측면 구간 선택 가능) —
+#   기본 (−15,15) = 구 |dev|<15 와 동치(셀프테스트 불변). 수렴=밴드의 특수형.
+DEFAULT_CFG = {"sym_max": 0.6, "dev_lo": -15.0, "dev_hi": 15.0, "pt_max": 99.0, "pu_min": 0.4,
+               "cs_min": 0.0, "mv_min": 0.0, "lt_min": 0.0, "ex_max": 1.0, "gap_min": 12,
                "w_expr": 0.30, "w_pu": 0.15, "w_q3": 0.20, "w_vis2": 0.15, "w_light": 0.20}
 
 GT_SCHEMA = "momentscan.workbench-gt/v0"
@@ -126,6 +130,7 @@ def frame_table(clip_id: str, out_root: Path) -> dict:
     M = np.array(feats["feature"].to_list(), dtype=np.float64)
     sel = np.array([pos[f] for f in fx])
     yaw = M[sel, INDEX["head_yaw_dev"]]
+    pitch = M[sel, INDEX["head_pitch"]]
     blur = M[sel, INDEX["face_blur"]]
 
     pq = pl.read_parquet(clip_dir(out_root, clip_id) / "parse.parquet") \
@@ -169,8 +174,8 @@ def frame_table(clip_id: str, out_root: Path) -> dict:
     expr = B[:, ecols].max(axis=1)
     pupil = pupil_visibility(P)
     sym = visual_frontality(P)
-    return dict(tid=tid, rider=rider, fx=fx, cb=cb, P=P, yaw=yaw, blur=blur, micro=micro,
-                mv=mv, lum_eff=lum_eff, cs=cs, nrm=nrm, board=board, expr=expr,
+    return dict(tid=tid, rider=rider, fx=fx, cb=cb, P=P, yaw=yaw, pitch=pitch, blur=blur,
+                micro=micro, mv=mv, lum_eff=lum_eff, cs=cs, nrm=nrm, board=board, expr=expr,
                 pupil=pupil, sym=sym, frontal_deg=frontal_deg)
 
 
@@ -178,7 +183,8 @@ def frame_table(clip_id: str, out_root: Path) -> dict:
 def compute_picks(rows: list[dict], cfg: dict) -> list[int]:
     """1단 품질 스크린(명시-floor) → 2단 가중 랭킹 → 시간 gap 3픽."""
     surv = [r for r in rows
-            if r["sy"] < cfg["sym_max"] and abs(r["dv"]) < cfg["dev_max"]
+            if r["sy"] < cfg["sym_max"] and cfg["dev_lo"] < r["dv"] < cfg["dev_hi"]
+            and abs(r["pc"]) < cfg["pt_max"]
             and r["pu"] >= cfg["pu_min"]
             and (r["cs"] is None or r["cs"] >= cfg["cs_min"])
             and (r["mv"] is None or r["mv"] >= cfg["mv_min"])
@@ -325,9 +331,14 @@ def build_clip_data(clip_id: str, out_root: Path, *, force: bool = False) -> dic
     def num(v, nd=2):
         return None if not np.isfinite(v) else round(float(v), nd)
 
+    pt = t["pitch"]
+    pt_med = float(np.nanmedian(pt)) if np.isfinite(pt).any() else 0.0
     rows = []
     for i in range(n):
         rows.append({"f": int(fx[i]), "b": int(t["board"][i]),
+                     "pt": round(float(pt[i]), 1) if np.isfinite(pt[i]) else None,
+                     # pc = 클립-중앙값 상대 pitch(스크린용) — 결측=0(통과), 절대 비교 금지 원칙
+                     "pc": round(float(pt[i] - pt_med), 1) if np.isfinite(pt[i]) else 0.0,
                      "sy": round(float(t["sym"][i]), 3) if np.isfinite(t["sym"][i]) else 9.9,
                      "dv": round(float(dev[i]), 1) if np.isfinite(dev[i]) else 99.0,
                      "pu": round(float(t["pupil"][i]), 3) if np.isfinite(t["pupil"][i]) else 0.0,
