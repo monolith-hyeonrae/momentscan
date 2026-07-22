@@ -11,6 +11,12 @@
   v0.5: **yaw = 부호-있는 밴드 다이얼**(dev_lo/dev_hi, portrait 쿼리 대비 — "yaw 60~90"
   같은 측면 구간 선택 가능; 수렴 스크린=밴드의 특수형, 기본 (−15,15)=구 |dev|<15 동치
   =셀프테스트 불변) · 포즈 눈금=좌측면→정면→우측면 스윕 · 그라운딩=밴드 확장 의미론.
+  v0.9: **상태-쿼리 구조**(user: "각 상태를 판별하고 종합하는 수준 높은 스크리닝") —
+  1단=상태별 스크린/밴드(포즈=밴드가 곧 쿼리·표정도 ex_min~ex_max 밴드화) · 2단=**상태
+  점수 4종의 종합**(표정·얼굴=(2무표정+눈동자)/3 · 빛=조도생동[×lf 옵션] · 영상=(선명+
+  micro)/2 · 왜곡=(cs+입가시+norm)/3[q3 분해 판정 반영]) — 가중이 신호가 아닌 상태
+  단위(w_face/w_light/w_image/w_distort). 점수 기준 재정의=v7.2 브리지 종료(⑪ 후보
+  정책의 진화; 가드=JS≡python 셀프테스트 유지). 툴팁에 상태 점수 판독 추가.
   v0.8: **빛 판별력 계수 lf + 분산-감쇠 시험 토글**(⑪-e v3, user 관찰 "test_3=흐린 날
   → 조명 영향 적어야": 풀-상대 랭크는 분산을 지워 저분산 클립에서 축이 과대발언 —
   lf=robust (p90−p10)/p50 정규화[test_4급≈1.0], ATT 토글 시 w_light×lf. 기본 off=
@@ -66,15 +72,23 @@ FRONTAL_DEG = RACE.camera.frontal_deg
 CLIPS = ("test_3", "test_12", "dual_2", "test_4", "test_0", "international_1")
 THUMB = 224     # 저장 원치수 — 픽 행은 원치수, 풀은 112 축소 표시+호버 확대
 
-# 기본 설정 = v7.2 등가(단일-floor 의미론) — JS DEF와 문자 그대로 동일해야 함
-# pt_max=99 = pitch 스크린 off(신설 다이얼, 클립-중앙값 상대 |pc| — 기본 off라 셀프테스트 불변)
-# yaw = 부호-있는 밴드(v0.5, portrait 쿼리 대비: [60,90] 같은 측면 구간 선택 가능) —
-#   기본 (−15,15) = 구 |dev|<15와 동치(셀프테스트 불변). 수렴=밴드의 특수형.
-# v0.7 심층 축(dp 입체감·hh 거칠기·sp 선명) = 기본 off(0/100/0) — 셀프테스트 불변.
+# 기본 설정 — JS DEF와 문자 그대로 동일해야 함 (셀프테스트 = JS≡python 가드)
+# v0.9 상태-쿼리 구조: 1단=상태별 스크린/밴드(포즈는 밴드=쿼리, 점수 없음) ·
+#   2단=상태 점수 종합(w_face·w_light·w_image·w_distort — 상태-내 구성은 고정 평균,
+#   세부 sub-가중은 v0.9.x). 점수 기준 재정의 = v7.2 등가 브리지 종료(⑪ 후보 정책의 진화).
+# ex 밴드(ex_min~ex_max): 표정 상태도 쿼리 가능(portrait 웃음-구간 등). 기본 ex_min=0.
 DEFAULT_CFG = {"sym_max": 0.6, "dev_lo": -15.0, "dev_hi": 15.0, "pt_max": 99.0, "pu_min": 0.4,
-               "cs_min": 0.0, "mv_min": 0.0, "lt_min": 0.0, "ex_max": 1.0, "gap_min": 12,
-               "dp_min": 0.0, "hh_max": 100.0, "sp_min": 0.0,
-               "w_expr": 0.30, "w_pu": 0.15, "w_q3": 0.20, "w_vis2": 0.15, "w_light": 0.20}
+               "cs_min": 0.0, "mv_min": 0.0, "lt_min": 0.0, "ex_min": 0.0, "ex_max": 1.0,
+               "gap_min": 12, "dp_min": 0.0, "hh_max": 100.0, "sp_min": 0.0,
+               "w_face": 0.45, "w_light": 0.20, "w_image": 0.15, "w_distort": 0.20}
+
+
+def state_scores(r):
+    """상태 점수 4종 — r = [re,rp,rs,rm,rn,rc,rv,rl] (rank01 8축).
+    표정·얼굴=(2·무표정+눈동자)/3 · 빛=조도생동 · 영상=(선명+micro)/2 ·
+    왜곡=(cs+입가시+norm)/3 (q3 분해 판정: norm→왜곡)."""
+    re_, rp_, rs_, rm_, rn_, rc_, rv_, rl_ = r
+    return ((2 * re_ + rp_) / 3, rl_, (rs_ + rm_) / 2, (rc_ + rv_ + rn_) / 3)
 
 
 def face_signals(P):
@@ -199,11 +213,11 @@ def compute_picks(rows, cfg):
             and (r["dp"] is None or r["dp"] >= cfg["dp_min"])
             and (r["hh"] is None or r["hh"] <= cfg["hh_max"])
             and (r["sp"] is None or r["sp"] >= cfg["sp_min"])
-            and r["ex"] <= cfg["ex_max"]]
+            and cfg["ex_min"] <= r["ex"] <= cfg["ex_max"]]
     for r in surv:
-        r["_s"] = (cfg["w_expr"] * r["r"][0] + cfg["w_pu"] * r["r"][1]
-                   + cfg["w_q3"] * r["r"][2] + cfg["w_vis2"] * r["r"][3]
-                   + cfg["w_light"] * r["r"][4])
+        sf, sl, si, sd = state_scores(r["r"])
+        r["_s"] = (cfg["w_face"] * sf + cfg["w_light"] * sl
+                   + cfg["w_image"] * si + cfg["w_distort"] * sd)
     surv.sort(key=lambda r: -r["_s"])
     got = []
     for r in surv:
@@ -310,10 +324,10 @@ def build_clip(clip_id, out_root, wb_dir):
         p10, p50, p90 = np.percentile(fin, [10, 50, 90])
         return float((p90 - p10) / (abs(p50) + 1e-6))
     lf = round(min(1.0, 0.5 * (_spread(t["lum_eff"]) + _spread(chroma)) / 0.8), 2)
-    q3 = np.nanmean(np.vstack([sharp_pct, micro_pct, norm_pct]), axis=0)
-    vis2 = np.nanmean(np.vstack([cs_pct, mv_pct]), axis=0)
-    R = np.stack([rank01(t["expr"], flip=True), rank01(t["pupil"]), rank01(q3),
-                  rank01(vis2), rank01(light_pct)], axis=1)
+    # v0.9 상태-쿼리: 축별 rank01 8종 — [무표정, 눈동자, 선명, micro, norm, cs, 입가시, 빛]
+    R = np.stack([rank01(t["expr"], flip=True), rank01(t["pupil"]),
+                  rank01(sharp_pct), rank01(micro_pct), rank01(norm_pct),
+                  rank01(cs_pct), rank01(mv_pct), rank01(light_pct)], axis=1)
 
     def num(v, nd=2):
         return None if not np.isfinite(v) else round(float(v), nd)
@@ -420,7 +434,8 @@ const DIALS=[
  ["pt_max","|pitch dev| < (클립상대·99=off)",3,99,1],
  ["1단 · 표정·얼굴의 상태"],
  ["pu_min","눈동자 pupil >=",0,0.8,0.01],
- ["ex_max","표정 ex <= (상한)",0.2,1.0,0.05],
+ ["ex_min","표정 ex 하한 >= (밴드)",0,0.8,0.05],
+ ["ex_max","표정 ex 상한 <= (밴드)",0.2,1.0,0.05],
  ["1단 · 빛의 상태 (얼굴면)"],
  ["lt_min","조도·생동 lt pct >=",0,90,5],
  ["dp_min","입체감 dp pct >= (방향성)",0,90,5],
@@ -430,18 +445,17 @@ const DIALS=[
  ["1단 · 왜곡의 상태 (판독성·가림)"],
  ["cs_min","정체성 cs pct >=",0,90,5],
  ["mv_min","입-가시 mv pct >=",0,90,5],
- ["2단 · 대표성 랭킹 (깃발)"],
- ["w_expr","w 무표정",0,0.6,0.05],
- ["w_pu","w 눈동자",0,0.6,0.05],
- ["w_q3","w 품질3축",0,0.6,0.05],
- ["w_vis2","w 판독성·입",0,0.6,0.05],
- ["w_light","w 조도·생동",0,0.6,0.05],
+ ["2단 · 종합 (상태 가중 — 포즈=밴드 쿼리, 점수 없음)"],
+ ["w_face","w 표정·얼굴 상태",0,0.8,0.05],
+ ["w_light","w 빛 상태",0,0.8,0.05],
+ ["w_image","w 영상 상태",0,0.8,0.05],
+ ["w_distort","w 왜곡(판독성) 상태",0,0.8,0.05],
  ["시간 다양성"],
  ["gap_min","픽 간 최소 프레임 gap",0,60,2],
 ];
-const DEF={sym_max:0.6,dev_lo:-15,dev_hi:15,pt_max:99,pu_min:0.4,cs_min:0,mv_min:0,lt_min:0,ex_max:1.0,gap_min:12,
-           dp_min:0,hh_max:100,sp_min:0,
-           w_expr:0.30,w_pu:0.15,w_q3:0.20,w_vis2:0.15,w_light:0.20};
+const DEF={sym_max:0.6,dev_lo:-15,dev_hi:15,pt_max:99,pu_min:0.4,cs_min:0,mv_min:0,lt_min:0,
+           ex_min:0,ex_max:1.0,gap_min:12,dp_min:0,hh_max:100,sp_min:0,
+           w_face:0.45,w_light:0.20,w_image:0.15,w_distort:0.20};
 let A={...DEF}, Bcfg=null, GT={}, cur=0, sortMode="time", poseOpen=false, ATT=false;   // ATT=빛 분산-감쇠(시험)
 const STAGES=["포즈","표정·얼굴","빛","영상","왜곡"];   // 상태 5그룹(원장 ⑪ 재편) = 퍼널·타임라인 단위
 const SCOL=["#c98a4a","#e08aa8","#d8c455","#55aacc","#b070d0"];
@@ -449,7 +463,7 @@ const SURV="#69d069";
 
 function firstFail(r,c){
  if(!(r.sy<c.sym_max&&r.dv>c.dev_lo&&r.dv<c.dev_hi&&Math.abs(r.pc)<c.pt_max))return 0;
- if(!(r.pu>=c.pu_min&&r.ex<=c.ex_max))return 1;
+ if(!(r.pu>=c.pu_min&&r.ex>=c.ex_min&&r.ex<=c.ex_max))return 1;
  if(!((r.lt==null||r.lt>=c.lt_min)&&(r.dp==null||r.dp>=c.dp_min)&&(r.hh==null||r.hh<=c.hh_max)))return 2;
  if(!(r.sp==null||r.sp>=c.sp_min))return 3;
  if(!((r.cs==null||r.cs>=c.cs_min)&&(r.mv==null||r.mv>=c.mv_min)))return 4;
@@ -457,14 +471,18 @@ function firstFail(r,c){
 function pass(r,c){return firstFail(r,c)<0;}
 function funnel(rows,c){
  const s1=rows.filter(r=>r.sy<c.sym_max&&r.dv>c.dev_lo&&r.dv<c.dev_hi&&Math.abs(r.pc)<c.pt_max);
- const s2=s1.filter(r=>r.pu>=c.pu_min&&r.ex<=c.ex_max);
+ const s2=s1.filter(r=>r.pu>=c.pu_min&&r.ex>=c.ex_min&&r.ex<=c.ex_max);
  const s3=s2.filter(r=>(r.lt==null||r.lt>=c.lt_min)&&(r.dp==null||r.dp>=c.dp_min)&&(r.hh==null||r.hh<=c.hh_max));
  const s4=s3.filter(r=>r.sp==null||r.sp>=c.sp_min);
  const s5=s4.filter(r=>(r.cs==null||r.cs>=c.cs_min)&&(r.mv==null||r.mv>=c.mv_min));
  return [rows.length,s1.length,s2.length,s3.length,s4.length,s5.length];}
+function stateScores(rr){
+ // rr=[무표정,눈동자,선명,micro,norm,cs,입가시,빛] rank01 — python state_scores 미러
+ return [(2*rr[0]+rr[1])/3, rr[7], (rr[2]+rr[3])/2, (rr[5]+rr[6]+rr[4])/3];}
 function score(r,c,lf){
+ const [sf,sl,si,sd]=stateScores(r.r);
  const wl=ATT?c.w_light*(lf==null?1:lf):c.w_light;   // ⑪-e v3: 판별력-비례 감쇠(시험)
- return c.w_expr*r.r[0]+c.w_pu*r.r[1]+c.w_q3*r.r[2]+c.w_vis2*r.r[3]+wl*r.r[4];}
+ return c.w_face*sf+wl*sl+c.w_image*si+c.w_distort*sd;}
 function picks(rows,c,lf){
  const sv=rows.filter(r=>pass(r,c));
  sv.forEach(r=>r._s=score(r,c,lf));
@@ -621,8 +639,9 @@ function drawTimeline(C,m){
   if(o.row){
    const r=o.row, ff=firstFail(r,A);
    const st=ff<0?`<span style="color:${SURV}">생존</span>`:`<span style="color:${SCOL[ff]}">${STAGES[ff]}에 걸러짐</span>`;
+   const ss=stateScores(r.r);
    tip.innerHTML=(r.th?`<img src="${r.th}" loading="lazy">`:"")+
-    `f${r.f} ${st}${gs}<br>ex${r.ex} pu${r.pu} sy${r.sy} dv${r.dv}<br>pt${r.pt==null?"--":r.pt}(Δ${r.pc}) cs${r.cs==null?"--":r.cs} mv${r.mv==null?"--":r.mv} lt${r.lt==null?"--":r.lt}<br>dp${r.dp==null?"--":r.dp} hh${r.hh==null?"--":r.hh} sp${r.sp==null?"--":r.sp}`;
+    `f${r.f} ${st}${gs}<br>ex${r.ex} pu${r.pu} sy${r.sy} dv${r.dv}<br>pt${r.pt==null?"--":r.pt}(Δ${r.pc}) cs${r.cs==null?"--":r.cs} mv${r.mv==null?"--":r.mv} lt${r.lt==null?"--":r.lt}<br>dp${r.dp==null?"--":r.dp} hh${r.hh==null?"--":r.hh} sp${r.sp==null?"--":r.sp}<br><span style="color:#9ad">상태: 얼굴${ss[0].toFixed(2)} 빛${ss[1].toFixed(2)} 영상${ss[2].toFixed(2)} 왜곡${ss[3].toFixed(2)}</span>`;
   }else{
    const g=o.g;
    tip.innerHTML=(g.th?`<img src="${g.th}" loading="lazy">`:"")+
@@ -649,7 +668,7 @@ const HSPEC={
  dp_min:{f:r=>r.dp,dir:"above"},
  hh_max:{f:r=>r.hh,dir:"below"},
  sp_min:{f:r=>r.sp,dir:"above"},
- ex_max:{f:r=>r.ex,dir:"below"},
+ ex_max:{f:r=>r.ex,band:["ex_min","ex_max"]},   // 표정 밴드(v0.9 — 쿼리 가능)
 };
 function drawDialHists(C,m){
  const byf={};C.rows.forEach(r=>byf[r.f]=r);
