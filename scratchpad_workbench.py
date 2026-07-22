@@ -11,6 +11,12 @@
   v0.5: **yaw = 부호-있는 밴드 다이얼**(dev_lo/dev_hi, portrait 쿼리 대비 — "yaw 60~90"
   같은 측면 구간 선택 가능; 수렴 스크린=밴드의 특수형, 기본 (−15,15)=구 |dev|<15 동치
   =셀프테스트 불변) · 포즈 눈금=좌측면→정면→우측면 스윕 · 그라운딩=밴드 확장 의미론.
+  v0.7: **상태 5그룹 재편**(user 정식화: 포즈/표정·얼굴/빛/영상/왜곡 — 원장 ⑪ 봉인
+  좌표계) — 다이얼 패널·퍼널·타임라인이 그룹 단위로 정렬(분류=역학). 빛-심층 축 신설:
+  dp=입체감(|face_light_lr|+|tb| 방향성, relight '입체감 floor' 예약석)·hh=거칠기
+  (face_light_harsh)·sp=선명(face_blur pct, 영상 그룹) — 전부 기본 off=셀프테스트 불변.
+  ②글레어+⑤cs floor 병합(왜곡 그룹: cs=판독성이 가림·글레어·역광-왜곡 겸직)·③hair
+  각도=쿼리 세트로 재정의(다이얼 아님).
   v0.6: **공평 우주**(user: "선택받지 못한 프레임도 보여줘야 선택받게 만들 수 있다") —
   썸네일 표본화 제거(전 행 저장, lazy 로딩)·풀 그리드 썸네일-필터 제거·타임라인 축=
   비디오 전체(0..vf)·**유령 레인**: 무효(측정됐으나 valid 밖)/미측정(검출만, 랜드마크
@@ -60,8 +66,10 @@ THUMB = 224     # 저장 원치수 — 픽 행은 원치수, 풀은 112 축소 �
 # pt_max=99 = pitch 스크린 off(신설 다이얼, 클립-중앙값 상대 |pc| — 기본 off라 셀프테스트 불변)
 # yaw = 부호-있는 밴드(v0.5, portrait 쿼리 대비: [60,90] 같은 측면 구간 선택 가능) —
 #   기본 (−15,15) = 구 |dev|<15와 동치(셀프테스트 불변). 수렴=밴드의 특수형.
+# v0.7 심층 축(dp 입체감·hh 거칠기·sp 선명) = 기본 off(0/100/0) — 셀프테스트 불변.
 DEFAULT_CFG = {"sym_max": 0.6, "dev_lo": -15.0, "dev_hi": 15.0, "pt_max": 99.0, "pu_min": 0.4,
                "cs_min": 0.0, "mv_min": 0.0, "lt_min": 0.0, "ex_max": 1.0, "gap_min": 12,
+               "dp_min": 0.0, "hh_max": 100.0, "sp_min": 0.0,
                "w_expr": 0.30, "w_pu": 0.15, "w_q3": 0.20, "w_vis2": 0.15, "w_light": 0.20}
 
 
@@ -119,6 +127,10 @@ def frame_table(clip_id: str, out_root: Path):
     yaw = M[sel, INDEX["head_yaw_dev"]]
     pitch = M[sel, INDEX["head_pitch"]]
     blur = M[sel, INDEX["face_blur"]]
+    # v0.7 빛-심층(얼굴면 광학, relight '입체감 floor' 예약석): 방향성·거칠기
+    light_lr = M[sel, INDEX["face_light_lr"]]
+    light_tb = M[sel, INDEX["face_light_tb"]]
+    light_hh = M[sel, INDEX["face_light_harsh"]]
 
     pq = pl.read_parquet(out_root / clip_id / "parse.parquet").filter(pl.col("track_id") == tid)
     g = lambda col: (dict(zip(pq["frame_idx"].to_list(), pq[col].to_list())) if col in pq.columns else {})
@@ -167,7 +179,8 @@ def frame_table(clip_id: str, out_root: Path):
     pupil, sym = face_signals(P)
     return dict(tid=tid, rider=rider, fx=fx, cb=cb, P=P, yaw=yaw, pitch=pitch, blur=blur,
                 micro=micro, mv=mv, lum_eff=lum_eff, cs=cs, nrm=nrm, board=board, expr=expr,
-                pupil=pupil, sym=sym, lm_all_cb=lm_all_cb, det_bbox=det_bbox, frag_bbox=frag_bbox)
+                pupil=pupil, sym=sym, lm_all_cb=lm_all_cb, det_bbox=det_bbox, frag_bbox=frag_bbox,
+                light_lr=light_lr, light_tb=light_tb, light_hh=light_hh)
 
 
 def compute_picks(rows, cfg):
@@ -179,6 +192,9 @@ def compute_picks(rows, cfg):
             and (r["cs"] is None or r["cs"] >= cfg["cs_min"])
             and (r["mv"] is None or r["mv"] >= cfg["mv_min"])
             and (r["lt"] is None or r["lt"] >= cfg["lt_min"])
+            and (r["dp"] is None or r["dp"] >= cfg["dp_min"])
+            and (r["hh"] is None or r["hh"] <= cfg["hh_max"])
+            and (r["sp"] is None or r["sp"] >= cfg["sp_min"])
             and r["ex"] <= cfg["ex_max"]]
     for r in surv:
         r["_s"] = (cfg["w_expr"] * r["r"][0] + cfg["w_pu"] * r["r"][1]
@@ -277,6 +293,9 @@ def build_clip(clip_id, out_root, wb_dir):
     micro_pct, sharp_pct = pct_rank(t["micro"]), pct_rank(t["blur"])
     norm_pct, cs_pct, mv_pct = pct_rank(t["nrm"]), pct_rank(t["cs"]), pct_rank(t["mv"])
     light_pct = np.nanmean(np.vstack([pct_rank(t["lum_eff"]), pct_rank(chroma)]), axis=0)
+    # v0.7 빛-심층·영상: 입체감=|lr|+|tb|(방향성 총량, flat→저값)·거칠기 harsh·선명
+    dp_pct = pct_rank(np.abs(t["light_lr"]) + np.abs(t["light_tb"]))
+    hh_pct = pct_rank(t["light_hh"])
     q3 = np.nanmean(np.vstack([sharp_pct, micro_pct, norm_pct]), axis=0)
     vis2 = np.nanmean(np.vstack([cs_pct, mv_pct]), axis=0)
     R = np.stack([rank01(t["expr"], flip=True), rank01(t["pupil"]), rank01(q3),
@@ -298,6 +317,7 @@ def build_clip(clip_id, out_root, wb_dir):
                      "pu": round(float(t["pupil"][i]), 3) if np.isfinite(t["pupil"][i]) else 0.0,
                      "ex": round(float(t["expr"][i]), 3) if np.isfinite(t["expr"][i]) else 1.0,
                      "cs": num(cs_pct[i], 1), "mv": num(mv_pct[i], 1), "lt": num(light_pct[i], 1),
+                     "dp": num(dp_pct[i], 1), "hh": num(hh_pct[i], 1), "sp": num(sharp_pct[i], 1),
                      "r": [round(float(v), 4) for v in R[i]],
                      "th": (f"thumbs/{clip_id}/f{int(fx[i]):05d}.jpg" if int(fx[i]) in thumb_ok else None)})
     selftest = compute_picks([dict(r) for r in rows], DEFAULT_CFG)
@@ -379,16 +399,23 @@ button:hover{background:#383838}
 <script src="data.js"></script>
 <script>
 const DIALS=[
- ["1단 · 품질 스크린 (결정경계)"],
+ ["1단 · 포즈의 상태"],
  ["sym_max","보이는-정면 sym <",0.3,2.0,0.05],
  ["dev_lo","yaw dev 하한 > (밴드)",-90,89,1],
  ["dev_hi","yaw dev 상한 < (밴드)",-89,90,1],
  ["pt_max","|pitch dev| < (클립상대·99=off)",3,99,1],
+ ["1단 · 표정·얼굴의 상태"],
  ["pu_min","눈동자 pupil >=",0,0.8,0.01],
+ ["ex_max","표정 ex <= (상한)",0.2,1.0,0.05],
+ ["1단 · 빛의 상태 (얼굴면)"],
+ ["lt_min","조도·생동 lt pct >=",0,90,5],
+ ["dp_min","입체감 dp pct >= (방향성)",0,90,5],
+ ["hh_max","거칠기 hh pct <=",10,100,5],
+ ["1단 · 영상의 상태"],
+ ["sp_min","선명 sp pct >=",0,90,5],
+ ["1단 · 왜곡의 상태 (판독성·가림)"],
  ["cs_min","정체성 cs pct >=",0,90,5],
  ["mv_min","입-가시 mv pct >=",0,90,5],
- ["lt_min","조도·생동 lt pct >=",0,90,5],
- ["ex_max","표정 ex <= (상한)",0.2,1.0,0.05],
  ["2단 · 대표성 랭킹 (깃발)"],
  ["w_expr","w 무표정",0,0.6,0.05],
  ["w_pu","w 눈동자",0,0.6,0.05],
@@ -399,31 +426,28 @@ const DIALS=[
  ["gap_min","픽 간 최소 프레임 gap",0,60,2],
 ];
 const DEF={sym_max:0.6,dev_lo:-15,dev_hi:15,pt_max:99,pu_min:0.4,cs_min:0,mv_min:0,lt_min:0,ex_max:1.0,gap_min:12,
+           dp_min:0,hh_max:100,sp_min:0,
            w_expr:0.30,w_pu:0.15,w_q3:0.20,w_vis2:0.15,w_light:0.20};
 let A={...DEF}, Bcfg=null, GT={}, cur=0, sortMode="time", poseOpen=false;
-const STAGES=["정면","pitch","눈동자","cs","입","빛","표정"];
-const SCOL=["#c98a4a","#7fa85c","#d95555","#b070d0","#55aacc","#d8c455","#e08aa8"];
+const STAGES=["포즈","표정·얼굴","빛","영상","왜곡"];   // 상태 5그룹(원장 ⑪ 재편) = 퍼널·타임라인 단위
+const SCOL=["#c98a4a","#e08aa8","#d8c455","#55aacc","#b070d0"];
 const SURV="#69d069";
 
 function firstFail(r,c){
- if(!(r.sy<c.sym_max&&r.dv>c.dev_lo&&r.dv<c.dev_hi))return 0;
- if(!(Math.abs(r.pc)<c.pt_max))return 1;
- if(!(r.pu>=c.pu_min))return 2;
- if(!(r.cs==null||r.cs>=c.cs_min))return 3;
- if(!(r.mv==null||r.mv>=c.mv_min))return 4;
- if(!(r.lt==null||r.lt>=c.lt_min))return 5;
- if(!(r.ex<=c.ex_max))return 6;
+ if(!(r.sy<c.sym_max&&r.dv>c.dev_lo&&r.dv<c.dev_hi&&Math.abs(r.pc)<c.pt_max))return 0;
+ if(!(r.pu>=c.pu_min&&r.ex<=c.ex_max))return 1;
+ if(!((r.lt==null||r.lt>=c.lt_min)&&(r.dp==null||r.dp>=c.dp_min)&&(r.hh==null||r.hh<=c.hh_max)))return 2;
+ if(!(r.sp==null||r.sp>=c.sp_min))return 3;
+ if(!((r.cs==null||r.cs>=c.cs_min)&&(r.mv==null||r.mv>=c.mv_min)))return 4;
  return -1;}
 function pass(r,c){return firstFail(r,c)<0;}
 function funnel(rows,c){
- const s1=rows.filter(r=>r.sy<c.sym_max&&r.dv>c.dev_lo&&r.dv<c.dev_hi);
- const s1p=s1.filter(r=>Math.abs(r.pc)<c.pt_max);
- const s2=s1p.filter(r=>r.pu>=c.pu_min);
- const s3=s2.filter(r=>r.cs==null||r.cs>=c.cs_min);
- const s4=s3.filter(r=>r.mv==null||r.mv>=c.mv_min);
- const s5=s4.filter(r=>r.lt==null||r.lt>=c.lt_min);
- const s6=s5.filter(r=>r.ex<=c.ex_max);
- return [rows.length,s1.length,s1p.length,s2.length,s3.length,s4.length,s5.length,s6.length];}
+ const s1=rows.filter(r=>r.sy<c.sym_max&&r.dv>c.dev_lo&&r.dv<c.dev_hi&&Math.abs(r.pc)<c.pt_max);
+ const s2=s1.filter(r=>r.pu>=c.pu_min&&r.ex<=c.ex_max);
+ const s3=s2.filter(r=>(r.lt==null||r.lt>=c.lt_min)&&(r.dp==null||r.dp>=c.dp_min)&&(r.hh==null||r.hh<=c.hh_max));
+ const s4=s3.filter(r=>r.sp==null||r.sp>=c.sp_min);
+ const s5=s4.filter(r=>(r.cs==null||r.cs>=c.cs_min)&&(r.mv==null||r.mv>=c.mv_min));
+ return [rows.length,s1.length,s2.length,s3.length,s4.length,s5.length];}
 function score(r,c){return c.w_expr*r.r[0]+c.w_pu*r.r[1]+c.w_q3*r.r[2]+c.w_vis2*r.r[3]+c.w_light*r.r[4];}
 function picks(rows,c){
  const sv=rows.filter(r=>pass(r,c));
@@ -580,7 +604,7 @@ function drawTimeline(C,m){
    const r=o.row, ff=firstFail(r,A);
    const st=ff<0?`<span style="color:${SURV}">생존</span>`:`<span style="color:${SCOL[ff]}">${STAGES[ff]}에 걸러짐</span>`;
    tip.innerHTML=(r.th?`<img src="${r.th}" loading="lazy">`:"")+
-    `f${r.f} ${st}${gs}<br>ex${r.ex} pu${r.pu} sy${r.sy} dv${r.dv}<br>pt${r.pt==null?"--":r.pt}(Δ${r.pc}) cs${r.cs==null?"--":r.cs} mv${r.mv==null?"--":r.mv} lt${r.lt==null?"--":r.lt}`;
+    `f${r.f} ${st}${gs}<br>ex${r.ex} pu${r.pu} sy${r.sy} dv${r.dv}<br>pt${r.pt==null?"--":r.pt}(Δ${r.pc}) cs${r.cs==null?"--":r.cs} mv${r.mv==null?"--":r.mv} lt${r.lt==null?"--":r.lt}<br>dp${r.dp==null?"--":r.dp} hh${r.hh==null?"--":r.hh} sp${r.sp==null?"--":r.sp}`;
   }else{
    const g=o.g;
    tip.innerHTML=(g.th?`<img src="${g.th}" loading="lazy">`:"")+
@@ -604,6 +628,9 @@ const HSPEC={
  cs_min:{f:r=>r.cs,dir:"above"},
  mv_min:{f:r=>r.mv,dir:"above"},
  lt_min:{f:r=>r.lt,dir:"above"},
+ dp_min:{f:r=>r.dp,dir:"above"},
+ hh_max:{f:r=>r.hh,dir:"below"},
+ sp_min:{f:r=>r.sp,dir:"above"},
  ex_max:{f:r=>r.ex,dir:"below"},
 };
 function drawDialHists(C,m){
