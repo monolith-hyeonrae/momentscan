@@ -1,4 +1,4 @@
-"""surfaces 가족 — 결과 표면/렌더: report · inspect · viz · label · highlight-lang."""
+"""surfaces 가족 — 결과 표면/렌더: report · inspect · viz · label · workbench · highlight-lang."""
 
 from __future__ import annotations
 
@@ -137,6 +137,13 @@ def _cmd_label(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_workbench(args: argparse.Namespace) -> int:
+    from momentscan.surface.workbench_server import serve_workbench
+
+    serve_workbench(args.out, port=args.port, gt_path=args.gt, jobs=not args.no_jobs)
+    return 0
+
+
 def register(sub, common: argparse.ArgumentParser) -> None:
     from momentscan.surface.recipe_preview import DEFAULT_GAIN
 
@@ -186,6 +193,17 @@ def register(sub, common: argparse.ArgumentParser) -> None:
     pins.add_argument("--source", default=None,
                       help="original video → clean main + crop preview (else detect.mp4 fallback)")
     pins.set_defaults(func=_cmd_inspect)
+
+    pwb = sub.add_parser("workbench", parents=[common],
+                         help="샘플링 워크벤치 — 다이얼 시뮬레이터·클릭 GT·비디오 등록 연구 콘솔 (원장 ⑫)")
+    pwb.add_argument("--out", default="output", help="stash root (코퍼스; GT corpus 라벨로도 도장)")
+    pwb.add_argument("--port", type=int, default=8902,
+                     help="포트 (기본 8902 — server 8080·label 8901 과 분리)")
+    pwb.add_argument("--gt", default=None,
+                     help="GT jsonl 경로 (기본 = 레포 fixtures/eval/workbench_gt.jsonl)")
+    pwb.add_argument("--no-jobs", action="store_true",
+                     help="비디오 등록(JobRunner) 비활성 — 열람/GT 전용")
+    pwb.set_defaults(func=_cmd_workbench)
 
     pl_ = sub.add_parser("label", parents=[common],
                          help="labeling dashboard — sequential verdict UI over eval templates")
