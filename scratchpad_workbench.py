@@ -373,11 +373,14 @@ body{background:#161616;color:#ddd;font:13px/1.45 system-ui,sans-serif;margin:0}
 .ok{color:#7c6} .bad{color:#e66}
 #insp{position:fixed;right:0;top:78px;bottom:0;width:340px;overflow:auto;background:#1b1b1b;
   border-left:1px solid #333;padding:10px 12px;box-sizing:border-box;z-index:8}
-#deck{position:fixed;left:0;right:340px;bottom:0;height:330px;background:#191919;
-  border-top:2px solid #3a3a3a;display:flex;gap:8px;padding:8px 10px;box-sizing:border-box;
+#deck{position:fixed;left:0;right:340px;bottom:0;height:368px;background:#191919;
+  border-top:2px solid #3a3a3a;display:flex;gap:10px;padding:8px 12px;box-sizing:border-box;
   overflow-x:auto;z-index:8}
-.chan{width:172px;min-width:172px;background:#1f1f1f;border:1px solid #333;border-radius:4px;
-  padding:6px 8px;box-sizing:border-box;display:flex;flex-direction:column;overflow-y:auto}
+.chan{flex:1 1 0;min-width:210px;max-width:330px;background:#1f1f1f;border:1px solid #333;
+  border-radius:4px;padding:8px 12px;box-sizing:border-box;display:flex;flex-direction:column;
+  overflow-y:auto}
+.chan .dial{margin:8px 0}
+.chan .dial label{font-size:12.5px}
 .chan.gmuted{opacity:.4}
 .chan .chead{display:flex;align-items:center;gap:5px;font-size:12px;font-weight:600;color:#9ad;
   margin-bottom:4px}
@@ -390,7 +393,7 @@ body{background:#161616;color:#ddd;font:13px/1.45 system-ui,sans-serif;margin:0}
 .vmeter{width:12px;height:88px;background:#141414;border:1px solid #2c2c2c;position:relative}
 .vmeter .fill{position:absolute;bottom:0;left:0;right:0}
 .mlbl{font-size:9px;color:#777;text-align:center}
-#main{margin-left:0;margin-right:340px;margin-bottom:340px;padding:10px 16px}
+#main{margin-left:0;margin-right:340px;margin-bottom:378px;padding:10px 16px}
 .grp{margin:10px 0 4px;color:#9ad;font-weight:600;font-size:12px;text-transform:uppercase;cursor:pointer;
   display:flex;align-items:center;gap:6px}
 .grp .arr{color:#678}
@@ -929,7 +932,7 @@ function dialHTML(k){
   <input type="range" min="${mn}" max="${mx}" step="${stp}" value="${A[k]}"
    oninput="A['${k}']=+this.value;document.getElementById('v_${k}').textContent=this.value;
     if(K2G['${k}']&&STAGES.includes(K2G['${k}']))iMode=K2G['${k}'];render()">`+
-  (HSPEC[k]?`<canvas class="dh" id="h_${k}" width="150" height="24"></canvas>`:``)+`</div>`;}
+  (HSPEC[k]?`<canvas class="dh" id="h_${k}" width="230" height="32" style="width:100%"></canvas>`:``)+`</div>`;}
 function buildPanel(){   // v0.12: 콘솔 데크 — 채널 스트립 가로 배열 + 마스터
  const p=document.getElementById("deck");let h="";
  for(const S of STRIPS){
