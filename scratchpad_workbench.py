@@ -1,7 +1,12 @@
 """샘플링 워크벤치 v0.12 (2026-07-23) — 원장 ⑪⑫ 계기. 참조 구현(콘솔 파리티의 정본).
 
-v0.15 **데크 좌측 이동**(user): 하단 → 좌측 사이드바(384px, 탭→브리지→트리→가로
-페이더 세로 스택 — 세로 슬라이더 CSS 잔재 제거). 본문·검사 패널 배치 불변.
+v0.17 **빛 계기 투명화**(user: "스킨마스크 범위와 32×32 맵을 보고 싶다"): 검사 뷰
+빛 모드에 ①skin 마스크 재현 오버레이(전 행 — 앵커 20·타원 hull 36·눈꼬리 2 좌표
+선적, hull 클립+가우시안 σ=0.16 IOD) ②32×32 광량 맵 재현(bbox 크롭→그레이→5탭
+블러, 픽셀 확대)+**lr/tb 즉석 재계산 vs 저장값 대조**(재현-일치 검증) ③lt 성분 분해
+(휘도 pct+색량 pct, v0.16.1). 재현=224px 썸네일 근사 — 큰 어긋남만 의미.
+v0.16 타임라인 sticky+결과/풀 박스 분리 · v0.15 **데크 좌측 이동**(user): 하단 →
+좌측 사이드바(384px, 탭→브리지→트리→가로 페이더 세로 스택). 본문·검사 패널 배치 불변.
 v0.14 채널 탭 내 **트리 구조**: 세부 채널 타이틀(1열·가지선)+다이얼, 밴드=한 세부
 채널에 2다이얼(yaw 하한/상한·ex 밴드).
 v0.13 **채널 탭 데크 + 미터 브리지 + 접이식 검사 패널**(user: "가로 스트립=조잡, 탭
@@ -64,6 +69,27 @@ FRONTAL_DEG = RACE.camera.frontal_deg
 CLIPS = ("test_3", "test_12", "dual_2", "test_4", "test_0", "international_1")
 THUMB = 224     # 저장 원치수 — 픽 행은 원치수, 풀은 112 축소 표시+호버 확대
 EDGES = [[c.start, c.end] for c in (*_FLC.FACE_LANDMARKS_CONTOURS, *_FLC.FACE_LANDMARKS_NOSE)]
+
+# 검사 뷰(빛) — skin 마스크 재현용: parse._quality와 동일 상수
+SKIN_ANCHORS = (9, 107, 336, 151, 67, 297, 50, 280, 205, 425, 116, 345, 123, 352,
+                152, 175, 200, 6, 197, 195)
+EYE_CORNERS = (33, 263)
+
+
+def _oval_order():
+    """FACE_OVAL 연결쌍을 체인 순서로 — hull 폴리곤 경로용."""
+    conns = {c.start: c.end for c in _FLC.FACE_LANDMARKS_FACE_OVAL}
+    start = next(iter(conns))
+    seq = [start]
+    while len(seq) <= len(conns):
+        nxt = conns.get(seq[-1])
+        if nxt is None or nxt == start:
+            break
+        seq.append(nxt)
+    return seq
+
+
+OVAL_ORDER = _oval_order()
 
 # 기본 설정 — JS DEF와 문자 그대로 동일해야 함 (셀프테스트 = JS≡python 가드)
 DEFAULT_CFG = {"sym_max": 0.6, "dev_lo": -15.0, "dev_hi": 15.0, "pt_max": 99.0, "pu_min": 0.4,
@@ -319,6 +345,21 @@ def build_clip(clip_id, out_root, wb_dir):
 
     pt = t["pitch"]
     pt_med = float(np.nanmedian(pt)) if np.isfinite(pt).any() else 0.0
+
+    def _pts(i, idxs):
+        return [[round(float(P[i, j, 0]), 3), round(float(P[i, j, 1]), 3)] for j in idxs]
+
+    def _bb(i):
+        b = t["det_bbox"].get(int(fx[i]))
+        if b is None:
+            return None
+        cbv = cb[i]
+        w, hgt = max(cbv[2] - cbv[0], 1e-6), max(cbv[3] - cbv[1], 1e-6)
+        return [round(max(0.0, min(1.0, (b[0] - cbv[0]) / w)), 3),
+                round(max(0.0, min(1.0, (b[1] - cbv[1]) / hgt)), 3),
+                round(max(0.0, min(1.0, (b[2] - cbv[0]) / w)), 3),
+                round(max(0.0, min(1.0, (b[3] - cbv[1]) / hgt)), 3)]
+
     rows = []
     for i in range(n):
         sh_i = t["SH"][i]
@@ -336,6 +377,9 @@ def build_clip(clip_id, out_root, wb_dir):
                      "lm": num(lum_pct[i], 1), "ch": num(ch_pct[i], 1),
                      "dp": num(dp_pct[i], 1), "hh": num(hh_pct[i], 1), "sp": num(sharp_pct[i], 1),
                      "r": [round(float(v), 4) for v in R[i]],
+                     "sk": {"a": _pts(i, SKIN_ANCHORS), "o": _pts(i, OVAL_ORDER),
+                            "e": _pts(i, EYE_CORNERS)},
+                     "bb": _bb(i),
                      "th": (f"thumbs/{clip_id}/f{int(fx[i]):05d}.jpg" if int(fx[i]) in thumb_ok else None)})
     selftest = compute_picks([dict(r) for r in rows], DEFAULT_CFG)
 
@@ -817,6 +861,64 @@ function drawTimeline(C,m){
 }
 
 // ── 검사 패널(v0.10): 활성 상태의 분석 시각화 ─────────────────────────
+function drawMask(r){   // v0.17: skin 마스크 재현 — hull 클립 + 20앵커 가우시안(σ=0.16 IOD)
+ const cv=document.getElementById("mkc");
+ if(!cv||!r.sk||!r.th)return;
+ const ctx=cv.getContext("2d"), img=new Image();
+ img.onload=()=>{
+  ctx.drawImage(img,0,0,224,224);
+  const o=r.sk.o.map(p=>[p[0]*224,p[1]*224]);
+  const path=()=>{ctx.beginPath();ctx.moveTo(o[0][0],o[0][1]);
+   for(const p of o.slice(1))ctx.lineTo(p[0],p[1]);ctx.closePath();};
+  const iod=Math.hypot((r.sk.e[0][0]-r.sk.e[1][0])*224,(r.sk.e[0][1]-r.sk.e[1][1])*224);
+  const sig=Math.max(0.16*iod,2);
+  ctx.save();path();ctx.clip();
+  ctx.globalCompositeOperation="lighter";
+  for(const a of r.sk.a){
+   const g=ctx.createRadialGradient(a[0]*224,a[1]*224,0,a[0]*224,a[1]*224,2.5*sig);
+   g.addColorStop(0,"rgba(60,255,120,0.30)");g.addColorStop(1,"rgba(60,255,120,0)");
+   ctx.fillStyle=g;ctx.fillRect(0,0,224,224);}
+  ctx.restore();
+  ctx.strokeStyle="rgba(120,220,140,0.85)";ctx.lineWidth=1;path();ctx.stroke();
+ };
+ img.src=r.th;}
+function drawLmap(r){   // v0.17: 32×32 광량 맵 재현(bbox 크롭→그레이→5탭 블러) + lr/tb 재계산 대조
+ const cv=document.getElementById("dmc");
+ if(!cv||!r.th)return;
+ const ctx=cv.getContext("2d"), img=new Image();
+ img.onload=()=>{
+  const bb=r.bb||[0,0,1,1];
+  const t=document.createElement("canvas");t.width=32;t.height=32;
+  const tc=t.getContext("2d");
+  tc.drawImage(img,bb[0]*224,bb[1]*224,Math.max((bb[2]-bb[0])*224,1),Math.max((bb[3]-bb[1])*224,1),0,0,32,32);
+  const id=tc.getImageData(0,0,32,32), d=id.data;
+  let g=new Float32Array(1024);
+  for(let i=0;i<1024;i++)g[i]=0.299*d[i*4]+0.587*d[i*4+1]+0.114*d[i*4+2];
+  const K=[1,4,6,4,1];
+  const blur=(src,horiz)=>{const out=new Float32Array(1024);
+   for(let y=0;y<32;y++)for(let x=0;x<32;x++){let s=0,w=0;
+    for(let k=-2;k<=2;k++){const xx=horiz?x+k:x, yy=horiz?y:y+k;
+     if(xx<0||xx>31||yy<0||yy>31)continue;
+     s+=K[k+2]*src[yy*32+xx];w+=K[k+2];}
+    out[y*32+x]=s/w;}
+   return out;};
+  g=blur(blur(g,true),false);
+  let L=0,R=0,T=0,B=0;
+  for(let y=0;y<32;y++)for(let x=0;x<32;x++){const v=g[y*32+x];
+   if(x<16)L+=v;else R+=v;if(y<16)T+=v;else B+=v;}
+  const lr=((L-R)/(L+R+1e-6)).toFixed(3), tb=((T-B)/(T+B+1e-6)).toFixed(3);
+  for(let i=0;i<1024;i++){const v=Math.round(g[i]);
+   d[i*4]=v;d[i*4+1]=v;d[i*4+2]=v;d[i*4+3]=255;}
+  tc.putImageData(id,0,0);
+  ctx.imageSmoothingEnabled=false;
+  ctx.clearRect(0,0,128,128);
+  ctx.drawImage(t,0,0,128,128);
+  ctx.strokeStyle="rgba(216,196,85,0.5)";
+  ctx.beginPath();ctx.moveTo(64,0);ctx.lineTo(64,128);ctx.moveTo(0,64);ctx.lineTo(128,64);ctx.stroke();
+  const lv=document.getElementById("lmv");
+  if(lv)lv.textContent=`재현 lr ${lr} tb ${tb} (저장 ${r.lr??"--"} / ${r.tb??"--"})`;
+ };
+ img.src=r.th;}
 function shEval(sh,x,y,z){
  return sh[0]*0.2821+sh[1]*0.4886*y+sh[2]*0.4886*z+sh[3]*0.4886*x
   +sh[4]*1.0925*x*y+sh[5]*1.0925*y*z+sh[6]*0.3154*(3*z*z-1)
@@ -839,7 +941,13 @@ function renderInsp(C,m){
     <div class="note">pupil ${r.pu} · ex(비 eyeLook 최대) ${r.ex}</div>`
    :`<div class="note">blendshape 상세는 픽 프레임 한정. pupil ${r.pu} · ex ${r.ex}</div>`;
  }else if(iMode=="빛"){
-  body=`<div style="display:flex;gap:10px;align-items:flex-start">
+  body=`<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-start">
+    <div><canvas id="mkc" width="224" height="224" style="border:1px solid #444"></canvas>
+     <div class="note" style="text-align:center">skin 마스크 (초록=가중, 선=타원 hull)</div></div>
+    <div><canvas id="dmc" width="128" height="128" style="border:1px solid #444"></canvas>
+     <div class="note" style="text-align:center">32×32 광량 맵 (bbox)<br><span id="lmv" style="color:#d8c455"></span></div></div>
+   </div>
+   <div style="display:flex;gap:10px;align-items:flex-start;margin-top:8px">
     <div><canvas id="shc" width="96" height="96" style="border:1px solid #444"></canvas>
      <div class="note" style="text-align:center">SH 조명 구면</div></div>
     <div><canvas id="lrc" width="96" height="96" style="border:1px solid #444"></canvas>
@@ -872,7 +980,11 @@ function renderInsp(C,m){
     for(const [a,b] of WB.edges){const p=pv.lm[a],q=pv.lm[b];
      ctx.beginPath();ctx.moveTo(p[0]*300,p[1]*300);ctx.lineTo(q[0]*300,q[1]*300);ctx.stroke();}}};
   if(r.th)img.src=r.th;
- }else if(iMode=="빛"&&r.sh){
+ }else if(iMode=="빛"){
+  drawMask(r);
+  drawLmap(r);
+ }
+ if(iMode=="빛"&&r.sh){
   const cv=document.getElementById("shc"), ctx=cv.getContext("2d");
   const im=ctx.createImageData(96,96);
   let lo=1e9,hi=-1e9;const vals=new Float32Array(96*96).fill(NaN);
@@ -893,7 +1005,8 @@ function renderInsp(C,m){
    c2.strokeStyle="#d8c455";c2.lineWidth=2;c2.beginPath();c2.moveTo(48,48);
    c2.lineTo(48+r.lr*40,48-r.tb*40);c2.stroke();
    c2.fillStyle="#d8c455";c2.beginPath();c2.arc(48+r.lr*40,48-r.tb*40,3,0,7);c2.fill();}
- }else if(iMode=="왜곡"){
+ }
+ if(iMode=="왜곡"){
   const cv=document.getElementById("csc"), ctx=cv.getContext("2d");
   ctx.fillStyle="#141414";ctx.fillRect(0,0,300,80);
   const X=f=>4+f/Math.max(C.vf-1,1)*292;
