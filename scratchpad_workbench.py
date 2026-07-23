@@ -1,5 +1,10 @@
 """샘플링 워크벤치 v0.12 (2026-07-23) — 원장 ⑪⑫ 계기. 참조 구현(콘솔 파리티의 정본).
 
+v0.19.1 **확산-클립 배지**(user 관찰 "test_4만 존 효과 큼 = 유달리 강한 태양"): 존 반응
+지도 실측 — test_4(lf 1.0) 렘A 18·버플 31 / international_1 버플 20(존이 다를 뿐 유효)
+/ test_3 전존 0(렘브란트 부재의 정직 보고) / test_0(lf 0.27) 렘A 4=포즈-편향 누수.
+azR(방위 응집도)은 배지 부적격(test_4 0.25=정당 다양 vs test_0 0.74=가짜 응집) →
+헤더에 lf<0.35 ⚠확산 배지 + 존 행 캐비어트. 존 경계·lf 문턱 봉인=2층.
 v0.19 **정준(얼굴-좌표) 광방향**(user "빛 계속 고도화", 1층 DPR 합격 후속): DPR SH를
 canonicalize와 동일 수학으로 얼굴 좌표에 회전 — L_cam=(sh3,sh2,−sh1)→Rᵀ·L(R=T[:3,:3]).
 새 계기 la(방위 0=정면 +=피사체좌 ±180=후방)·le(고도 +=위)·ldr(|SH₁|/DC)·ld(pct).
@@ -771,7 +776,7 @@ function render(){
        gAbs=C.absent.reduce((a,r)=>a+r[1]-r[0]+1,0);
  let h=`<div id="sticky"><div id="tabs">${tabs}</div><b>${C.clip}</b> t${C.tid} <span class="note">비디오 ${C.vf}f = 측정 ${C.n}`+
   (gInv?` + 무효 ${gInv}`:"")+(gDet?` + 미측정 ${gDet}`:"")+(gFrag?` + 파편 ${gFrag}`:"")+(gAbs?` + 무검출 ${gAbs}`:"")+
-  ` · <b>빛 판별력 lf=${C.lf==null?"?":C.lf}</b>${ATT?` <span style="color:#fc6">(감쇠: w_light ${A.w_light}→${(A.w_light*(C.lf==null?1:C.lf)).toFixed(2)})</span>`:""}`+
+  ` · <b>빛 판별력 lf=${C.lf==null?"?":C.lf}</b>${C.lf!=null&&C.lf<0.35?` <span style="color:#e88"><b>⚠확산 클립 — 방위·존 판독 금지(포즈-편향)</b></span>`:""}${ATT?` <span style="color:#fc6">(감쇠: w_light ${A.w_light}→${(A.w_light*(C.lf==null?1:C.lf)).toFixed(2)})</span>`:""}`+
   (anyMute()?` · <span style="color:#e06666"><b>${STAGES.filter(s=>!MUTE[s]).length==1?"SOLO: "+STAGES.find(s=>!MUTE[s]):"MUTE: "+STAGES.filter(s=>MUTE[s]).join(", ")}</b></span>`:"")+
   ` · 풀 정렬:</span>
   <button onclick="sortMode=sortMode=='time'?'score':'time';render()">${sortMode=='time'?'시간순':'점수순'}</button>
@@ -1248,7 +1253,8 @@ function buildPanel(){   // v0.13: 채널 탭 데크 + 미터 브리지
    S.subs.map(sub=>`<div class="subch"><div class="subttl">${sub.t}</div>`+
     (sub.zones?`<div style="margin:2px 0 5px">`+[["remA","렘브란트 az+"],["remB","렘브란트 az−"],
       ["bfly","버터플라이"],["zoff","존 해제"]].map(([z,l])=>
-      `<button onclick="setZone('${z}')" style="font-size:10px;background:#333;color:#d8c455;border:1px solid #555;border-radius:3px;margin-right:4px;cursor:pointer;padding:1px 6px">${l}</button>`).join("")+`</div>`:"")+
+      `<button onclick="setZone('${z}')" style="font-size:10px;background:#333;color:#d8c455;border:1px solid #555;border-radius:3px;margin-right:4px;cursor:pointer;padding:1px 6px">${l}</button>`).join("")+
+      `<div style="font-size:10px;color:#987;margin-top:2px">존=방향성 클립 전용 — 헤더 lf·⚠확산 배지 확인</div></div>`:"")+
     sub.dials.map(dialHTML).join("")+`</div>`).join("")+`</div><div class="fblock">`+
    (S.fader?`<div class="fader"><span class="mlbl">가중 페이더</span>
      <input type="range" min="0" max="0.8" step="0.05" value="${A[S.fader]}"
