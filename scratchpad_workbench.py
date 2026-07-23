@@ -413,6 +413,10 @@ body.inspc #inspToggle{right:0}
 body.inspc #insp{display:none}
 body.inspc #main{margin-right:30px}
 #main{margin-left:384px;margin-right:340px;margin-bottom:20px;padding:10px 16px}
+#sticky{position:sticky;top:78px;background:#161616;z-index:5;padding:4px 0 6px;
+  border-bottom:1px solid #2c2c2c}
+.box{border:1px solid #2a2a2a;border-radius:6px;padding:10px 14px;margin:14px 0;background:#191919}
+.box .boxttl{font-size:12px;font-weight:600;color:#9ad;margin-bottom:6px}
 .grp{margin:10px 0 4px;color:#9ad;font-weight:600;font-size:12px;text-transform:uppercase;cursor:pointer;
   display:flex;align-items:center;gap:6px}
 .grp .arr{color:#678}
@@ -629,7 +633,7 @@ function render(){
  const gInv=C.ghost.filter(g=>g.k=="inv").length, gDet=C.ghost.filter(g=>g.k=="det").length,
        gFrag=C.ghost.filter(g=>g.k=="frag").length,
        gAbs=C.absent.reduce((a,r)=>a+r[1]-r[0]+1,0);
- let h=`<div id="tabs">${tabs}</div><b>${C.clip}</b> t${C.tid} <span class="note">비디오 ${C.vf}f = 측정 ${C.n}`+
+ let h=`<div id="sticky"><div id="tabs">${tabs}</div><b>${C.clip}</b> t${C.tid} <span class="note">비디오 ${C.vf}f = 측정 ${C.n}`+
   (gInv?` + 무효 ${gInv}`:"")+(gDet?` + 미측정 ${gDet}`:"")+(gFrag?` + 파편 ${gFrag}`:"")+(gAbs?` + 무검출 ${gAbs}`:"")+
   ` · <b>빛 판별력 lf=${C.lf==null?"?":C.lf}</b>${ATT?` <span style="color:#fc6">(감쇠: w_light ${A.w_light}→${(A.w_light*(C.lf==null?1:C.lf)).toFixed(2)})</span>`:""}`+
   (anyMute()?` · <span style="color:#e06666"><b>${STAGES.filter(s=>!MUTE[s]).length==1?"SOLO: "+STAGES.find(s=>!MUTE[s]):"MUTE: "+STAGES.filter(s=>MUTE[s]).join(", ")}</b></span>`:"")+
@@ -638,8 +642,8 @@ function render(){
   <button onclick="poseOpen=!poseOpen;render()">포즈 눈금 ${poseOpen?'닫기':'보기'}</button>
   <label style="font-size:12px;color:#bbb;margin-left:6px"><input type="checkbox" ${ATT?"checked":""}
    onchange="ATT=this.checked;render()"> 빛 분산-감쇠(시험)</label>`;
- h+=funnelHTML(m.fn);
- h+=`<div id="tl"><canvas id="tlc" width="1000" height="44"></canvas><div id="tlTip"></div></div>`+legendHTML();
+ h+=`<div id="tl"><canvas id="tlc" width="1000" height="44"></canvas><div id="tlTip"></div></div>`+legendHTML()+`</div>`;
+ h+=`<div class="box"><div class="boxttl">결과 — 퍼널·픽</div>`+funnelHTML(m.fn);
  if(poseOpen){
   const wt=C.rows.filter(r=>r.th);
   const samp=a=>{if(a.length<=8)return a;const o=[];for(let i=0;i<8;i++)o.push(a[Math.round(i*(a.length-1)/7)]);return [...new Set(o)];};
@@ -663,12 +667,13 @@ function render(){
   h+=`<div class="rowlbl">믹스 픽 (뮤트 해제 기준 — 주황 외곽=현재 solo/뮤트 픽과 불일치)</div><div class="strip big">`+
    pRef.map(f=>byf[f]?cellHTML(C.clip,byf[f],(setA.has(f)?"":"diff ")+"pickB"):"").join("")+`</div>`;
  }
+ h+=`</div>`;   // 결과 박스 닫기
  const sv=C.rows.filter(r=>pass(r,A));
  sv.forEach(r=>r._s=score(r,A,C.lf));
  const ordered=sortMode=="time"?sv.slice().sort((a,b)=>a.f-b.f):sv.slice().sort((a,b)=>b._s-a._s);
  const show=ordered.slice(0,400);
- h+=`<div class="rowlbl">생존 풀 (A, ${sv.length}행 중 ${show.length} 표시 · ${sortMode=='time'?'시간순':'점수순'})</div>
-  <div class="strip sm">`+show.map(r=>cellHTML(C.clip,r,"")).join("")+`</div>`;
+ h+=`<div class="box"><div class="boxttl">생존 풀 (A, ${sv.length}행 중 ${show.length} 표시 · ${sortMode=='time'?'시간순':'점수순'})</div>
+  <div class="strip sm">`+show.map(r=>cellHTML(C.clip,r,"")).join("")+`</div></div>`;
  document.getElementById("main").innerHTML=h;
  drawTimeline(C,m);
  drawDialHists(C,m);
