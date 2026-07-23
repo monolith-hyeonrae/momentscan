@@ -1,5 +1,11 @@
 """샘플링 워크벤치 v0.12 (2026-07-23) — 원장 ⑪⑫ 계기. 참조 구현(콘솔 파리티의 정본).
 
+v0.19.2 **raw 성분 병기**(user 판독 "international_1 버플 생존이 조명과 거리 멂" 해부):
+①존은 정답(f51~65 초반 좋은 빛)을 잡았으나 sym(웃음 비대칭 0.63~0.81)·pupil(눈웃음
+0.32~0.38) 기본 게이트가 전멸시켜 그늘 프레임만 노출 ②그늘(f479·647~657)이 존을 통과
+한 건 방향이 실제 상방(하늘광)이기 때문 — 가를 것은 직사광 vs 그늘=절대 채도·휘도인데
+전 계기가 풀-상대 pct라 포화(ch 91.6 vs 92.1). 처방=rows에 lmr(raw 휘도)/chr(raw 색량)
+병기+검사 뷰 표기. 존 raw-floor 다이얼은 2층.
 v0.19.1 **확산-클립 배지**(user 관찰 "test_4만 존 효과 큼 = 유달리 강한 태양"): 존 반응
 지도 실측 — test_4(lf 1.0) 렘A 18·버플 31 / international_1 버플 20(존이 다를 뿐 유효)
 / test_3 전존 0(렘브란트 부재의 정직 보고) / test_0(lf 0.27) 렘A 4=포즈-편향 누수.
@@ -456,6 +462,7 @@ def build_clip(clip_id, out_root, wb_dir):
                      "lm": num(lum_pct[i], 1), "ch": num(ch_pct[i], 1),
                      "dp": num(dp_pct[i], 1), "hh": num(hh_pct[i], 1), "sp": num(sharp_pct[i], 1),
                      "pa": num(pat_pct[i], 1), "par": num(pat[i], 3),
+                     "lmr": num(t["lum_eff"][i], 1), "chr": num(chroma[i], 1),
                      "la": num(la_deg[i], 0), "le": num(le_deg[i], 0),
                      "ldr": num(ldr_raw[i], 2), "ld": num(ld_pct[i], 1),
                      "rm": ([round(float(v), 3) for v in R3[i].ravel()]
@@ -1057,7 +1064,7 @@ function renderInsp(C,m){
      <div class="note" style="text-align:center">lr/tb 화살=빛 쪽</div></div>
     <div><canvas id="fsc" width="96" height="96" style="border:1px solid #444"></canvas>
      <div class="note" style="text-align:center">얼굴-좌표 구면 ●=광방향</div></div></div>
-   <div class="note"><b>lt ${r.lt==null?"--":r.lt}% = (휘도 ${r.lm==null?"--":r.lm}% + 색량 ${r.ch==null?"--":r.ch}%)/2</b><br>
+   <div class="note"><b>lt ${r.lt==null?"--":r.lt}% = (휘도 ${r.lm==null?"--":r.lm}% + 색량 ${r.ch==null?"--":r.ch}%)/2</b> · raw 휘도 ${r.lmr==null?"--":r.lmr} / 색량 ${r.chr==null?"--":r.chr} <span style="color:#987">(pct 포화 대조용)</span><br>
     <b>패턴 pa ${r.pa==null?"--":r.pa}%</b> (볼빛−턱그늘 raw ${r.par==null?"--":r.par}) · 입체감 dp ${r.dp==null?"--":r.dp}% · 거칠기 hh ${r.hh==null?"--":r.hh}%<br>
     <b>정준 az ${r.la==null?"--":r.la}° · el ${r.le==null?"--":r.le}°</b> (0=정면 +=피사체좌/위) · 방향성 ldr ${r.ldr==null?"--":r.ldr}, ld ${r.ld==null?"--":r.ld}%${r.ldr!=null&&r.ldr<0.25?' <span style="color:#e88">⚠확산—방위 신뢰불가</span>':""}<br>
     lr ${r.lr==null?"--":r.lr} · tb ${r.tb==null?"--":r.tb} · 클립 판별력 lf=${C.lf}<br>
