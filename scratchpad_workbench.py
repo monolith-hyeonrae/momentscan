@@ -1,5 +1,11 @@
 """샘플링 워크벤치 v0.12 (2026-07-23) — 원장 ⑪⑫ 계기. 참조 구현(콘솔 파리티의 정본).
 
+v0.18 **패턴 축(볼빛−턱그늘)**(user 2026-07-23 "빛이 들어오는 부위별 차등 — 볼 삼각형
+=밝게·턱 후방 경계=그늘"): pattern=(볼 8점 가중휘도 − 턱후방 6점 가중휘도)/얼굴평균
+— 프레임-내 스킨-영역 대비+정규화로 albedo 대체 소거(사진 조명 문법: 렘브란트/루프
+계열; dp[방향 존재량]의 영역-해상 진화형; SH-시그니처 매칭은 SH 검증 후 2안). 풀-내
+pct, 빛 채널 4번째 세부(pa_min 기본 off=셀프테스트 불변). 마스크 오버레이에 영역
+마커(볼=청록·턱=주황) — 영역 인덱스 자가 검증.
 v0.17 **빛 계기 투명화**(user: "스킨마스크 범위와 32×32 맵을 보고 싶다"): 검사 뷰
 빛 모드에 ①skin 마스크 재현 오버레이(전 행 — 앵커 20·타원 hull 36·눈꼬리 2 좌표
 선적, hull 클립+가우시안 σ=0.16 IOD) ②32×32 광량 맵 재현(bbox 크롭→그레이→5탭
@@ -74,6 +80,9 @@ EDGES = [[c.start, c.end] for c in (*_FLC.FACE_LANDMARKS_CONTOURS, *_FLC.FACE_LA
 SKIN_ANCHORS = (9, 107, 336, 151, 67, 297, 50, 280, 205, 425, 116, 345, 123, 352,
                 152, 175, 200, 6, 197, 195)
 EYE_CORNERS = (33, 263)
+# v0.18 패턴 축(user 2026-07-23: 볼빛−턱그늘) — 영역 정의(오버레이로 자가 검증)
+CHEEK_PTS = (50, 205, 116, 123, 280, 425, 345, 352)     # 눈아래 볼 삼각형(양측)
+JAW_PTS = (132, 58, 172, 361, 288, 397)                 # 턱 후방 경계(하악각 부근, 양측)
 
 
 def _oval_order():
@@ -94,7 +103,7 @@ OVAL_ORDER = _oval_order()
 # 기본 설정 — JS DEF와 문자 그대로 동일해야 함 (셀프테스트 = JS≡python 가드)
 DEFAULT_CFG = {"sym_max": 0.6, "dev_lo": -15.0, "dev_hi": 15.0, "pt_max": 99.0, "pu_min": 0.4,
                "cs_min": 0.0, "mv_min": 0.0, "lt_min": 0.0, "ex_min": 0.0, "ex_max": 1.0,
-               "gap_min": 12, "dp_min": 0.0, "hh_max": 100.0, "sp_min": 0.0,
+               "gap_min": 12, "dp_min": 0.0, "hh_max": 100.0, "sp_min": 0.0, "pa_min": 0.0,
                "w_face": 0.45, "w_light": 0.20, "w_image": 0.15, "w_distort": 0.20}
 
 
@@ -225,6 +234,7 @@ def compute_picks(rows, cfg):
             and (r["mv"] is None or r["mv"] >= cfg["mv_min"])
             and (r["lt"] is None or r["lt"] >= cfg["lt_min"])
             and (r["dp"] is None or r["dp"] >= cfg["dp_min"])
+            and (r["pa"] is None or r["pa"] >= cfg["pa_min"])
             and (r["hh"] is None or r["hh"] <= cfg["hh_max"])
             and (r["sp"] is None or r["sp"] >= cfg["sp_min"])
             and cfg["ex_min"] <= r["ex"] <= cfg["ex_max"]]
@@ -269,7 +279,22 @@ def build_clip(clip_id, out_root, wb_dir):
         cx, cy, s = (x1 + x2) / 2, (y1 + y2) / 2, max(x2 - x1, y2 - y1) * pad / 2
         return max(0, int(cx - s)), max(0, int(cy - s)), min(W0, int(cx + s)), min(H0, int(cy + s))
 
+    def _region_lum(gray, p, idxs, sig):
+        """영역 가중 휘도 — 지정 랜드마크들의 가우시안 가중 평균 (마스크와 동일 기법)."""
+        h2, w2 = gray.shape
+        yy, xx = np.mgrid[0:h2, 0:w2]
+        wgt = np.zeros((h2, w2), np.float32)
+        for j in idxs:
+            ax, ay = p[j]
+            wgt += np.exp(-((xx - ax) ** 2 + (yy - ay) ** 2) / (2.0 * sig * sig))
+        m = wgt.ravel() > 1e-3
+        if m.sum() < 20:
+            return np.nan
+        wf, vf_ = wgt.ravel()[m], gray.ravel()[m]
+        return float((vf_ * wf).sum() / wf.sum())
+
     chroma = np.full(n, np.nan)
+    pat = np.full(n, np.nan)     # v0.18 패턴: (볼빛 − 턱그늘)/얼굴평균
     tdir = wb_dir / "thumbs" / clip_id
     tdir.mkdir(parents=True, exist_ok=True)
     thumb_ok = set()
@@ -290,6 +315,17 @@ def build_clip(clip_id, out_root, wb_dir):
             r = skin_sv(frm, pts, cbv)
             if r is not None:
                 chroma[i] = r[3]
+                x1c, y1c = max(0, int(cbv[0])), max(0, int(cbv[1]))
+                x2c, y2c = min(W0, int(cbv[2])), min(H0, int(cbv[3]))
+                if x2c - x1c > 8 and y2c - y1c > 8:
+                    sub_g = cv2.cvtColor(frm[y1c:y2c, x1c:x2c], cv2.COLOR_BGR2GRAY).astype(np.float32)
+                    p_sub = pts - np.array([x1c, y1c], np.float64)
+                    iod = np.linalg.norm(p_sub[33] - p_sub[263]) + 1e-6
+                    sig = 0.16 * iod
+                    cl = _region_lum(sub_g, p_sub, CHEEK_PTS, sig)
+                    jl = _region_lum(sub_g, p_sub, JAW_PTS, sig * 0.7)
+                    if np.isfinite(cl) and np.isfinite(jl) and r[2] > 1:
+                        pat[i] = (cl - jl) / (r[2] + 1e-6)   # r[2]=v_mean(얼굴 평균 명도)
             box = tuple(cbv)
         elif fidx in ghost_thumb:
             k = ghost_kind[fidx]
@@ -325,6 +361,7 @@ def build_clip(clip_id, out_root, wb_dir):
     norm_pct, cs_pct, mv_pct = pct_rank(t["nrm"]), pct_rank(t["cs"]), pct_rank(t["mv"])
     lum_pct, ch_pct = pct_rank(t["lum_eff"]), pct_rank(chroma)   # lt 성분 분해(1층 판독용)
     light_pct = np.nanmean(np.vstack([lum_pct, ch_pct]), axis=0)
+    pat_pct = pct_rank(pat)                                       # v0.18 패턴(볼빛−턱그늘)
     dp_pct = pct_rank(np.abs(t["light_lr"]) + np.abs(t["light_tb"]))
     hh_pct = pct_rank(t["light_hh"])
 
@@ -376,9 +413,11 @@ def build_clip(clip_id, out_root, wb_dir):
                      "cs": num(cs_pct[i], 1), "mv": num(mv_pct[i], 1), "lt": num(light_pct[i], 1),
                      "lm": num(lum_pct[i], 1), "ch": num(ch_pct[i], 1),
                      "dp": num(dp_pct[i], 1), "hh": num(hh_pct[i], 1), "sp": num(sharp_pct[i], 1),
+                     "pa": num(pat_pct[i], 1), "par": num(pat[i], 3),
                      "r": [round(float(v), 4) for v in R[i]],
                      "sk": {"a": _pts(i, SKIN_ANCHORS), "o": _pts(i, OVAL_ORDER),
-                            "e": _pts(i, EYE_CORNERS)},
+                            "e": _pts(i, EYE_CORNERS), "c": _pts(i, CHEEK_PTS),
+                            "j": _pts(i, JAW_PTS)},
                      "bb": _bb(i),
                      "th": (f"thumbs/{clip_id}/f{int(fx[i]):05d}.jpg" if int(fx[i]) in thumb_ok else None)})
     selftest = compute_picks([dict(r) for r in rows], DEFAULT_CFG)
@@ -554,6 +593,7 @@ const DIALS=[
  ["ex_max","표정 ex 상한 <= (밴드)",0.2,1.0,0.05],
  ["빛"],
  ["lt_min","조도·생동 lt pct >=",0,90,5],
+ ["pa_min","패턴 pa pct >= (볼빛−턱그늘)",0,90,5],
  ["dp_min","입체감 dp pct >= (방향성)",0,90,5],
  ["hh_max","거칠기 hh pct <=",10,100,5],
  ["영상"],
@@ -569,7 +609,7 @@ const DIALS=[
  ["gap_min","픽 간 최소 프레임 gap",0,60,2],
 ];
 const DEF={sym_max:0.6,dev_lo:-15,dev_hi:15,pt_max:99,pu_min:0.4,cs_min:0,mv_min:0,lt_min:0,
-           ex_min:0,ex_max:1.0,gap_min:12,dp_min:0,hh_max:100,sp_min:0,
+           ex_min:0,ex_max:1.0,gap_min:12,dp_min:0,hh_max:100,sp_min:0,pa_min:0,
            w_face:0.45,w_light:0.20,w_image:0.15,w_distort:0.20};
 let A={...DEF}, Bcfg=null, GT={}, cur=0, sortMode="time", poseOpen=false, ATT=false;
 let selF=null, iMode="포즈", collapsed={};
@@ -595,7 +635,7 @@ const K2G={sym_max:"포즈",dev_lo:"포즈",dev_hi:"포즈",pt_max:"포즈",
 function gPass(r,c,g){   // 채널별 하드 게이트 (v0.11: mute=게이트 해제)
  if(g==0)return r.sy<c.sym_max&&r.dv>c.dev_lo&&r.dv<c.dev_hi&&Math.abs(r.pc)<c.pt_max;
  if(g==1)return r.pu>=c.pu_min&&r.ex>=c.ex_min&&r.ex<=c.ex_max;
- if(g==2)return (r.lt==null||r.lt>=c.lt_min)&&(r.dp==null||r.dp>=c.dp_min)&&(r.hh==null||r.hh<=c.hh_max);
+ if(g==2)return (r.lt==null||r.lt>=c.lt_min)&&(r.pa==null||r.pa>=c.pa_min)&&(r.dp==null||r.dp>=c.dp_min)&&(r.hh==null||r.hh<=c.hh_max);
  if(g==3)return r.sp==null||r.sp>=c.sp_min;
  return (r.cs==null||r.cs>=c.cs_min)&&(r.mv==null||r.mv>=c.mv_min);}
 function firstFail(r,c,M){
@@ -749,6 +789,7 @@ const HSPEC={
  cs_min:{f:r=>r.cs,dir:"above"},
  mv_min:{f:r=>r.mv,dir:"above"},
  lt_min:{f:r=>r.lt,dir:"above"},
+ pa_min:{f:r=>r.pa,dir:"above"},
  dp_min:{f:r=>r.dp,dir:"above"},
  hh_max:{f:r=>r.hh,dir:"below"},
  sp_min:{f:r=>r.sp,dir:"above"},
@@ -881,6 +922,11 @@ function drawMask(r){   // v0.17: skin 마스크 재현 — hull 클립 + 20앵�
    ctx.fillStyle=g;ctx.fillRect(0,0,224,224);}
   ctx.restore();
   ctx.strokeStyle="rgba(120,220,140,0.85)";ctx.lineWidth=1;path();ctx.stroke();
+  // v0.18 패턴 영역 마커: 볼=청록 · 턱 후방=주황 (영역 인덱스 자가 검증)
+  if(r.sk.c)for(const p of r.sk.c){ctx.strokeStyle="rgba(70,220,220,0.95)";ctx.lineWidth=1.5;
+   ctx.beginPath();ctx.arc(p[0]*224,p[1]*224,0.8*sig,0,7);ctx.stroke();}
+  if(r.sk.j)for(const p of r.sk.j){ctx.strokeStyle="rgba(255,150,30,0.95)";ctx.lineWidth=1.5;
+   ctx.beginPath();ctx.arc(p[0]*224,p[1]*224,0.6*sig,0,7);ctx.stroke();}
  };
  img.src=r.th;}
 function drawLmap(r){   // v0.17: 32×32 광량 맵 재현(bbox 크롭→그레이→5탭 블러) + lr/tb 재계산 대조
@@ -954,8 +1000,9 @@ function renderInsp(C,m){
     <div><canvas id="lrc" width="96" height="96" style="border:1px solid #444"></canvas>
      <div class="note" style="text-align:center">lr/tb 방향</div></div></div>
    <div class="note"><b>lt ${r.lt==null?"--":r.lt}% = (휘도 ${r.lm==null?"--":r.lm}% + 색량 ${r.ch==null?"--":r.ch}%)/2</b><br>
-    입체감 dp ${r.dp==null?"--":r.dp}% · 거칠기 hh ${r.hh==null?"--":r.hh}%<br>
-    lr ${r.lr==null?"--":r.lr} · tb ${r.tb==null?"--":r.tb} · 클립 판별력 lf=${C.lf}</div>`;
+    <b>패턴 pa ${r.pa==null?"--":r.pa}%</b> (볼빛−턱그늘 raw ${r.par==null?"--":r.par}) · 입체감 dp ${r.dp==null?"--":r.dp}% · 거칠기 hh ${r.hh==null?"--":r.hh}%<br>
+    lr ${r.lr==null?"--":r.lr} · tb ${r.tb==null?"--":r.tb} · 클립 판별력 lf=${C.lf}<br>
+    <span style="color:#4dd">마스크 위 청록=볼 삼각형</span> · <span style="color:#f90">주황=턱 후방 경계</span></div>`;
  }else if(iMode=="영상"){
   body=(pv&&pv.lap)?`<img src="thumbs/${C.clip}/f${String(r.f).padStart(5,"0")}_lap.jpg" style="width:224px;border:1px solid #444">
     <div class="note">Laplacian 선명 히트맵 (밝음=엣지 살아있음)</div>
@@ -1070,6 +1117,7 @@ const STRIPS=[   // v0.14: 채널 → 세부 채널(트리) → 다이얼
    {t:"표정 밴드",dials:["ex_min","ex_max"]}]},
  {g:"빛",fader:"w_light",subs:[
    {t:"조도·생동 (lum×chroma)",dials:["lt_min"]},
+   {t:"패턴 (볼빛−턱그늘)",dials:["pa_min"]},
    {t:"입체감 (방향성)",dials:["dp_min"]},
    {t:"거칠기 (harsh)",dials:["hh_max"]}]},
  {g:"영상",fader:"w_image",subs:[
