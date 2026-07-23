@@ -297,7 +297,8 @@ def build_clip(clip_id, out_root, wb_dir):
 
     micro_pct, sharp_pct = pct_rank(t["micro"]), pct_rank(t["blur"])
     norm_pct, cs_pct, mv_pct = pct_rank(t["nrm"]), pct_rank(t["cs"]), pct_rank(t["mv"])
-    light_pct = np.nanmean(np.vstack([pct_rank(t["lum_eff"]), pct_rank(chroma)]), axis=0)
+    lum_pct, ch_pct = pct_rank(t["lum_eff"]), pct_rank(chroma)   # lt 성분 분해(1층 판독용)
+    light_pct = np.nanmean(np.vstack([lum_pct, ch_pct]), axis=0)
     dp_pct = pct_rank(np.abs(t["light_lr"]) + np.abs(t["light_tb"]))
     hh_pct = pct_rank(t["light_hh"])
 
@@ -332,6 +333,7 @@ def build_clip(clip_id, out_root, wb_dir):
                      "pu": round(float(t["pupil"][i]), 3) if np.isfinite(t["pupil"][i]) else 0.0,
                      "ex": round(float(t["expr"][i]), 3) if np.isfinite(t["expr"][i]) else 1.0,
                      "cs": num(cs_pct[i], 1), "mv": num(mv_pct[i], 1), "lt": num(light_pct[i], 1),
+                     "lm": num(lum_pct[i], 1), "ch": num(ch_pct[i], 1),
                      "dp": num(dp_pct[i], 1), "hh": num(hh_pct[i], 1), "sp": num(sharp_pct[i], 1),
                      "r": [round(float(v), 4) for v in R[i]],
                      "th": (f"thumbs/{clip_id}/f{int(fx[i]):05d}.jpg" if int(fx[i]) in thumb_ok else None)})
@@ -842,7 +844,8 @@ function renderInsp(C,m){
      <div class="note" style="text-align:center">SH 조명 구면</div></div>
     <div><canvas id="lrc" width="96" height="96" style="border:1px solid #444"></canvas>
      <div class="note" style="text-align:center">lr/tb 방향</div></div></div>
-   <div class="note">lt ${r.lt==null?"--":r.lt}% · 입체감 dp ${r.dp==null?"--":r.dp}% · 거칠기 hh ${r.hh==null?"--":r.hh}%<br>
+   <div class="note"><b>lt ${r.lt==null?"--":r.lt}% = (휘도 ${r.lm==null?"--":r.lm}% + 색량 ${r.ch==null?"--":r.ch}%)/2</b><br>
+    입체감 dp ${r.dp==null?"--":r.dp}% · 거칠기 hh ${r.hh==null?"--":r.hh}%<br>
     lr ${r.lr==null?"--":r.lr} · tb ${r.tb==null?"--":r.tb} · 클립 판별력 lf=${C.lf}</div>`;
  }else if(iMode=="영상"){
   body=(pv&&pv.lap)?`<img src="thumbs/${C.clip}/f${String(r.f).padStart(5,"0")}_lap.jpg" style="width:224px;border:1px solid #444">
