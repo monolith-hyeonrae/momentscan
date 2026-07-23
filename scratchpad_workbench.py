@@ -1,5 +1,12 @@
 """샘플링 워크벤치 v0.12 (2026-07-23) — 원장 ⑪⑫ 계기. 참조 구현(콘솔 파리티의 정본).
 
+v0.19 **정준(얼굴-좌표) 광방향**(user "빛 계속 고도화", 1층 DPR 합격 후속): DPR SH를
+canonicalize와 동일 수학으로 얼굴 좌표에 회전 — L_cam=(sh3,sh2,−sh1)→Rᵀ·L(R=T[:3,:3]).
+새 계기 la(방위 0=정면 +=피사체좌 ±180=후방)·le(고도 +=위)·ldr(|SH₁|/DC)·ld(pct).
+앵커 검증: f477 az−103=user "좌후방" 일치·f658 az170 el77=역광·f379 태양쪽 회전=az10.
+빛 채널에 "정준 방향" 세부(다이얼 5종, 기본 off)+사진 문법 존 프리셋(렘브란트±/버터
+플라이/해제)+검사 뷰 얼굴-좌표 구면(●=광방향, 후방=빨간 링)+⚠확산 캐비어트(ldr<0.25
+=방위 신뢰불가, test_0 판정 반영). pa는 보조 강등(원장 ⑪-e).
 v0.18.2 **lr 화살 반전 수리**(1층 SH 검사 중 적발, user 앵커 "test_4 태양=우측"): lr=
 (좌−우) 정의라 우측광=음수인데 화살이 +lr로 그려져 어두운 쪽을 가리킴(tb축은 정상).
 픽셀 실측(화면 우−좌 +38~+90)·DPR sh3(+)·구면 렌더(우반 밝음) 전부 우측 일치 — 계기
@@ -112,6 +119,7 @@ OVAL_ORDER = _oval_order()
 DEFAULT_CFG = {"sym_max": 0.6, "dev_lo": -15.0, "dev_hi": 15.0, "pt_max": 99.0, "pu_min": 0.4,
                "cs_min": 0.0, "mv_min": 0.0, "lt_min": 0.0, "ex_min": 0.0, "ex_max": 1.0,
                "gap_min": 12, "dp_min": 0.0, "hh_max": 100.0, "sp_min": 0.0, "pa_min": 0.0,
+               "ld_min": 0.0, "la_lo": -180.0, "la_hi": 180.0, "le_lo": -90.0, "le_hi": 90.0,
                "w_face": 0.45, "w_light": 0.20, "w_image": 0.15, "w_distort": 0.20}
 
 
@@ -229,7 +237,7 @@ def frame_table(clip_id: str, out_root: Path):
                 blur=blur, micro=micro, mv=mv, lum_eff=lum_eff, cs=cs, nrm=nrm, board=board,
                 expr=expr, pupil=pupil, sym=sym, lm_all_cb=lm_all_cb, det_bbox=det_bbox,
                 frag_bbox=frag_bbox, light_lr=light_lr, light_tb=light_tb, light_hh=light_hh,
-                SH=SH, B=B)
+                SH=SH, B=B, R3=T[:, :3, :3])
 
 
 def compute_picks(rows, cfg):
@@ -243,6 +251,9 @@ def compute_picks(rows, cfg):
             and (r["lt"] is None or r["lt"] >= cfg["lt_min"])
             and (r["dp"] is None or r["dp"] >= cfg["dp_min"])
             and (r["pa"] is None or r["pa"] >= cfg["pa_min"])
+            and (r["ld"] is None or r["ld"] >= cfg["ld_min"])
+            and (r["la"] is None or cfg["la_lo"] <= r["la"] <= cfg["la_hi"])
+            and (r["le"] is None or cfg["le_lo"] <= r["le"] <= cfg["le_hi"])
             and (r["hh"] is None or r["hh"] <= cfg["hh_max"])
             and (r["sp"] is None or r["sp"] >= cfg["sp_min"])
             and cfg["ex_min"] <= r["ex"] <= cfg["ex_max"]]
@@ -373,6 +384,24 @@ def build_clip(clip_id, out_root, wb_dir):
     dp_pct = pct_rank(np.abs(t["light_lr"]) + np.abs(t["light_tb"]))
     hh_pct = pct_rank(t["light_hh"])
 
+    # v0.19 정준(얼굴-좌표) 광방향 — DPR 이미지 관례(sh1=깊이 안+, sh2=상+, sh3=우+)
+    # → CANONICAL_FRAME axis_flip과 동일 표기 L_cam=(sh3,sh2,−sh1) → Rᵀ·L (canonicalize
+    # 수학 그대로). az 0=정면 +=피사체 좌 ±180=후방 / el +=위. 앵커 검증: f477 az−103
+    # (좌후방=user 실물 일치)·f658 az170 el77(역광)·test_0 확산=az 신뢰불가(ldr 게이트).
+    SHa, R3 = t["SH"], t["R3"]
+    Lc = np.stack([SHa[:, 3], SHa[:, 2], -SHa[:, 1]], axis=1)
+    lmag = np.linalg.norm(Lc, axis=1)
+    Lf = np.einsum("nji,nj->ni", R3, Lc)
+    with np.errstate(invalid="ignore"):
+        la_deg = np.degrees(np.arctan2(Lf[:, 0], Lf[:, 2]))
+        le_deg = np.degrees(np.arcsin(np.clip(Lf[:, 1] / (lmag + 1e-9), -1, 1)))
+        ldr_raw = lmag / np.maximum(SHa[:, 0], 1e-6)
+    bad_sh = ~np.isfinite(SHa).all(axis=1)
+    la_deg[bad_sh] = np.nan
+    le_deg[bad_sh] = np.nan
+    ldr_raw[bad_sh] = np.nan
+    ld_pct = pct_rank(ldr_raw)
+
     def _spread(v):
         fin = v[np.isfinite(v)]
         if len(fin) < 10:
@@ -422,6 +451,10 @@ def build_clip(clip_id, out_root, wb_dir):
                      "lm": num(lum_pct[i], 1), "ch": num(ch_pct[i], 1),
                      "dp": num(dp_pct[i], 1), "hh": num(hh_pct[i], 1), "sp": num(sharp_pct[i], 1),
                      "pa": num(pat_pct[i], 1), "par": num(pat[i], 3),
+                     "la": num(la_deg[i], 0), "le": num(le_deg[i], 0),
+                     "ldr": num(ldr_raw[i], 2), "ld": num(ld_pct[i], 1),
+                     "rm": ([round(float(v), 3) for v in R3[i].ravel()]
+                            if np.isfinite(sh_i).all() and np.isfinite(R3[i]).all() else None),
                      "r": [round(float(v), 4) for v in R[i]],
                      "sk": {"a": _pts(i, SKIN_ANCHORS), "o": _pts(i, OVAL_ORDER),
                             "e": _pts(i, EYE_CORNERS), "c": _pts(i, CHEEK_PTS),
@@ -604,6 +637,11 @@ const DIALS=[
  ["pa_min","패턴 pa pct >= (볼빛−턱그늘)",0,90,5],
  ["dp_min","입체감 dp pct >= (방향성)",0,90,5],
  ["hh_max","거칠기 hh pct <=",10,100,5],
+ ["ld_min","방향성 ld pct >= (|SH1|/DC)",0,90,5],
+ ["la_lo","정준 방위 az 하한 (0=정면 +=피사체좌 ±180=후방)",-180,180,5],
+ ["la_hi","정준 방위 az 상한",-180,180,5],
+ ["le_lo","정준 고도 el 하한 (+=위)",-90,90,5],
+ ["le_hi","정준 고도 el 상한",-90,90,5],
  ["영상"],
  ["sp_min","선명 sp pct >=",0,90,5],
  ["왜곡"],
@@ -618,6 +656,7 @@ const DIALS=[
 ];
 const DEF={sym_max:0.6,dev_lo:-15,dev_hi:15,pt_max:99,pu_min:0.4,cs_min:0,mv_min:0,lt_min:0,
            ex_min:0,ex_max:1.0,gap_min:12,dp_min:0,hh_max:100,sp_min:0,pa_min:0,
+           ld_min:0,la_lo:-180,la_hi:180,le_lo:-90,le_hi:90,
            w_face:0.45,w_light:0.20,w_image:0.15,w_distort:0.20};
 let A={...DEF}, Bcfg=null, GT={}, cur=0, sortMode="time", poseOpen=false, ATT=false;
 let selF=null, iMode="포즈", collapsed={};
@@ -637,13 +676,14 @@ const SCOL=["#c98a4a","#e08aa8","#d8c455","#55aacc","#b070d0"];
 const SURV="#69d069";
 const K2G={sym_max:"포즈",dev_lo:"포즈",dev_hi:"포즈",pt_max:"포즈",
  pu_min:"표정·얼굴",ex_min:"표정·얼굴",ex_max:"표정·얼굴",
- lt_min:"빛",dp_min:"빛",hh_max:"빛",sp_min:"영상",cs_min:"왜곡",mv_min:"왜곡",
+ lt_min:"빛",dp_min:"빛",hh_max:"빛",pa_min:"빛",sp_min:"영상",cs_min:"왜곡",mv_min:"왜곡",
+ ld_min:"빛",la_lo:"빛",la_hi:"빛",le_lo:"빛",le_hi:"빛",
  w_face:"표정·얼굴",w_light:"빛",w_image:"영상",w_distort:"왜곡"};
 
 function gPass(r,c,g){   // 채널별 하드 게이트 (v0.11: mute=게이트 해제)
  if(g==0)return r.sy<c.sym_max&&r.dv>c.dev_lo&&r.dv<c.dev_hi&&Math.abs(r.pc)<c.pt_max;
  if(g==1)return r.pu>=c.pu_min&&r.ex>=c.ex_min&&r.ex<=c.ex_max;
- if(g==2)return (r.lt==null||r.lt>=c.lt_min)&&(r.pa==null||r.pa>=c.pa_min)&&(r.dp==null||r.dp>=c.dp_min)&&(r.hh==null||r.hh<=c.hh_max);
+ if(g==2)return (r.lt==null||r.lt>=c.lt_min)&&(r.pa==null||r.pa>=c.pa_min)&&(r.dp==null||r.dp>=c.dp_min)&&(r.hh==null||r.hh<=c.hh_max)&&(r.ld==null||r.ld>=c.ld_min)&&(r.la==null||(r.la>=c.la_lo&&r.la<=c.la_hi))&&(r.le==null||(r.le>=c.le_lo&&r.le<=c.le_hi));
  if(g==3)return r.sp==null||r.sp>=c.sp_min;
  return (r.cs==null||r.cs>=c.cs_min)&&(r.mv==null||r.mv>=c.mv_min);}
 function firstFail(r,c,M){
@@ -798,6 +838,9 @@ const HSPEC={
  mv_min:{f:r=>r.mv,dir:"above"},
  lt_min:{f:r=>r.lt,dir:"above"},
  pa_min:{f:r=>r.pa,dir:"above"},
+ ld_min:{f:r=>r.ld,dir:"above"},
+ la_hi:{f:r=>r.la,band:["la_lo","la_hi"]},
+ le_hi:{f:r=>r.le,band:["le_lo","le_hi"]},
  dp_min:{f:r=>r.dp,dir:"above"},
  hh_max:{f:r=>r.hh,dir:"below"},
  sp_min:{f:r=>r.sp,dir:"above"},
@@ -1006,9 +1049,12 @@ function renderInsp(C,m){
     <div><canvas id="shc" width="96" height="96" style="border:1px solid #444"></canvas>
      <div class="note" style="text-align:center">SH 조명 구면</div></div>
     <div><canvas id="lrc" width="96" height="96" style="border:1px solid #444"></canvas>
-     <div class="note" style="text-align:center">lr/tb 화살=빛 쪽</div></div></div>
+     <div class="note" style="text-align:center">lr/tb 화살=빛 쪽</div></div>
+    <div><canvas id="fsc" width="96" height="96" style="border:1px solid #444"></canvas>
+     <div class="note" style="text-align:center">얼굴-좌표 구면 ●=광방향</div></div></div>
    <div class="note"><b>lt ${r.lt==null?"--":r.lt}% = (휘도 ${r.lm==null?"--":r.lm}% + 색량 ${r.ch==null?"--":r.ch}%)/2</b><br>
     <b>패턴 pa ${r.pa==null?"--":r.pa}%</b> (볼빛−턱그늘 raw ${r.par==null?"--":r.par}) · 입체감 dp ${r.dp==null?"--":r.dp}% · 거칠기 hh ${r.hh==null?"--":r.hh}%<br>
+    <b>정준 az ${r.la==null?"--":r.la}° · el ${r.le==null?"--":r.le}°</b> (0=정면 +=피사체좌/위) · 방향성 ldr ${r.ldr==null?"--":r.ldr}, ld ${r.ld==null?"--":r.ld}%${r.ldr!=null&&r.ldr<0.25?' <span style="color:#e88">⚠확산—방위 신뢰불가</span>':""}<br>
     lr ${r.lr==null?"--":r.lr} · tb ${r.tb==null?"--":r.tb} · 클립 판별력 lf=${C.lf}<br>
     <span style="color:#4dd">마스크 위 청록=볼 삼각형</span> · <span style="color:#f90">주황=턱 후방 경계</span></div>`;
  }else if(iMode=="영상"){
@@ -1061,6 +1107,31 @@ function renderInsp(C,m){
    c2.strokeStyle="#d8c455";c2.lineWidth=2;c2.beginPath();c2.moveTo(48,48);
    c2.lineTo(48-r.lr*40,48-r.tb*40);c2.stroke();
    c2.fillStyle="#d8c455";c2.beginPath();c2.arc(48-r.lr*40,48-r.tb*40,3,0,7);c2.fill();}
+  // v0.19 얼굴-좌표 구면: n_face → n_cam=R·n → DPR 슬롯(x=우, y=깊이안=−z_cam, z=상=y_cam)
+  if(r.rm){
+   const fc=document.getElementById("fsc"), f2=fc.getContext("2d");
+   const fim=f2.createImageData(96,96);
+   let flo=1e9,fhi=-1e9;const fvals=new Float32Array(96*96).fill(NaN);
+   const R=r.rm;
+   for(let py=0;py<96;py++)for(let px=0;px<96;px++){
+    const x=(px-48)/46,yu=-(py-48)/46,r2=x*x+yu*yu;
+    if(r2>1)continue;
+    const z=Math.sqrt(1-r2);
+    const cx=R[0]*x+R[1]*yu+R[2]*z, cy=R[3]*x+R[4]*yu+R[5]*z, cz=R[6]*x+R[7]*yu+R[8]*z;
+    const v=shEval(r.sh,cx,-cz,cy);
+    fvals[py*96+px]=v;if(v<flo)flo=v;if(v>fhi)fhi=v;}
+   for(let i=0;i<96*96;i++){const v=fvals[i];
+    const g=isNaN(v)?22:Math.round((v-flo)/(fhi-flo+1e-9)*235+20);
+    fim.data[i*4]=g;fim.data[i*4+1]=g;fim.data[i*4+2]=g;fim.data[i*4+3]=255;}
+   f2.putImageData(fim,0,0);
+   if(r.la!=null&&r.le!=null){
+    const azr=r.la*Math.PI/180, elr=r.le*Math.PI/180;
+    const lx=Math.sin(azr)*Math.cos(elr), ly=Math.sin(elr), lz=Math.cos(azr)*Math.cos(elr);
+    const dx=48+lx*44, dy=48-ly*44;
+    f2.beginPath();f2.arc(dx,dy,4,0,7);
+    if(lz>=0){f2.fillStyle="#ffd24d";f2.fill();}
+    else{f2.strokeStyle="#e55";f2.lineWidth=2;f2.stroke();}}
+  }
  }
  if(iMode=="왜곡"){
   const cv=document.getElementById("csc"), ctx=cv.getContext("2d");
@@ -1127,6 +1198,7 @@ const STRIPS=[   // v0.14: 채널 → 세부 채널(트리) → 다이얼
    {t:"조도·생동 (lum×chroma)",dials:["lt_min"]},
    {t:"패턴 (볼빛−턱그늘)",dials:["pa_min"]},
    {t:"입체감 (방향성)",dials:["dp_min"]},
+   {t:"정준 방향 (얼굴-좌표 SH)",dials:["ld_min","la_lo","la_hi","le_lo","le_hi"],zones:1},
    {t:"거칠기 (harsh)",dials:["hh_max"]}]},
  {g:"영상",fader:"w_image",subs:[
    {t:"선명 (face blur)",dials:["sp_min"]}]},
@@ -1137,6 +1209,12 @@ const STRIPS=[   // v0.14: 채널 → 세부 채널(트리) → 다이얼
 const MCOL={"표정·얼굴":"#e08aa8","빛":"#d8c455","영상":"#55aacc","왜곡":"#b070d0"};
 let deckTab="포즈";
 function setTab(g){deckTab=g;if(STAGES.includes(g))iMode=g;buildPanel();render();}
+function setZone(z){   // v0.19 사진 문법 존 프리셋 (정준 az/el 다이얼 일괄)
+ const Z={remA:{la_lo:20,la_hi:60,le_lo:10,le_hi:55,ld_min:50},
+          remB:{la_lo:-60,la_hi:-20,le_lo:10,le_hi:55,ld_min:50},
+          bfly:{la_lo:-15,la_hi:15,le_lo:20,le_hi:60,ld_min:50},
+          zoff:{la_lo:-180,la_hi:180,le_lo:-90,le_hi:90,ld_min:0}};
+ Object.assign(A,Z[z]);iMode="빛";buildPanel();render();}
 function dialHTML(k){
  const [,lbl,mn,mx,stp]=D2META[k];
  return `<div class="dial" id="d_${k}"><label>${lbl}<span id="v_${k}">${A[k]}</span></label>
@@ -1168,6 +1246,9 @@ function buildPanel(){   // v0.13: 채널 탭 데크 + 미터 브리지
   const S=STRIPS.find(s=>s.g==deckTab);
   body=`<div class="chanview${MUTE[S.g]?" gmuted":""}"><div class="body">`+
    S.subs.map(sub=>`<div class="subch"><div class="subttl">${sub.t}</div>`+
+    (sub.zones?`<div style="margin:2px 0 5px">`+[["remA","렘브란트 az+"],["remB","렘브란트 az−"],
+      ["bfly","버터플라이"],["zoff","존 해제"]].map(([z,l])=>
+      `<button onclick="setZone('${z}')" style="font-size:10px;background:#333;color:#d8c455;border:1px solid #555;border-radius:3px;margin-right:4px;cursor:pointer;padding:1px 6px">${l}</button>`).join("")+`</div>`:"")+
     sub.dials.map(dialHTML).join("")+`</div>`).join("")+`</div><div class="fblock">`+
    (S.fader?`<div class="fader"><span class="mlbl">가중 페이더</span>
      <input type="range" min="0" max="0.8" step="0.05" value="${A[S.fader]}"
