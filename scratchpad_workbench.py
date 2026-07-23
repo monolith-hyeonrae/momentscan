@@ -1,5 +1,9 @@
 """샘플링 워크벤치 v0.12 (2026-07-23) — 원장 ⑪⑫ 계기. 참조 구현(콘솔 파리티의 정본).
 
+v0.15 **데크 좌측 이동**(user): 하단 → 좌측 사이드바(384px, 탭→브리지→트리→가로
+페이더 세로 스택 — 세로 슬라이더 CSS 잔재 제거). 본문·검사 패널 배치 불변.
+v0.14 채널 탭 내 **트리 구조**: 세부 채널 타이틀(1열·가지선)+다이얼, 밴드=한 세부
+채널에 2다이얼(yaw 하한/상한·ex 밴드).
 v0.13 **채널 탭 데크 + 미터 브리지 + 접이식 검사 패널**(user: "가로 스트립=조잡, 탭
 분리 + 검사 접이식"): 데크=탭당 채널 하나(다이얼 전폭 2열 그리드+대형 분포 미터,
 세로 페이더) · 탭에 S/M 미니 버튼(뮤트 탭=흐림) · 탭 선택=검사 뷰 모드 동기화 ·
@@ -373,9 +377,8 @@ body{background:#161616;color:#ddd;font:13px/1.45 system-ui,sans-serif;margin:0}
 .ok{color:#7c6} .bad{color:#e66}
 #insp{position:fixed;right:0;top:78px;bottom:0;width:340px;overflow:auto;background:#1b1b1b;
   border-left:1px solid #333;padding:10px 12px;box-sizing:border-box;z-index:8}
-#deck{position:fixed;left:0;right:340px;bottom:0;height:324px;background:#191919;
-  border-top:2px solid #3a3a3a;padding:6px 14px;box-sizing:border-box;z-index:8;overflow-y:auto}
-body.inspc #deck{right:30px}
+#deck{position:fixed;left:0;top:78px;bottom:0;width:384px;background:#191919;
+  border-right:2px solid #3a3a3a;padding:8px 12px;box-sizing:border-box;z-index:8;overflow-y:auto}
 #dtabs{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:6px}
 .dtab{padding:3px 12px;border:1px solid #444;border-radius:4px 4px 0 0;cursor:pointer;
   font-size:12px;color:#aaa;display:flex;align-items:center;gap:6px}
@@ -385,29 +388,31 @@ body.inspc #deck{right:30px}
 .dtab .sm.on{color:#161616;font-weight:700}
 .dtab .sm.s.on{background:#d8c455;border-color:#d8c455}
 .dtab .sm.m.on{background:#e06666;border-color:#e06666}
-#bridge{margin-left:auto;display:flex;gap:12px;align-items:center}
+#bridge{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin:4px 0 8px;
+  padding-bottom:6px;border-bottom:1px solid #2c2c2c}
 .bm{font-size:10px;color:#889}
-.bm .bar{display:inline-block;width:56px;height:8px;background:#141414;border:1px solid #2c2c2c;
+.bm .bar{display:inline-block;width:44px;height:8px;background:#141414;border:1px solid #2c2c2c;
   vertical-align:middle;margin-left:4px}
 .bm .bar i{display:block;height:100%}
-.chanview{display:flex;gap:20px;align-items:flex-start}
-.chanview .body{flex:1;display:block;max-width:640px}
+.chanview{display:block}
+.chanview .body{display:block}
 .chanview .dial{margin:4px 0 8px}
 .chanview .dial label{font-size:12.5px}
 .chanview.gmuted .body{opacity:.4}
 .subch{border-left:2px solid #3a4a5a;margin:6px 0 10px 4px;padding-left:12px}
 .subttl{font-size:12px;font-weight:600;color:#9ad;margin-bottom:2px}
-.fblock{display:flex;gap:10px;align-items:flex-end;padding:4px 10px;border-left:1px solid #2c2c2c}
-.fader input{writing-mode:vertical-rl;direction:rtl;-webkit-appearance:slider-vertical;
-  width:26px;height:120px}
-.fader .fv{font-size:12px;color:#fc6;text-align:center}
-.mlbl{font-size:9px;color:#777;text-align:center}
+.fblock{display:flex;gap:10px;align-items:center;padding:8px 4px 0;border-top:1px solid #2c2c2c;
+  margin-top:8px}
+.fader{flex:1;display:flex;gap:8px;align-items:center}
+.fader input{flex:1}
+.fader .fv{font-size:12px;color:#fc6;min-width:34px;text-align:right}
+.mlbl{font-size:10px;color:#777}
 #inspToggle{position:fixed;right:340px;top:84px;z-index:12;background:#2a2a2a;border:1px solid #555;
   color:#bbb;border-radius:3px 0 0 3px;cursor:pointer;padding:4px 5px;font-size:11px}
 body.inspc #inspToggle{right:0}
 body.inspc #insp{display:none}
 body.inspc #main{margin-right:30px}
-#main{margin-left:0;margin-right:340px;margin-bottom:334px;padding:10px 16px}
+#main{margin-left:384px;margin-right:340px;margin-bottom:20px;padding:10px 16px}
 .grp{margin:10px 0 4px;color:#9ad;font-weight:600;font-size:12px;text-transform:uppercase;cursor:pointer;
   display:flex;align-items:center;gap:6px}
 .grp .arr{color:#678}
@@ -970,9 +975,9 @@ function buildPanel(){   // v0.13: 채널 탭 데크 + 미터 브리지
    <span class="sm s${isSolo?" on":""}" onclick="event.stopPropagation();soloG('${g}')">S</span>
    <span class="sm m${MUTE[g]?" on":""}" onclick="event.stopPropagation();muteG('${g}')">M</span></span>`;
  }).join("")+`<span class="dtab${deckTab=="마스터"?" cur":""}" onclick="setTab('마스터')" style="color:#cb8">마스터</span>`;
- tabs+=`<span id="bridge">`+STAGES.slice(1).map(g=>
+ const bridge=`<div id="bridge">`+STAGES.slice(1).map(g=>
   `<span class="bm">${g}<span class="bar"><i id="mt_${g}" style="width:0;background:${MCOL[g]}"></i></span></span>`).join("")+
-  `<span class="bm" id="mt_포즈" style="color:#c98a4a"></span></span>`;
+  `<span class="bm" id="mt_포즈" style="color:#c98a4a"></span></div>`;
  let body="";
  if(deckTab=="마스터"){
   body=`<div class="chanview"><div class="body">`+dialHTML("gap_min")+
@@ -986,13 +991,14 @@ function buildPanel(){   // v0.13: 채널 탭 데크 + 미터 브리지
   body=`<div class="chanview${MUTE[S.g]?" gmuted":""}"><div class="body">`+
    S.subs.map(sub=>`<div class="subch"><div class="subttl">${sub.t}</div>`+
     sub.dials.map(dialHTML).join("")+`</div>`).join("")+`</div><div class="fblock">`+
-   (S.fader?`<div class="fader"><input type="range" min="0" max="0.8" step="0.05" value="${A[S.fader]}"
+   (S.fader?`<div class="fader"><span class="mlbl">가중 페이더</span>
+     <input type="range" min="0" max="0.8" step="0.05" value="${A[S.fader]}"
       oninput="A['${S.fader}']=+this.value;document.getElementById('fv_${S.fader}').textContent=this.value;iMode='${S.g}';render()">
-     <div class="fv" id="fv_${S.fader}">${A[S.fader]}</div><div class="mlbl">가중 페이더</div></div>`
-    :`<div class="note" style="font-size:11px">밴드=쿼리<br>(점수 없음)</div>`)+
+     <span class="fv" id="fv_${S.fader}">${A[S.fader]}</span></div>`
+    :`<div class="note" style="font-size:11px">밴드=쿼리 (점수 없음)</div>`)+
    `</div></div>`;
  }
- p.innerHTML=`<div id="dtabs">${tabs}</div>${body}`;}
+ p.innerHTML=`<div id="dtabs">${tabs}</div>${bridge}${body}`;}
 document.addEventListener("keydown",e=>{
  if(e.target.tagName=="INPUT")return;
  if(e.key=="ArrowRight"){cur=(cur+1)%WB.clips.length;selF=null;render();}
