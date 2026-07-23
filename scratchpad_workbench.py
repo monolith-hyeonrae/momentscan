@@ -373,7 +373,7 @@ body{background:#161616;color:#ddd;font:13px/1.45 system-ui,sans-serif;margin:0}
 .ok{color:#7c6} .bad{color:#e66}
 #insp{position:fixed;right:0;top:78px;bottom:0;width:340px;overflow:auto;background:#1b1b1b;
   border-left:1px solid #333;padding:10px 12px;box-sizing:border-box;z-index:8}
-#deck{position:fixed;left:0;right:340px;bottom:0;height:248px;background:#191919;
+#deck{position:fixed;left:0;right:340px;bottom:0;height:324px;background:#191919;
   border-top:2px solid #3a3a3a;padding:6px 14px;box-sizing:border-box;z-index:8;overflow-y:auto}
 body.inspc #deck{right:30px}
 #dtabs{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:6px}
@@ -391,10 +391,12 @@ body.inspc #deck{right:30px}
   vertical-align:middle;margin-left:4px}
 .bm .bar i{display:block;height:100%}
 .chanview{display:flex;gap:20px;align-items:flex-start}
-.chanview .body{flex:1;display:grid;grid-template-columns:1fr 1fr;gap:2px 20px}
-.chanview .dial{margin:5px 0}
+.chanview .body{flex:1;display:block;max-width:640px}
+.chanview .dial{margin:4px 0 8px}
 .chanview .dial label{font-size:12.5px}
 .chanview.gmuted .body{opacity:.4}
+.subch{border-left:2px solid #3a4a5a;margin:6px 0 10px 4px;padding-left:12px}
+.subttl{font-size:12px;font-weight:600;color:#9ad;margin-bottom:2px}
 .fblock{display:flex;gap:10px;align-items:flex-end;padding:4px 10px;border-left:1px solid #2c2c2c}
 .fader input{writing-mode:vertical-rl;direction:rtl;-webkit-appearance:slider-vertical;
   width:26px;height:120px}
@@ -405,7 +407,7 @@ body.inspc #deck{right:30px}
 body.inspc #inspToggle{right:0}
 body.inspc #insp{display:none}
 body.inspc #main{margin-right:30px}
-#main{margin-left:0;margin-right:340px;margin-bottom:258px;padding:10px 16px}
+#main{margin-left:0;margin-right:340px;margin-bottom:334px;padding:10px 16px}
 .grp{margin:10px 0 4px;color:#9ad;font-weight:600;font-size:12px;text-transform:uppercase;cursor:pointer;
   display:flex;align-items:center;gap:6px}
 .grp .arr{color:#678}
@@ -931,12 +933,23 @@ function importGT(inp){const fr=new FileReader();fr.onload=()=>{
   if(o.flag)GT[o.clip+":"+o.frame]=o.flag;}catch(e){}});render();};
  fr.readAsText(inp.files[0]);}
 const D2META={};for(const d of DIALS){if(d.length>1)D2META[d[0]]=d;}
-const STRIPS=[
- {g:"포즈",dials:["sym_max","dev_lo","dev_hi","pt_max"],fader:null},
- {g:"표정·얼굴",dials:["pu_min","ex_min","ex_max"],fader:"w_face"},
- {g:"빛",dials:["lt_min","dp_min","hh_max"],fader:"w_light"},
- {g:"영상",dials:["sp_min"],fader:"w_image"},
- {g:"왜곡",dials:["cs_min","mv_min"],fader:"w_distort"},
+const STRIPS=[   // v0.14: 채널 → 세부 채널(트리) → 다이얼
+ {g:"포즈",fader:null,subs:[
+   {t:"보이는-정면 (뺨 대칭)",dials:["sym_max"]},
+   {t:"yaw 밴드 (좌− / 우+)",dials:["dev_lo","dev_hi"]},
+   {t:"pitch (클립상대)",dials:["pt_max"]}]},
+ {g:"표정·얼굴",fader:"w_face",subs:[
+   {t:"눈동자 가시",dials:["pu_min"]},
+   {t:"표정 밴드",dials:["ex_min","ex_max"]}]},
+ {g:"빛",fader:"w_light",subs:[
+   {t:"조도·생동 (lum×chroma)",dials:["lt_min"]},
+   {t:"입체감 (방향성)",dials:["dp_min"]},
+   {t:"거칠기 (harsh)",dials:["hh_max"]}]},
+ {g:"영상",fader:"w_image",subs:[
+   {t:"선명 (face blur)",dials:["sp_min"]}]},
+ {g:"왜곡",fader:"w_distort",subs:[
+   {t:"정체성 판독성 (cos_self)",dials:["cs_min"]},
+   {t:"입-가시 (가림)",dials:["mv_min"]}]},
 ];
 const MCOL={"표정·얼굴":"#e08aa8","빛":"#d8c455","영상":"#55aacc","왜곡":"#b070d0"};
 let deckTab="포즈";
@@ -971,7 +984,8 @@ function buildPanel(){   // v0.13: 채널 탭 데크 + 미터 브리지
  }else{
   const S=STRIPS.find(s=>s.g==deckTab);
   body=`<div class="chanview${MUTE[S.g]?" gmuted":""}"><div class="body">`+
-   S.dials.map(dialHTML).join("")+`</div><div class="fblock">`+
+   S.subs.map(sub=>`<div class="subch"><div class="subttl">${sub.t}</div>`+
+    sub.dials.map(dialHTML).join("")+`</div>`).join("")+`</div><div class="fblock">`+
    (S.fader?`<div class="fader"><input type="range" min="0" max="0.8" step="0.05" value="${A[S.fader]}"
       oninput="A['${S.fader}']=+this.value;document.getElementById('fv_${S.fader}').textContent=this.value;iMode='${S.g}';render()">
      <div class="fv" id="fv_${S.fader}">${A[S.fader]}</div><div class="mlbl">가중 페이더</div></div>`
