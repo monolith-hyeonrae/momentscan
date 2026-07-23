@@ -1,11 +1,11 @@
 """샘플링 워크벤치 v0.12 (2026-07-23) — 원장 ⑪⑫ 계기. 참조 구현(콘솔 파리티의 정본).
 
-v0.12 **콘솔 데크 레이아웃**(user: "믹싱콘솔 유즈케이스에 맞게"): 좌측 세로 패널 폐지
-→ **하단 고정 데크**에 채널 스트립 5개 가로 배열(각 스트립 = 이름+S/M → 게이트/EQ
-[스크린 다이얼+미니 미터] → **세로 페이더**[상태 가중]+**채널 미터**[선택 프레임의
-상태점수 실시간, 채널색]) + 마스터 스트립(gap·ATT·생존/픽 미터). 포즈 스트립=페이더
-없음(밴드=쿼리) — dev/sym 판독만. 본문(타임라인·픽·풀)=전폭, 검사 패널=우측 유지.
-로직·데이터 불변(HTML-only) — 셀프테스트 유지.
+v0.13 **채널 탭 데크 + 미터 브리지 + 접이식 검사 패널**(user: "가로 스트립=조잡, 탭
+분리 + 검사 접이식"): 데크=탭당 채널 하나(다이얼 전폭 2열 그리드+대형 분포 미터,
+세로 페이더) · 탭에 S/M 미니 버튼(뮤트 탭=흐림) · 탭 선택=검사 뷰 모드 동기화 ·
+**미터 브리지**(탭 바 우측 — 선택 프레임의 채널별 상태점수 가로 막대, 전 채널 상시
+판독 유지) · 검사 패널 ◀▶ 핸들로 접기(데크·본문이 전폭 확장). 데크 높이 248px.
+v0.12 콘솔 데크(가로 스트립) — v0.13으로 대체. 로직·데이터 불변(HTML-only).
 
 v0.11 **축 solo/mute — 믹싱 콘솔 문법**(mb-wbsolo, 검증 2층 구조의 1층 도구): 상태
 그룹 헤더에 [S][M] — mute=그 채널의 하드 게이트 해제+소프트 가중 0(다이얼 값은 보존,
@@ -373,27 +373,39 @@ body{background:#161616;color:#ddd;font:13px/1.45 system-ui,sans-serif;margin:0}
 .ok{color:#7c6} .bad{color:#e66}
 #insp{position:fixed;right:0;top:78px;bottom:0;width:340px;overflow:auto;background:#1b1b1b;
   border-left:1px solid #333;padding:10px 12px;box-sizing:border-box;z-index:8}
-#deck{position:fixed;left:0;right:340px;bottom:0;height:368px;background:#191919;
-  border-top:2px solid #3a3a3a;display:flex;gap:10px;padding:8px 12px;box-sizing:border-box;
-  overflow-x:auto;z-index:8}
-.chan{flex:1 1 0;min-width:210px;max-width:330px;background:#1f1f1f;border:1px solid #333;
-  border-radius:4px;padding:8px 12px;box-sizing:border-box;display:flex;flex-direction:column;
-  overflow-y:auto}
-.chan .dial{margin:8px 0}
-.chan .dial label{font-size:12.5px}
-.chan.gmuted{opacity:.4}
-.chan .chead{display:flex;align-items:center;gap:5px;font-size:12px;font-weight:600;color:#9ad;
-  margin-bottom:4px}
-.chan .body{flex:1;overflow-y:auto;min-height:0}
-.chan .fbase{display:flex;gap:8px;align-items:flex-end;border-top:1px solid #2c2c2c;
-  padding-top:5px;margin-top:4px}
+#deck{position:fixed;left:0;right:340px;bottom:0;height:248px;background:#191919;
+  border-top:2px solid #3a3a3a;padding:6px 14px;box-sizing:border-box;z-index:8;overflow-y:auto}
+body.inspc #deck{right:30px}
+#dtabs{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:6px}
+.dtab{padding:3px 12px;border:1px solid #444;border-radius:4px 4px 0 0;cursor:pointer;
+  font-size:12px;color:#aaa;display:flex;align-items:center;gap:6px}
+.dtab.cur{background:#262f38;color:#dfeaf5;border-color:#6a92b8;font-weight:600}
+.dtab.dm{opacity:.45}
+.dtab .sm{font-size:9px;border:1px solid #555;border-radius:2px;padding:0 4px;color:#999}
+.dtab .sm.on{color:#161616;font-weight:700}
+.dtab .sm.s.on{background:#d8c455;border-color:#d8c455}
+.dtab .sm.m.on{background:#e06666;border-color:#e06666}
+#bridge{margin-left:auto;display:flex;gap:12px;align-items:center}
+.bm{font-size:10px;color:#889}
+.bm .bar{display:inline-block;width:56px;height:8px;background:#141414;border:1px solid #2c2c2c;
+  vertical-align:middle;margin-left:4px}
+.bm .bar i{display:block;height:100%}
+.chanview{display:flex;gap:20px;align-items:flex-start}
+.chanview .body{flex:1;display:grid;grid-template-columns:1fr 1fr;gap:2px 20px}
+.chanview .dial{margin:5px 0}
+.chanview .dial label{font-size:12.5px}
+.chanview.gmuted .body{opacity:.4}
+.fblock{display:flex;gap:10px;align-items:flex-end;padding:4px 10px;border-left:1px solid #2c2c2c}
 .fader input{writing-mode:vertical-rl;direction:rtl;-webkit-appearance:slider-vertical;
-  width:26px;height:88px}
-.fader .fv{font-size:11px;color:#fc6;text-align:center}
-.vmeter{width:12px;height:88px;background:#141414;border:1px solid #2c2c2c;position:relative}
-.vmeter .fill{position:absolute;bottom:0;left:0;right:0}
+  width:26px;height:120px}
+.fader .fv{font-size:12px;color:#fc6;text-align:center}
 .mlbl{font-size:9px;color:#777;text-align:center}
-#main{margin-left:0;margin-right:340px;margin-bottom:378px;padding:10px 16px}
+#inspToggle{position:fixed;right:340px;top:84px;z-index:12;background:#2a2a2a;border:1px solid #555;
+  color:#bbb;border-radius:3px 0 0 3px;cursor:pointer;padding:4px 5px;font-size:11px}
+body.inspc #inspToggle{right:0}
+body.inspc #insp{display:none}
+body.inspc #main{margin-right:30px}
+#main{margin-left:0;margin-right:340px;margin-bottom:258px;padding:10px 16px}
 .grp{margin:10px 0 4px;color:#9ad;font-weight:600;font-size:12px;text-transform:uppercase;cursor:pointer;
   display:flex;align-items:center;gap:6px}
 .grp .arr{color:#678}
@@ -470,6 +482,7 @@ button:hover{background:#383838}
  <div class="note"><b>클릭=프레임 선택(우측 검사)</b> · GT=검사 패널 ＋/− 버튼 · Shift+클릭=포즈 그라운딩 · 호버=확대 · ←→=클립 · 저장 홈=fixtures/eval/</div>
 </div>
 <div id="main"></div><div id="insp"></div><div id="deck"></div>
+<button id="inspToggle" onclick="document.body.classList.toggle('inspc')">◀▶</button>
 <script src="data.js"></script>
 <script>
 const DIALS=[
@@ -879,12 +892,12 @@ function renderInsp(C,m){
   plot(q=>q.mv,"#55aacc",[3,2]);
   ctx.strokeStyle="#f90";ctx.beginPath();ctx.moveTo(X(r.f),2);ctx.lineTo(X(r.f),78);ctx.stroke();
  }
- // v0.12 데크 채널 미터: 선택 프레임의 상태점수 실시간
+ // v0.13 미터 브리지: 선택 프레임의 상태점수 실시간 (탭 바 우측, 전 채널 상시)
  const mm={"표정·얼굴":ss[0],"빛":ss[1],"영상":ss[2],"왜곡":ss[3]};
  for(const g in mm){const el2=document.getElementById("mt_"+g);
-  if(el2)el2.style.height=Math.round(mm[g]*86)+"px";}
+  if(el2)el2.style.width=Math.round(mm[g]*100)+"%";}
  const mp=document.getElementById("mt_포즈");
- if(mp)mp.textContent=`dv${r.dv} sy${r.sy}`;
+ if(mp)mp.textContent=`포즈 dv${r.dv} sy${r.sy}`;
 }
 function onCell(e,clip,f){
  if(e&&e.shiftKey){groundPose(clip,f);return;}
@@ -926,38 +939,46 @@ const STRIPS=[
  {g:"왜곡",dials:["cs_min","mv_min"],fader:"w_distort"},
 ];
 const MCOL={"표정·얼굴":"#e08aa8","빛":"#d8c455","영상":"#55aacc","왜곡":"#b070d0"};
+let deckTab="포즈";
+function setTab(g){deckTab=g;if(STAGES.includes(g))iMode=g;buildPanel();render();}
 function dialHTML(k){
  const [,lbl,mn,mx,stp]=D2META[k];
  return `<div class="dial" id="d_${k}"><label>${lbl}<span id="v_${k}">${A[k]}</span></label>
   <input type="range" min="${mn}" max="${mx}" step="${stp}" value="${A[k]}"
    oninput="A['${k}']=+this.value;document.getElementById('v_${k}').textContent=this.value;
     if(K2G['${k}']&&STAGES.includes(K2G['${k}']))iMode=K2G['${k}'];render()">`+
-  (HSPEC[k]?`<canvas class="dh" id="h_${k}" width="230" height="32" style="width:100%"></canvas>`:``)+`</div>`;}
-function buildPanel(){   // v0.12: 콘솔 데크 — 채널 스트립 가로 배열 + 마스터
- const p=document.getElementById("deck");let h="";
- for(const S of STRIPS){
+  (HSPEC[k]?`<canvas class="dh" id="h_${k}" width="300" height="34" style="width:100%"></canvas>`:``)+`</div>`;}
+function buildPanel(){   // v0.13: 채널 탭 데크 + 미터 브리지
+ const p=document.getElementById("deck");
+ let tabs=STRIPS.map(S=>{
   const g=S.g;
   const isSolo=!MUTE[g]&&STAGES.every(s=>s==g||MUTE[s]);
-  h+=`<div class="chan${MUTE[g]?" gmuted":""}">
-   <div class="chead">${g}
-    <span class="sm s${isSolo?" on":""}" onclick="soloG('${g}')">S</span>
-    <span class="sm m${MUTE[g]?" on":""}" onclick="muteG('${g}')">M</span></div>
-   <div class="body">`+S.dials.map(dialHTML).join("")+`</div>
-   <div class="fbase">`+
+  return `<span class="dtab${deckTab==g?" cur":""}${MUTE[g]?" dm":""}" onclick="setTab('${g}')">${g}
+   <span class="sm s${isSolo?" on":""}" onclick="event.stopPropagation();soloG('${g}')">S</span>
+   <span class="sm m${MUTE[g]?" on":""}" onclick="event.stopPropagation();muteG('${g}')">M</span></span>`;
+ }).join("")+`<span class="dtab${deckTab=="마스터"?" cur":""}" onclick="setTab('마스터')" style="color:#cb8">마스터</span>`;
+ tabs+=`<span id="bridge">`+STAGES.slice(1).map(g=>
+  `<span class="bm">${g}<span class="bar"><i id="mt_${g}" style="width:0;background:${MCOL[g]}"></i></span></span>`).join("")+
+  `<span class="bm" id="mt_포즈" style="color:#c98a4a"></span></span>`;
+ let body="";
+ if(deckTab=="마스터"){
+  body=`<div class="chanview"><div class="body">`+dialHTML("gap_min")+
+   `<label style="font-size:12px;color:#bbb;display:block;margin:8px 0"><input type="checkbox" ${ATT?"checked":""}
+     onchange="ATT=this.checked;render()"> 빛 분산-감쇠(lf)</label></div>
+   <div class="fblock"><div class="note"><span id="mstat"></span><br><br>
+    <b>S</b>=솔로(1층 검증) · <b>M</b>=뮤트(게이트 해제+가중 0)<br>
+    다이얼 터치 → 우측 검사 뷰 전환 · 주황 •=기본값 이탈</div></div></div>`;
+ }else{
+  const S=STRIPS.find(s=>s.g==deckTab);
+  body=`<div class="chanview${MUTE[S.g]?" gmuted":""}"><div class="body">`+
+   S.dials.map(dialHTML).join("")+`</div><div class="fblock">`+
    (S.fader?`<div class="fader"><input type="range" min="0" max="0.8" step="0.05" value="${A[S.fader]}"
-      oninput="A['${S.fader}']=+this.value;document.getElementById('fv_${S.fader}').textContent=this.value;iMode='${g}';render()">
-     <div class="fv" id="fv_${S.fader}">${A[S.fader]}</div><div class="mlbl">가중</div></div>
-    <div><div class="vmeter"><div class="fill" id="mt_${g}" style="height:0;background:${MCOL[g]}"></div></div>
-     <div class="mlbl">미터</div></div>`
-   :`<div class="note" style="font-size:10px">밴드=쿼리<br>(점수 없음)<br><span id="mt_포즈" style="color:#c98a4a"></span></div>`)+
-   `</div></div>`;}
- h+=`<div class="chan"><div class="chead" style="color:#cb8">마스터</div><div class="body">`+
-  dialHTML("gap_min")+
-  `<label style="font-size:11px;color:#bbb;display:block;margin:8px 0"><input type="checkbox" ${ATT?"checked":""}
-    onchange="ATT=this.checked;render()"> 빛 분산-감쇠(lf)</label>
-   <div class="note" id="mstat" style="margin-top:6px"></div></div>
-  <div class="fbase"><div class="note" style="font-size:10px"><b>S</b>=솔로(1층 검증)·<b>M</b>=뮤트<br>다이얼 터치→검사 뷰 전환<br>주황 •=기본값 이탈</div></div></div>`;
- p.innerHTML=h;}
+      oninput="A['${S.fader}']=+this.value;document.getElementById('fv_${S.fader}').textContent=this.value;iMode='${S.g}';render()">
+     <div class="fv" id="fv_${S.fader}">${A[S.fader]}</div><div class="mlbl">가중 페이더</div></div>`
+    :`<div class="note" style="font-size:11px">밴드=쿼리<br>(점수 없음)</div>`)+
+   `</div></div>`;
+ }
+ p.innerHTML=`<div id="dtabs">${tabs}</div>${body}`;}
 document.addEventListener("keydown",e=>{
  if(e.target.tagName=="INPUT")return;
  if(e.key=="ArrowRight"){cur=(cur+1)%WB.clips.length;selF=null;render();}
