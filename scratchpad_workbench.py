@@ -1,5 +1,9 @@
 """샘플링 워크벤치 v0.12 (2026-07-23) — 원장 ⑪⑫ 계기. 참조 구현(콘솔 파리티의 정본).
 
+v0.18.2 **lr 화살 반전 수리**(1층 SH 검사 중 적발, user 앵커 "test_4 태양=우측"): lr=
+(좌−우) 정의라 우측광=음수인데 화살이 +lr로 그려져 어두운 쪽을 가리킴(tb축은 정상).
+픽셀 실측(화면 우−좌 +38~+90)·DPR sh3(+)·구면 렌더(우반 밝음) 전부 우측 일치 — 계기
+정상, 바늘만 반전. 화살=빛 쪽으로 통일.
 v0.18.1 **영역 재배치**(user f379 판독: 볼=측면 광대 쏠림·턱=귀밑 끝 쏠림): 볼=눈밑
 삼각형 infraorbital 10점(118/119/100/101/47+미러) · 턱=해부학 "턱→코 ½ 기준 하부 ¼"
 밴드 16점(입아래~턱, 실루엣 안쪽 링 — 가우시안 목 누수 방지). f379 오버레이 자가 검증.
@@ -1002,7 +1006,7 @@ function renderInsp(C,m){
     <div><canvas id="shc" width="96" height="96" style="border:1px solid #444"></canvas>
      <div class="note" style="text-align:center">SH 조명 구면</div></div>
     <div><canvas id="lrc" width="96" height="96" style="border:1px solid #444"></canvas>
-     <div class="note" style="text-align:center">lr/tb 방향</div></div></div>
+     <div class="note" style="text-align:center">lr/tb 화살=빛 쪽</div></div></div>
    <div class="note"><b>lt ${r.lt==null?"--":r.lt}% = (휘도 ${r.lm==null?"--":r.lm}% + 색량 ${r.ch==null?"--":r.ch}%)/2</b><br>
     <b>패턴 pa ${r.pa==null?"--":r.pa}%</b> (볼빛−턱그늘 raw ${r.par==null?"--":r.par}) · 입체감 dp ${r.dp==null?"--":r.dp}% · 거칠기 hh ${r.hh==null?"--":r.hh}%<br>
     lr ${r.lr==null?"--":r.lr} · tb ${r.tb==null?"--":r.tb} · 클립 판별력 lf=${C.lf}<br>
@@ -1055,8 +1059,8 @@ function renderInsp(C,m){
   c2.strokeStyle="#555";c2.strokeRect(20,20,56,56);
   if(r.lr!=null&&r.tb!=null){
    c2.strokeStyle="#d8c455";c2.lineWidth=2;c2.beginPath();c2.moveTo(48,48);
-   c2.lineTo(48+r.lr*40,48-r.tb*40);c2.stroke();
-   c2.fillStyle="#d8c455";c2.beginPath();c2.arc(48+r.lr*40,48-r.tb*40,3,0,7);c2.fill();}
+   c2.lineTo(48-r.lr*40,48-r.tb*40);c2.stroke();
+   c2.fillStyle="#d8c455";c2.beginPath();c2.arc(48-r.lr*40,48-r.tb*40,3,0,7);c2.fill();}
  }
  if(iMode=="왜곡"){
   const cv=document.getElementById("csc"), ctx=cv.getContext("2d");
