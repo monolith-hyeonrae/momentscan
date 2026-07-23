@@ -1,4 +1,11 @@
-"""샘플링 워크벤치 v0.10 (2026-07-22) — 원장 ⑪⑫ 계기. 참조 구현(콘솔 파리티의 정본).
+"""샘플링 워크벤치 v0.11 (2026-07-23) — 원장 ⑪⑫ 계기. 참조 구현(콘솔 파리티의 정본).
+
+v0.11 **축 solo/mute — 믹싱 콘솔 문법**(mb-wbsolo, 검증 2층 구조의 1층 도구): 상태
+그룹 헤더에 [S][M] — mute=그 채널의 하드 게이트 해제+소프트 가중 0(다이얼 값은 보존,
+오버라이드만) · solo=나머지 일괄 mute(재클릭=해제) · 뮤트 중엔 "믹스(뮤트 해제) 픽"
+참조 행 표시 = solo-선택 vs 종합-선택 diff(1층→2층 다리). 뮤트는 시뮬 전용(셀프테스트
+=뮤트 없음 기본에서만; 파이썬 미러 불변). 전 가중 0(예: 포즈 solo)이면 픽=밴드 내
+시간순 — 중립 폴백.
 
 v0.10 **상태 검사 뷰 + 3열 골격**(user: "다이얼마다 서로 다른 분석 시각화 — 빛=SH가
 얼굴에 그리는 조명, 포즈=오버레이로 추정 검증"): 좌=다이얼(상태 아코디언·조작 시
@@ -362,8 +369,14 @@ body{background:#161616;color:#ddd;font:13px/1.45 system-ui,sans-serif;margin:0}
 #insp{position:fixed;right:0;top:78px;bottom:0;width:340px;overflow:auto;background:#1b1b1b;
   border-left:1px solid #333;padding:10px 12px;box-sizing:border-box}
 #main{margin-left:270px;margin-right:340px;padding:10px 16px}
-.grp{margin:10px 0 4px;color:#9ad;font-weight:600;font-size:12px;text-transform:uppercase;cursor:pointer}
+.grp{margin:10px 0 4px;color:#9ad;font-weight:600;font-size:12px;text-transform:uppercase;cursor:pointer;
+  display:flex;align-items:center;gap:6px}
 .grp .arr{color:#678}
+.grp .sm{font-size:10px;border:1px solid #555;border-radius:2px;padding:0 5px;color:#999;cursor:pointer}
+.grp .sm.on{color:#161616;font-weight:700}
+.grp .sm.s.on{background:#d8c455;border-color:#d8c455}
+.grp .sm.m.on{background:#e06666;border-color:#e06666}
+.gmute{opacity:.35}
 .dial{margin:6px 0}
 .dial label{display:flex;justify-content:space-between;font-size:12px;color:#bbb}
 .dial.mod label{color:#fc6}
@@ -466,6 +479,15 @@ const DEF={sym_max:0.6,dev_lo:-15,dev_hi:15,pt_max:99,pu_min:0.4,cs_min:0,mv_min
 let A={...DEF}, Bcfg=null, GT={}, cur=0, sortMode="time", poseOpen=false, ATT=false;
 let selF=null, iMode="포즈", collapsed={};
 const STAGES=["포즈","표정·얼굴","빛","영상","왜곡"];
+let MUTE={"포즈":false,"표정·얼굴":false,"빛":false,"영상":false,"왜곡":false};   // v0.11 채널 M
+const NOMUTE={"포즈":false,"표정·얼굴":false,"빛":false,"영상":false,"왜곡":false};
+function anyMute(){return STAGES.some(s=>MUTE[s]);}
+function muteG(g){MUTE[g]=!MUTE[g];buildPanel();render();}
+function soloG(g){
+ const isSolo=!MUTE[g]&&STAGES.every(s=>s==g||MUTE[s]);
+ if(isSolo){for(const s of STAGES)MUTE[s]=false;}
+ else{for(const s of STAGES)MUTE[s]=(s!=g);}
+ buildPanel();render();}
 const SCOL=["#c98a4a","#e08aa8","#d8c455","#55aacc","#b070d0"];
 const SURV="#69d069";
 const K2G={sym_max:"포즈",dev_lo:"포즈",dev_hi:"포즈",pt_max:"포즈",
@@ -473,30 +495,37 @@ const K2G={sym_max:"포즈",dev_lo:"포즈",dev_hi:"포즈",pt_max:"포즈",
  lt_min:"빛",dp_min:"빛",hh_max:"빛",sp_min:"영상",cs_min:"왜곡",mv_min:"왜곡",
  w_face:"표정·얼굴",w_light:"빛",w_image:"영상",w_distort:"왜곡"};
 
-function firstFail(r,c){
- if(!(r.sy<c.sym_max&&r.dv>c.dev_lo&&r.dv<c.dev_hi&&Math.abs(r.pc)<c.pt_max))return 0;
- if(!(r.pu>=c.pu_min&&r.ex>=c.ex_min&&r.ex<=c.ex_max))return 1;
- if(!((r.lt==null||r.lt>=c.lt_min)&&(r.dp==null||r.dp>=c.dp_min)&&(r.hh==null||r.hh<=c.hh_max)))return 2;
- if(!(r.sp==null||r.sp>=c.sp_min))return 3;
- if(!((r.cs==null||r.cs>=c.cs_min)&&(r.mv==null||r.mv>=c.mv_min)))return 4;
+function gPass(r,c,g){   // 채널별 하드 게이트 (v0.11: mute=게이트 해제)
+ if(g==0)return r.sy<c.sym_max&&r.dv>c.dev_lo&&r.dv<c.dev_hi&&Math.abs(r.pc)<c.pt_max;
+ if(g==1)return r.pu>=c.pu_min&&r.ex>=c.ex_min&&r.ex<=c.ex_max;
+ if(g==2)return (r.lt==null||r.lt>=c.lt_min)&&(r.dp==null||r.dp>=c.dp_min)&&(r.hh==null||r.hh<=c.hh_max);
+ if(g==3)return r.sp==null||r.sp>=c.sp_min;
+ return (r.cs==null||r.cs>=c.cs_min)&&(r.mv==null||r.mv>=c.mv_min);}
+function firstFail(r,c,M){
+ M=M||MUTE;
+ for(let g=0;g<5;g++){if(!M[STAGES[g]]&&!gPass(r,c,g))return g;}
  return -1;}
-function pass(r,c){return firstFail(r,c)<0;}
-function funnel(rows,c){
- const s1=rows.filter(r=>r.sy<c.sym_max&&r.dv>c.dev_lo&&r.dv<c.dev_hi&&Math.abs(r.pc)<c.pt_max);
- const s2=s1.filter(r=>r.pu>=c.pu_min&&r.ex>=c.ex_min&&r.ex<=c.ex_max);
- const s3=s2.filter(r=>(r.lt==null||r.lt>=c.lt_min)&&(r.dp==null||r.dp>=c.dp_min)&&(r.hh==null||r.hh<=c.hh_max));
- const s4=s3.filter(r=>r.sp==null||r.sp>=c.sp_min);
- const s5=s4.filter(r=>(r.cs==null||r.cs>=c.cs_min)&&(r.mv==null||r.mv>=c.mv_min));
- return [rows.length,s1.length,s2.length,s3.length,s4.length,s5.length];}
+function pass(r,c,M){return firstFail(r,c,M)<0;}
+function funnel(rows,c,M){
+ M=M||MUTE;
+ const out=[rows.length];
+ let cur_=rows;
+ for(let g=0;g<5;g++){
+  if(!M[STAGES[g]])cur_=cur_.filter(r=>gPass(r,c,g));
+  out.push(cur_.length);}
+ return out;}
 function stateScores(rr){
  return [(2*rr[0]+rr[1])/3, rr[7], (rr[2]+rr[3])/2, (rr[5]+rr[6]+rr[4])/3];}
-function score(r,c,lf){
+function score(r,c,lf,M){
+ M=M||MUTE;
  const [sf,sl,si,sd]=stateScores(r.r);
  const wl=ATT?c.w_light*(lf==null?1:lf):c.w_light;
- return c.w_face*sf+wl*sl+c.w_image*si+c.w_distort*sd;}
-function picks(rows,c,lf){
- const sv=rows.filter(r=>pass(r,c));
- sv.forEach(r=>r._s=score(r,c,lf));
+ return (M["표정·얼굴"]?0:c.w_face)*sf+(M["빛"]?0:wl)*sl
+  +(M["영상"]?0:c.w_image)*si+(M["왜곡"]?0:c.w_distort)*sd;}
+function picks(rows,c,lf,M){
+ M=M||MUTE;
+ const sv=rows.filter(r=>pass(r,c,M));
+ sv.forEach(r=>r._s=score(r,c,lf,M));
  sv.sort((a,b)=>b._s-a._s);
  const got=[];
  for(const r of sv){if(got.every(o=>Math.abs(r.f-o.f)>=c.gap_min))got.push(r);if(got.length==3)break;}
@@ -537,7 +566,7 @@ function render(){
  const meta=WB.clips.map(C=>{
   const pA=picks(C.rows,A,C.lf), fn=funnel(C.rows,A);
   const pB=Bcfg?picks(C.rows,Bcfg,C.lf):null;
-  if(isDef&&!ATT){const same=JSON.stringify(pA.slice().sort((a,b)=>a-b))==JSON.stringify(C.selftest.slice().sort((a,b)=>a-b));
+  if(isDef&&!ATT&&!anyMute()){const same=JSON.stringify(pA.slice().sort((a,b)=>a-b))==JSON.stringify(C.selftest.slice().sort((a,b)=>a-b));
    if(!same){st_ok=false;st_msg.push(C.clip);}}
   pA.forEach(f=>{const g=GT[C.clip+":"+f];if(g=="pos")gtP++;if(g=="neg")gtN++;});
   if(pB)pB.forEach(f=>{const g=GT[C.clip+":"+f];if(g=="pos")gtPB++;if(g=="neg")gtNB++;});
@@ -557,7 +586,9 @@ function render(){
        gAbs=C.absent.reduce((a,r)=>a+r[1]-r[0]+1,0);
  let h=`<div id="tabs">${tabs}</div><b>${C.clip}</b> t${C.tid} <span class="note">비디오 ${C.vf}f = 측정 ${C.n}`+
   (gInv?` + 무효 ${gInv}`:"")+(gDet?` + 미측정 ${gDet}`:"")+(gFrag?` + 파편 ${gFrag}`:"")+(gAbs?` + 무검출 ${gAbs}`:"")+
-  ` · <b>빛 판별력 lf=${C.lf==null?"?":C.lf}</b>${ATT?` <span style="color:#fc6">(감쇠: w_light ${A.w_light}→${(A.w_light*(C.lf==null?1:C.lf)).toFixed(2)})</span>`:""} · 풀 정렬:</span>
+  ` · <b>빛 판별력 lf=${C.lf==null?"?":C.lf}</b>${ATT?` <span style="color:#fc6">(감쇠: w_light ${A.w_light}→${(A.w_light*(C.lf==null?1:C.lf)).toFixed(2)})</span>`:""}`+
+  (anyMute()?` · <span style="color:#e06666"><b>${STAGES.filter(s=>!MUTE[s]).length==1?"SOLO: "+STAGES.find(s=>!MUTE[s]):"MUTE: "+STAGES.filter(s=>MUTE[s]).join(", ")}</b></span>`:"")+
+  ` · 풀 정렬:</span>
   <button onclick="sortMode=sortMode=='time'?'score':'time';render()">${sortMode=='time'?'시간순':'점수순'}</button>
   <button onclick="poseOpen=!poseOpen;render()">포즈 눈금 ${poseOpen?'닫기':'보기'}</button>
   <label style="font-size:12px;color:#bbb;margin-left:6px"><input type="checkbox" ${ATT?"checked":""}
@@ -582,6 +613,11 @@ function render(){
    m.pA.map(f=>cellHTML(C.clip,byf[f],"pickA"+(setB&&!setB.has(f)?" diff":""))).join("")+`</div>`;
  if(m.pB)h+=`<div class="rowlbl">B 픽</div><div class="strip big">`+
    m.pB.map(f=>cellHTML(C.clip,byf[f],"pickB"+(!setA.has(f)?" diff":""))).join("")+`</div>`;
+ if(anyMute()){   // v0.11 diff 뷰: solo/뮤트 선택 vs 종합(뮤트 해제) 선택 — 1층→2층 다리
+  const pRef=picks(C.rows,A,C.lf,NOMUTE);
+  h+=`<div class="rowlbl">믹스 픽 (뮤트 해제 기준 — 주황 외곽=현재 solo/뮤트 픽과 불일치)</div><div class="strip big">`+
+   pRef.map(f=>byf[f]?cellHTML(C.clip,byf[f],(setA.has(f)?"":"diff ")+"pickB"):"").join("")+`</div>`;
+ }
  const sv=C.rows.filter(r=>pass(r,A));
  sv.forEach(r=>r._s=score(r,A,C.lf));
  const ordered=sortMode=="time"?sv.slice().sort((a,b)=>a.f-b.f):sv.slice().sort((a,b)=>b._s-a._s);
@@ -594,15 +630,15 @@ function render(){
  renderInsp(C,m);
 
  const st=document.getElementById("selftest");
- if(isDef&&!ATT){st.textContent=st_ok?"selftest OK — JS ≡ python (기본 설정)":"selftest FAIL: "+st_msg.join(",");
+ if(isDef&&!ATT&&!anyMute()){st.textContent=st_ok?"selftest OK — JS ≡ python (기본 설정)":"selftest FAIL: "+st_msg.join(",");
   st.className=st_ok?"ok":"bad";}
- else{st.textContent="탐색 중 (기본 설정 아님 — selftest는 기본값에서만)";st.className="";}
+ else{st.textContent="탐색 중 (기본값 아님/뮤트 중 — selftest는 기본값·전 채널에서만)";st.className="";}
  const tot=Object.keys(GT).length;
  document.getElementById("gtscore").textContent=
   tot?`GT ${tot}개 · A: +${gtP}/−${gtN}`+(Bcfg?` · B: +${gtPB}/−${gtNB}`:""):"";
  for(const d of DIALS){if(d.length==1)continue;const k=d[0];
   const el=document.getElementById("d_"+k);
-  if(el)el.className="dial"+(A[k]!=DEF[k]?" mod":"");}
+  if(el)el.className="dial"+(A[k]!=DEF[k]?" mod":"")+((K2G[k]&&MUTE[K2G[k]])?" gmute":"");}
  window.scrollTo(0,sy0);
 }
 
@@ -852,17 +888,23 @@ function buildPanel(){
  const p=document.getElementById("panel");let h="";let grp=null;
  for(const d of DIALS){
   if(d.length==1){grp=d[0];
+   const isState=STAGES.includes(grp);
+   const isSolo=isState&&!MUTE[grp]&&STAGES.every(s=>s==grp||MUTE[s]);
    h+=`<div class="grp" onclick="collapsed['${grp}']=!collapsed['${grp}'];buildPanel();render()">
-     <span class="arr">${collapsed[grp]?"▸":"▾"}</span> ${grp}</div>`;continue;}
+     <span class="arr">${collapsed[grp]?"▸":"▾"}</span> ${grp}`+
+    (isState?` <span class="sm s${isSolo?" on":""}" onclick="event.stopPropagation();soloG('${grp}')">S</span>
+      <span class="sm m${MUTE[grp]?" on":""}" onclick="event.stopPropagation();muteG('${grp}')">M</span>`:``)+
+    `</div>`;continue;}
   if(grp&&collapsed[grp])continue;
   const [k,lbl,mn,mx,stp]=d;
-  h+=`<div class="dial" id="d_${k}"><label>${lbl}<span id="v_${k}">${A[k]}</span></label>
+  const gm=(K2G[k]&&MUTE[K2G[k]])?" gmute":"";
+  h+=`<div class="dial${gm}" id="d_${k}"><label>${lbl}<span id="v_${k}">${A[k]}</span></label>
    <input type="range" min="${mn}" max="${mx}" step="${stp}" value="${A[k]}"
     oninput="A['${k}']=+this.value;document.getElementById('v_${k}').textContent=this.value;
      if(K2G['${k}']&&STAGES.includes(K2G['${k}']))iMode=K2G['${k}'];render()">`+
    (HSPEC[k]?`<canvas class="dh" id="h_${k}" width="236" height="36"></canvas>`:``)+`</div>`;}
- h+=`<div class="note" style="margin-top:12px">그룹 제목 클릭=접기 · 주황 •=기본값에서 이동<br>
-  다이얼 조작 → 우측 검사 뷰가 그 상태 모드로 전환</div>`;
+ h+=`<div class="note" style="margin-top:12px">그룹 제목 클릭=접기 · <b>S=솔로(1층 계측 검증)·M=뮤트</b>(게이트 해제+가중 0, 다이얼 값 보존)<br>
+  주황 •=기본값에서 이동 · 다이얼 조작 → 우측 검사 뷰 전환</div>`;
  p.innerHTML=h;}
 document.addEventListener("keydown",e=>{
  if(e.target.tagName=="INPUT")return;
