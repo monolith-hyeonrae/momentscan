@@ -1,5 +1,14 @@
 """샘플링 워크벤치 v0.12 (2026-07-23) — 원장 ⑪⑫ 계기. 참조 구현(콘솔 파리티의 정본).
 
+v0.19.3 **소프트 존 + 존 세기 floor**(user 교정 "좋은 빛=f1~50 탑승장 / f269 렘=밋밋"):
+f1~50 실측=클립 최고 세기(raw 휘도 118~175·채도 77~94)·정면(az±25)·el 34~40인데
+**ldr 0.33~0.63(ld pct 0.4~12)** → ld≥50이 전멸시킴 — 밝고 부드러운 빛(소프트박스/
+오픈셰이드 문법)은 방향성이 낮다. f269=방향만 렘브란트(az41/el55/ld59), 세기 바닥
+(lt57/raw68) — 존에 level floor 부재. 처방: ①전 존 프리셋에 lt_min 60 ②ld_max 다이얼
+신설(소프트 상한) ③**존 "소프트(밝은 확산)"** = lt≥75 ∧ ld≤30 ∧ az±30 ∧ el10~55.
+리허설: 소프트 존 35장 전원 f0~50 적중 · 렘A+floor는 international_1에서 0(정직).
+교훈: **방향성은 '좋은 빛'의 한 문법이지 필요조건이 아니다** — 존 3문법(하드 측광/
+하드 정면광/소프트 정면광).
 v0.19.2 **raw 성분 병기**(user 판독 "international_1 버플 생존이 조명과 거리 멂" 해부):
 ①존은 정답(f51~65 초반 좋은 빛)을 잡았으나 sym(웃음 비대칭 0.63~0.81)·pupil(눈웃음
 0.32~0.38) 기본 게이트가 전멸시켜 그늘 프레임만 노출 ②그늘(f479·647~657)이 존을 통과
@@ -130,7 +139,7 @@ OVAL_ORDER = _oval_order()
 DEFAULT_CFG = {"sym_max": 0.6, "dev_lo": -15.0, "dev_hi": 15.0, "pt_max": 99.0, "pu_min": 0.4,
                "cs_min": 0.0, "mv_min": 0.0, "lt_min": 0.0, "ex_min": 0.0, "ex_max": 1.0,
                "gap_min": 12, "dp_min": 0.0, "hh_max": 100.0, "sp_min": 0.0, "pa_min": 0.0,
-               "ld_min": 0.0, "la_lo": -180.0, "la_hi": 180.0, "le_lo": -90.0, "le_hi": 90.0,
+               "ld_min": 0.0, "ld_max": 100.0, "la_lo": -180.0, "la_hi": 180.0, "le_lo": -90.0, "le_hi": 90.0,
                "w_face": 0.45, "w_light": 0.20, "w_image": 0.15, "w_distort": 0.20}
 
 
@@ -262,7 +271,7 @@ def compute_picks(rows, cfg):
             and (r["lt"] is None or r["lt"] >= cfg["lt_min"])
             and (r["dp"] is None or r["dp"] >= cfg["dp_min"])
             and (r["pa"] is None or r["pa"] >= cfg["pa_min"])
-            and (r["ld"] is None or r["ld"] >= cfg["ld_min"])
+            and (r["ld"] is None or cfg["ld_min"] <= r["ld"] <= cfg["ld_max"])
             and (r["la"] is None or cfg["la_lo"] <= r["la"] <= cfg["la_hi"])
             and (r["le"] is None or cfg["le_lo"] <= r["le"] <= cfg["le_hi"])
             and (r["hh"] is None or r["hh"] <= cfg["hh_max"])
@@ -650,6 +659,7 @@ const DIALS=[
  ["dp_min","입체감 dp pct >= (방향성)",0,90,5],
  ["hh_max","거칠기 hh pct <=",10,100,5],
  ["ld_min","방향성 ld pct >= (|SH1|/DC)",0,90,5],
+ ["ld_max","방향성 ld pct <= (소프트 상한)",10,100,5],
  ["la_lo","정준 방위 az 하한 (0=정면 +=피사체좌 ±180=후방)",-180,180,5],
  ["la_hi","정준 방위 az 상한",-180,180,5],
  ["le_lo","정준 고도 el 하한 (+=위)",-90,90,5],
@@ -668,7 +678,7 @@ const DIALS=[
 ];
 const DEF={sym_max:0.6,dev_lo:-15,dev_hi:15,pt_max:99,pu_min:0.4,cs_min:0,mv_min:0,lt_min:0,
            ex_min:0,ex_max:1.0,gap_min:12,dp_min:0,hh_max:100,sp_min:0,pa_min:0,
-           ld_min:0,la_lo:-180,la_hi:180,le_lo:-90,le_hi:90,
+           ld_min:0,ld_max:100,la_lo:-180,la_hi:180,le_lo:-90,le_hi:90,
            w_face:0.45,w_light:0.20,w_image:0.15,w_distort:0.20};
 let A={...DEF}, Bcfg=null, GT={}, cur=0, sortMode="time", poseOpen=false, ATT=false;
 let selF=null, iMode="포즈", collapsed={};
@@ -689,13 +699,13 @@ const SURV="#69d069";
 const K2G={sym_max:"포즈",dev_lo:"포즈",dev_hi:"포즈",pt_max:"포즈",
  pu_min:"표정·얼굴",ex_min:"표정·얼굴",ex_max:"표정·얼굴",
  lt_min:"빛",dp_min:"빛",hh_max:"빛",pa_min:"빛",sp_min:"영상",cs_min:"왜곡",mv_min:"왜곡",
- ld_min:"빛",la_lo:"빛",la_hi:"빛",le_lo:"빛",le_hi:"빛",
+ ld_min:"빛",ld_max:"빛",la_lo:"빛",la_hi:"빛",le_lo:"빛",le_hi:"빛",
  w_face:"표정·얼굴",w_light:"빛",w_image:"영상",w_distort:"왜곡"};
 
 function gPass(r,c,g){   // 채널별 하드 게이트 (v0.11: mute=게이트 해제)
  if(g==0)return r.sy<c.sym_max&&r.dv>c.dev_lo&&r.dv<c.dev_hi&&Math.abs(r.pc)<c.pt_max;
  if(g==1)return r.pu>=c.pu_min&&r.ex>=c.ex_min&&r.ex<=c.ex_max;
- if(g==2)return (r.lt==null||r.lt>=c.lt_min)&&(r.pa==null||r.pa>=c.pa_min)&&(r.dp==null||r.dp>=c.dp_min)&&(r.hh==null||r.hh<=c.hh_max)&&(r.ld==null||r.ld>=c.ld_min)&&(r.la==null||(r.la>=c.la_lo&&r.la<=c.la_hi))&&(r.le==null||(r.le>=c.le_lo&&r.le<=c.le_hi));
+ if(g==2)return (r.lt==null||r.lt>=c.lt_min)&&(r.pa==null||r.pa>=c.pa_min)&&(r.dp==null||r.dp>=c.dp_min)&&(r.hh==null||r.hh<=c.hh_max)&&(r.ld==null||(r.ld>=c.ld_min&&r.ld<=c.ld_max))&&(r.la==null||(r.la>=c.la_lo&&r.la<=c.la_hi))&&(r.le==null||(r.le>=c.le_lo&&r.le<=c.le_hi));
  if(g==3)return r.sp==null||r.sp>=c.sp_min;
  return (r.cs==null||r.cs>=c.cs_min)&&(r.mv==null||r.mv>=c.mv_min);}
 function firstFail(r,c,M){
@@ -851,6 +861,7 @@ const HSPEC={
  lt_min:{f:r=>r.lt,dir:"above"},
  pa_min:{f:r=>r.pa,dir:"above"},
  ld_min:{f:r=>r.ld,dir:"above"},
+ ld_max:{f:r=>r.ld,dir:"below"},
  la_hi:{f:r=>r.la,band:["la_lo","la_hi"]},
  le_hi:{f:r=>r.le,band:["le_lo","le_hi"]},
  dp_min:{f:r=>r.dp,dir:"above"},
@@ -1210,7 +1221,7 @@ const STRIPS=[   // v0.14: 채널 → 세부 채널(트리) → 다이얼
    {t:"조도·생동 (lum×chroma)",dials:["lt_min"]},
    {t:"패턴 (볼빛−턱그늘)",dials:["pa_min"]},
    {t:"입체감 (방향성)",dials:["dp_min"]},
-   {t:"정준 방향 (얼굴-좌표 SH)",dials:["ld_min","la_lo","la_hi","le_lo","le_hi"],zones:1},
+   {t:"정준 방향 (얼굴-좌표 SH)",dials:["ld_min","ld_max","la_lo","la_hi","le_lo","le_hi"],zones:1},
    {t:"거칠기 (harsh)",dials:["hh_max"]}]},
  {g:"영상",fader:"w_image",subs:[
    {t:"선명 (face blur)",dials:["sp_min"]}]},
@@ -1222,10 +1233,11 @@ const MCOL={"표정·얼굴":"#e08aa8","빛":"#d8c455","영상":"#55aacc","왜�
 let deckTab="포즈";
 function setTab(g){deckTab=g;if(STAGES.includes(g))iMode=g;buildPanel();render();}
 function setZone(z){   // v0.19 사진 문법 존 프리셋 (정준 az/el 다이얼 일괄)
- const Z={remA:{la_lo:20,la_hi:60,le_lo:10,le_hi:55,ld_min:50},
-          remB:{la_lo:-60,la_hi:-20,le_lo:10,le_hi:55,ld_min:50},
-          bfly:{la_lo:-15,la_hi:15,le_lo:20,le_hi:60,ld_min:50},
-          zoff:{la_lo:-180,la_hi:180,le_lo:-90,le_hi:90,ld_min:0}};
+ const Z={remA:{la_lo:20,la_hi:60,le_lo:10,le_hi:55,ld_min:50,ld_max:100,lt_min:60},
+          remB:{la_lo:-60,la_hi:-20,le_lo:10,le_hi:55,ld_min:50,ld_max:100,lt_min:60},
+          bfly:{la_lo:-15,la_hi:15,le_lo:20,le_hi:60,ld_min:50,ld_max:100,lt_min:60},
+          soft:{la_lo:-30,la_hi:30,le_lo:10,le_hi:55,ld_min:0,ld_max:30,lt_min:75},
+          zoff:{la_lo:-180,la_hi:180,le_lo:-90,le_hi:90,ld_min:0,ld_max:100,lt_min:0}};
  Object.assign(A,Z[z]);iMode="빛";buildPanel();render();}
 function dialHTML(k){
  const [,lbl,mn,mx,stp]=D2META[k];
@@ -1259,7 +1271,7 @@ function buildPanel(){   // v0.13: 채널 탭 데크 + 미터 브리지
   body=`<div class="chanview${MUTE[S.g]?" gmuted":""}"><div class="body">`+
    S.subs.map(sub=>`<div class="subch"><div class="subttl">${sub.t}</div>`+
     (sub.zones?`<div style="margin:2px 0 5px">`+[["remA","렘브란트 az+"],["remB","렘브란트 az−"],
-      ["bfly","버터플라이"],["zoff","존 해제"]].map(([z,l])=>
+      ["bfly","버터플라이"],["soft","소프트(밝은 확산)"],["zoff","존 해제"]].map(([z,l])=>
       `<button onclick="setZone('${z}')" style="font-size:10px;background:#333;color:#d8c455;border:1px solid #555;border-radius:3px;margin-right:4px;cursor:pointer;padding:1px 6px">${l}</button>`).join("")+
       `<div style="font-size:10px;color:#987;margin-top:2px">존=방향성 클립 전용 — 헤더 lf·⚠확산 배지 확인</div></div>`:"")+
     sub.dials.map(dialHTML).join("")+`</div>`).join("")+`</div><div class="fblock">`+
