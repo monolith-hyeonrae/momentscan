@@ -573,6 +573,8 @@ const DEF={sym_max:0.6,dev_lo:-15,dev_hi:15,pt_max:99,pu_min:0.4,cs_min:0,mv_min
            w_face:0.45,w_light:0.20,w_image:0.15,w_distort:0.20};
 let A={...DEF}, Bcfg=null, GT={}, cur=0, sortMode="time", poseOpen=false, ATT=false;
 let selF=null, iMode="포즈", collapsed={};
+let _rp=false;   // 렌더 스로틀(rAF) — 풀 전체 표시 + 드래그 부드러움 양립
+function scheduleRender(){if(_rp)return;_rp=true;requestAnimationFrame(()=>{_rp=false;render();});}
 const STAGES=["포즈","표정·얼굴","빛","영상","왜곡"];
 let MUTE={"포즈":false,"표정·얼굴":false,"빛":false,"영상":false,"왜곡":false};   // v0.11 채널 M
 const NOMUTE={"포즈":false,"표정·얼굴":false,"빛":false,"영상":false,"왜곡":false};
@@ -717,9 +719,8 @@ function render(){
  const sv=C.rows.filter(r=>pass(r,A));
  sv.forEach(r=>r._s=score(r,A,C.lf));
  const ordered=sortMode=="time"?sv.slice().sort((a,b)=>a.f-b.f):sv.slice().sort((a,b)=>b._s-a._s);
- const show=ordered.slice(0,400);
- h+=`<div class="box"><div class="boxttl">생존 풀 (A, ${sv.length}행 중 ${show.length} 표시 · ${sortMode=='time'?'시간순':'점수순'})</div>
-  <div class="strip sm">`+show.map(r=>cellHTML(C.clip,r,"")).join("")+`</div></div>`;
+ h+=`<div class="box"><div class="boxttl">생존 풀 (A, ${sv.length}행 전체 · ${sortMode=='time'?'시간순':'점수순'})</div>
+  <div class="strip sm">`+ordered.map(r=>cellHTML(C.clip,r,"")).join("")+`</div></div>`;
  document.getElementById("main").innerHTML=h;
  drawTimeline(C,m);
  drawDialHists(C,m);
@@ -1085,7 +1086,7 @@ function dialHTML(k){
  return `<div class="dial" id="d_${k}"><label>${lbl}<span id="v_${k}">${A[k]}</span></label>
   <input type="range" min="${mn}" max="${mx}" step="${stp}" value="${A[k]}"
    oninput="A['${k}']=+this.value;document.getElementById('v_${k}').textContent=this.value;
-    if(K2G['${k}']&&STAGES.includes(K2G['${k}']))iMode=K2G['${k}'];render()">`+
+    if(K2G['${k}']&&STAGES.includes(K2G['${k}']))iMode=K2G['${k}'];scheduleRender()">`+
   (HSPEC[k]?`<canvas class="dh" id="h_${k}" width="300" height="34" style="width:100%"></canvas>`:``)+`</div>`;}
 function buildPanel(){   // v0.13: 채널 탭 데크 + 미터 브리지
  const p=document.getElementById("deck");
@@ -1114,7 +1115,7 @@ function buildPanel(){   // v0.13: 채널 탭 데크 + 미터 브리지
     sub.dials.map(dialHTML).join("")+`</div>`).join("")+`</div><div class="fblock">`+
    (S.fader?`<div class="fader"><span class="mlbl">가중 페이더</span>
      <input type="range" min="0" max="0.8" step="0.05" value="${A[S.fader]}"
-      oninput="A['${S.fader}']=+this.value;document.getElementById('fv_${S.fader}').textContent=this.value;iMode='${S.g}';render()">
+      oninput="A['${S.fader}']=+this.value;document.getElementById('fv_${S.fader}').textContent=this.value;iMode='${S.g}';scheduleRender()">
      <span class="fv" id="fv_${S.fader}">${A[S.fader]}</span></div>`
     :`<div class="note" style="font-size:11px">밴드=쿼리 (점수 없음)</div>`)+
    `</div></div>`;
