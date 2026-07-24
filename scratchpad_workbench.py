@@ -1,5 +1,15 @@
 """샘플링 워크벤치 v0.12 (2026-07-23) — 원장 ⑪⑫ 계기. 참조 구현(콘솔 파리티의 정본).
 
+v0.20 **mesh-LS 이중 자 병기**(user "v0.20 시공" + Sapiens 프로브 판정 후속): 백색상자
+램버트 피팅(정준 obj 법선 110점[SKIN_ANCHORS∪CHEEK_PTS 1-링−눈테두리, user 교정
+"렘브란트 핵심=눈아래 코좌우"] × 5×5 밝기, 강건 트림 LS)을 전 프레임 방출 — ma/me
+(정준 방위/고도)·mr(|m|/a)·ag(DPR 합의각). **존 게이트 소스는 DPR la/le 유지**(전환=
+2층 판정, 프로브 근거: DPR el 고평가 예비). 검사 뷰: mesh-LS 수치 병기+⚠방향 불신
+배지(합의각>45° 또는 mr<0.3=f429 서명) + 픽-한정 시각화 3종(법선 화살[이미지 공간]
+·**정준(코-중심) 빛 지도**[user 지시: 포즈 소거 좌표에서 "빛이 얼굴에 앉은 모양" —
+canonicalize 동일 수학, 색=관측 밝기+얼굴-기준 광방향 화살]·램버트 산점[cosθ vs
+밝기+피팅 직선]). 수학 노트: 피팅=카메라 공간(픽셀 소재지), 방향 출력=정준 회전
+— 직교 동치라 결과 좌표는 이미 코-중심.
 v0.19.3 **소프트 존 + 존 세기 floor**(user 교정 "좋은 빛=f1~50 탑승장 / f269 렘=밋밋"):
 f1~50 실측=클립 최고 세기(raw 휘도 118~175·채도 77~94)·정면(az±25)·el 34~40인데
 **ldr 0.33~0.63(ld pct 0.4~12)** → ld≥50이 전멸시킴 — 밝고 부드러운 빛(소프트박스/
@@ -116,6 +126,8 @@ SKIN_ANCHORS = (9, 107, 336, 151, 67, 297, 50, 280, 205, 425, 116, 345, 123, 352
 EYE_CORNERS = (33, 263)
 # v0.18 패턴 축(user 2026-07-23: 볼빛−턱그늘) — 영역 정의(오버레이로 자가 검증)
 CHEEK_PTS = (118, 119, 100, 101, 47, 347, 348, 329, 330, 277)   # 눈밑 삼각형(infraorbital, 양측)
+EYE_RING = frozenset((33, 7, 163, 144, 145, 153, 154, 155, 133, 173, 157, 158, 159, 160, 161, 246,
+                      263, 249, 390, 373, 374, 380, 381, 382, 362, 398, 384, 385, 386, 387, 388, 466))
 JAW_PTS = (135, 169, 170, 140, 211, 32, 208, 175, 199,          # 하부 1/4 밴드(입아래~턱,
            364, 394, 395, 369, 431, 262, 428)                   #  실루엣 안쪽 — 목 누수 방지)
 
@@ -173,6 +185,83 @@ def rank01(x, flip=False):
     r = np.argsort(np.argsort(np.nan_to_num(x, nan=(np.inf if flip else -np.inf))))
     r = r / max(len(x) - 1, 1)
     return 1 - r if flip else r
+
+
+def _mesh_topology():
+    """v0.20 mesh-LS 재료 — 정준 obj faces + 스킨 110점(SKIN_ANCHORS∪CHEEK_PTS 1-링
+    −눈테두리). obj 경로=geometry.CANONICAL_OBJ 단일홈(외부 dep 등재 동일)."""
+    from momentscan.perception.readings.geometry import CANONICAL_OBJ
+    faces = []
+    for ln in Path(CANONICAL_OBJ).read_text(encoding="utf-8").splitlines():
+        if ln.startswith("f "):
+            faces.append([int(p.split("/")[0]) - 1 for p in ln.split()[1:4]])
+    faces = np.array(faces, int)
+    adj = {}
+    for tri in faces:
+        for a in tri:
+            adj.setdefault(int(a), set()).update(int(b) for b in tri if b != a)
+    skin = set(SKIN_ANCHORS) | set(CHEEK_PTS)
+    for a in list(skin):
+        skin |= adj.get(a, set())
+    skin -= EYE_RING
+    return faces, np.array(sorted(i for i in skin if i < 468), int)
+
+
+MESH_FACES, SKIN110 = _mesh_topology()
+
+
+def _vertex_normals(v):
+    """v (468,3) flipped-camera 좌표 → 단위 법선, 카메라 쪽 배향."""
+    nrm = np.zeros_like(v)
+    t0, t1, t2 = v[MESH_FACES[:, 0]], v[MESH_FACES[:, 1]], v[MESH_FACES[:, 2]]
+    fn = np.cross(t1 - t0, t2 - t0)
+    for k in range(3):
+        np.add.at(nrm, MESH_FACES[:, k], fn)
+    nrm /= (np.linalg.norm(nrm, axis=1, keepdims=True) + 1e-9)
+    if np.nanmean(nrm[:, 2]) < 0:
+        nrm = -nrm
+    return nrm
+
+
+def _fit_light_gray(I, N):
+    """I (P,) 밝기 × N (P,3) 법선 → (a, m(3,), keep) 강건 램버트 LS. None=실패."""
+    keep = np.isfinite(I)
+    A_full = np.concatenate([np.ones((len(I), 1)), N], axis=1)
+    th = None
+    for _ in range(3):
+        if keep.sum() < 12:
+            return None
+        th, *_ = np.linalg.lstsq(A_full[keep], I[keep], rcond=None)
+        r = np.abs(A_full @ th - I)
+        m = th[1:]
+        lit = (N @ (m / (np.linalg.norm(m) + 1e-9))) > -0.05
+        cut = np.percentile(r[keep], 75)
+        keep = keep & (r <= cut) & lit & np.isfinite(I)
+    return float(th[0]), th[1:], keep
+
+
+def _mls_frame(frm, P_i, cbv, gray_full=None):
+    """한 프레임 mesh-LS — (a, m, keep, N110, xy478, I110) 또는 None."""
+    H0, W0 = frm.shape[:2]
+    cw, ch = cbv[2] - cbv[0], cbv[3] - cbv[1]
+    if cw <= 1 or ch <= 1:
+        return None
+    xy = np.stack([cbv[0] + P_i[:, 0] * cw, cbv[1] + P_i[:, 1] * ch], 1)
+    if gray_full is None:
+        gray_full = cv2.cvtColor(frm, cv2.COLOR_BGR2GRAY).astype(np.float32)
+    I = np.full(len(SKIN110), np.nan)
+    for k, j in enumerate(SKIN110):
+        x, y = int(round(xy[j, 0])), int(round(xy[j, 1]))
+        if 2 <= x < W0 - 2 and 2 <= y < H0 - 2:
+            I[k] = gray_full[y - 2:y + 3, x - 2:x + 3].mean()
+    v3 = np.stack([P_i[:468, 0] * cw, P_i[:468, 1] * ch, P_i[:468, 2] * cw], 1)
+    v3 *= np.array([1.0, -1.0, -1.0])
+    N = _vertex_normals(v3)[SKIN110]
+    fit = _fit_light_gray(I, N)
+    if fit is None:
+        return None
+    a, m, keep = fit
+    return a, m, keep, N, xy, I, v3
 
 
 def frame_table(clip_id: str, out_root: Path):
@@ -334,6 +423,10 @@ def build_clip(clip_id, out_root, wb_dir):
 
     chroma = np.full(n, np.nan)
     pat = np.full(n, np.nan)     # v0.18 패턴: (볼빛 − 턱그늘)/얼굴평균
+    mls_az = np.full(n, np.nan)  # v0.20 mesh-LS 이중 자(백색상자 램버트 피팅)
+    mls_el = np.full(n, np.nan)
+    mls_r = np.full(n, np.nan)
+    mls_ag = np.full(n, np.nan)  # DPR 합의각(카메라 프레임, 도)
     tdir = wb_dir / "thumbs" / clip_id
     tdir.mkdir(parents=True, exist_ok=True)
     thumb_ok = set()
@@ -365,6 +458,21 @@ def build_clip(clip_id, out_root, wb_dir):
                     jl = _region_lum(sub_g, p_sub, JAW_PTS, sig * 0.7)
                     if np.isfinite(cl) and np.isfinite(jl) and r[2] > 1:
                         pat[i] = (cl - jl) / (r[2] + 1e-6)   # r[2]=v_mean(얼굴 평균 명도)
+            mfit = _mls_frame(frm, P[i], cbv)
+            if mfit is not None:
+                a_m, m_m = mfit[0], mfit[1]
+                mag = float(np.linalg.norm(m_m))
+                if mag > 1e-6:
+                    l_m = m_m / mag
+                    Lf_m = t["R3"][i].T @ l_m
+                    mls_az[i] = np.degrees(np.arctan2(Lf_m[0], Lf_m[2]))
+                    mls_el[i] = np.degrees(np.arcsin(np.clip(Lf_m[1], -1, 1)))
+                    mls_r[i] = mag / max(a_m, 1e-3)
+                    sh_m = t["SH"][i]
+                    if np.isfinite(sh_m).all():
+                        Ld_m = np.array([sh_m[3], sh_m[2], -sh_m[1]])
+                        Ld_m /= (np.linalg.norm(Ld_m) + 1e-9)
+                        mls_ag[i] = np.degrees(np.arccos(np.clip(float(l_m @ Ld_m), -1, 1)))
             box = tuple(cbv)
         elif fidx in ghost_thumb:
             k = ghost_kind[fidx]
@@ -472,6 +580,8 @@ def build_clip(clip_id, out_root, wb_dir):
                      "dp": num(dp_pct[i], 1), "hh": num(hh_pct[i], 1), "sp": num(sharp_pct[i], 1),
                      "pa": num(pat_pct[i], 1), "par": num(pat[i], 3),
                      "lmr": num(t["lum_eff"][i], 1), "chr": num(chroma[i], 1),
+                     "ma": num(mls_az[i], 0), "me": num(mls_el[i], 0),
+                     "mr": num(mls_r[i], 2), "ag": num(mls_ag[i], 0),
                      "la": num(la_deg[i], 0), "le": num(le_deg[i], 0),
                      "ldr": num(ldr_raw[i], 2), "ld": num(ld_pct[i], 1),
                      "rm": ([round(float(v), 3) for v in R3[i].ravel()]
@@ -508,7 +618,32 @@ def build_clip(clip_id, out_root, wb_dir):
             cv2.imwrite(str(tdir / f"f{f:05d}_lap.jpg"),
                         cv2.resize(lapu, (THUMB, THUMB)), [cv2.IMWRITE_JPEG_QUALITY, 80])
             lap_ok = 1
-        pv[str(f)] = {"lm": lm2, "bs": bs_top, "rl": num(t["roll"][i], 1), "lap": lap_ok}
+        mls = None
+        if ok:
+            mfit = _mls_frame(frm, P[i], cbv)
+            if mfit is not None:
+                a_m, m_m, keep_m, N_m, xy_m, I_m, v3_m = mfit
+                mag = float(np.linalg.norm(m_m))
+                if mag > 1e-6:
+                    l_m = m_m / mag
+                    ndl = N_m @ l_m
+                    # 정준(코-중심) 좌표 — canonicalize 동일 수학(centroid+rms), 포즈 소거
+                    v3c = v3_m - v3_m.mean(axis=0)
+                    c3 = (t["R3"][i].T @ v3c.T).T
+                    c3 /= (np.sqrt((c3 ** 2).sum(axis=1).mean()) + 1e-9)
+                    w_c, h_c = max(cbv[2] - cbv[0], 1e-6), max(cbv[3] - cbv[1], 1e-6)
+                    mls = {"p": [[round(float((xy_m[j, 0] - cbv[0]) / w_c), 3),
+                                  round(float((xy_m[j, 1] - cbv[1]) / h_c), 3)] for j in SKIN110],
+                           "c": [[round(float(c3[j, 0]), 3), round(float(c3[j, 1]), 3)]
+                                 for j in SKIN110],
+                           "n": [[round(float(N_m[k, 0]), 2), round(float(-N_m[k, 1]), 2)]
+                                 for k in range(len(SKIN110))],
+                           "d": [round(float(v), 2) for v in ndl],
+                           "i": [None if not np.isfinite(v) else round(float(v)) for v in I_m],
+                           "k": [int(v) for v in keep_m],
+                           "fit": [round(a_m, 1), round(mag, 1)]}
+        pv[str(f)] = {"lm": lm2, "bs": bs_top, "rl": num(t["roll"][i], 1), "lap": lap_ok,
+                      "mls": mls}
     cap.release()
 
     return {"clip": clip_id, "tid": t["tid"], "n": n, "vf": vf, "cur": cur, "lf": lf,
@@ -1075,9 +1210,17 @@ function renderInsp(C,m){
      <div class="note" style="text-align:center">lr/tb 화살=빛 쪽</div></div>
     <div><canvas id="fsc" width="96" height="96" style="border:1px solid #444"></canvas>
      <div class="note" style="text-align:center">얼굴-좌표 구면 ●=광방향</div></div></div>
+   ${pv&&pv.mls?`<div style="margin-top:8px"><canvas id="mlc" width="300" height="300" style="border:1px solid #444"></canvas>
+    <div class="note">법선 화살 — 색=광원 향한 정도 (빨강=정면·파랑=등짐)</div>
+    <canvas id="mcc" width="300" height="300" style="border:1px solid #444;margin-top:4px"></canvas>
+    <div class="note">정준(코-중심) 빛 지도 — 포즈 소거, 색=관측 밝기, 화살=얼굴-기준 광방향</div>
+    <canvas id="msc" width="300" height="170" style="border:1px solid #444;margin-top:4px"></canvas>
+    <div class="note">램버트 산점: cosθ vs 밝기 · 직선=피팅 ${pv.mls.fit[0]}+${pv.mls.fit[1]}·cosθ (회색=트림)</div></div>`
+   :`<div class="note" style="margin-top:6px">법선 화살·정준 빛 지도·램버트 산점은 픽 프레임 한정</div>`}
    <div class="note"><b>lt ${r.lt==null?"--":r.lt}% = (휘도 ${r.lm==null?"--":r.lm}% + 색량 ${r.ch==null?"--":r.ch}%)/2</b> · raw 휘도 ${r.lmr==null?"--":r.lmr} / 색량 ${r.chr==null?"--":r.chr} <span style="color:#987">(pct 포화 대조용)</span><br>
     <b>패턴 pa ${r.pa==null?"--":r.pa}%</b> (볼빛−턱그늘 raw ${r.par==null?"--":r.par}) · 입체감 dp ${r.dp==null?"--":r.dp}% · 거칠기 hh ${r.hh==null?"--":r.hh}%<br>
     <b>정준 az ${r.la==null?"--":r.la}° · el ${r.le==null?"--":r.le}°</b> (0=정면 +=피사체좌/위) · 방향성 ldr ${r.ldr==null?"--":r.ldr}, ld ${r.ld==null?"--":r.ld}%${r.ldr!=null&&r.ldr<0.25?' <span style="color:#e88">⚠확산—방위 신뢰불가</span>':""}<br>
+    <b>mesh-LS az ${r.ma==null?"--":r.ma}° · el ${r.me==null?"--":r.me}°</b> · 방향성 ${r.mr==null?"--":r.mr} · DPR 합의 ${r.ag==null?"--":r.ag+"°"}${(r.ag!=null&&r.ag>45)||(r.mr!=null&&r.mr<0.3)?' <span style="color:#e88">⚠방향 불신('+(r.ag!=null&&r.ag>45?"이중 자 불일치":"무방향")+')</span>':""}<br>
     lr ${r.lr==null?"--":r.lr} · tb ${r.tb==null?"--":r.tb} · 클립 판별력 lf=${C.lf}<br>
     <span style="color:#4dd">마스크 위 청록=볼 삼각형</span> · <span style="color:#f90">주황=턱 후방 경계</span></div>`;
  }else if(iMode=="영상"){
@@ -1155,6 +1298,48 @@ function renderInsp(C,m){
     if(lz>=0){f2.fillStyle="#ffd24d";f2.fill();}
     else{f2.strokeStyle="#e55";f2.lineWidth=2;f2.stroke();}}
   }
+ }
+ if(iMode=="빛"&&pv&&pv.mls){   // v0.20 mesh-LS 시각화 3종(픽 한정)
+  const M=pv.mls;
+  const cA=document.getElementById("mlc");
+  if(cA){const xA=cA.getContext("2d");const imA=new Image();
+   imA.onload=()=>{xA.globalAlpha=0.42;xA.drawImage(imA,0,0,300,300);xA.globalAlpha=1;
+    for(let k=0;k<M.p.length;k++){
+     const x=M.p[k][0]*300,y=M.p[k][1]*300;
+     xA.strokeStyle=`hsl(${(1-M.d[k])/2*240},85%,60%)`;xA.lineWidth=1.6;
+     xA.beginPath();xA.moveTo(x,y);xA.lineTo(x+M.n[k][0]*15,y+M.n[k][1]*15);xA.stroke();}};
+   if(r.th)imA.src=r.th;}
+  const cC=document.getElementById("mcc");
+  if(cC){const xC=cC.getContext("2d");
+   xC.fillStyle="#1c1c1c";xC.fillRect(0,0,300,300);
+   const vals=M.i.filter(v=>v!=null);
+   const lo=Math.min(...vals),hi=Math.max(...vals);
+   for(let k=0;k<M.c.length;k++){if(M.i[k]==null)continue;
+    const x=150+M.c[k][0]*95,y=150-M.c[k][1]*95;
+    const tb2=(M.i[k]-lo)/(hi-lo+1e-9);
+    xC.fillStyle=`hsl(${270-tb2*215},90%,${30+tb2*35}%)`;
+    xC.beginPath();xC.arc(x,y,6,0,7);xC.fill();}
+   if(r.ma!=null&&r.me!=null){
+    const azr=r.ma*Math.PI/180,elr=r.me*Math.PI/180;
+    const dx=Math.sin(azr)*Math.cos(elr),dy=Math.sin(elr);
+    xC.strokeStyle="#ffd24d";xC.lineWidth=3;xC.beginPath();xC.moveTo(150,150);
+    xC.lineTo(150+dx*95,150-dy*95);xC.stroke();
+    xC.fillStyle="#ffd24d";xC.beginPath();xC.arc(150+dx*95,150-dy*95,4,0,7);xC.fill();}
+   xC.fillStyle="#888";xC.font="10px sans-serif";
+   xC.fillText("피사체 좌 →",232,292);xC.fillText("위 ↑",6,14);}
+  const cS=document.getElementById("msc");
+  if(cS){const xS=cS.getContext("2d");
+   xS.fillStyle="#222";xS.fillRect(0,0,300,170);
+   const vals=M.i.filter(v=>v!=null);
+   const lo=Math.min(...vals),hi=Math.max(...vals);
+   const px=d=>20+(d+1)/2*260, py=v=>158-(v-lo)/(hi-lo+1e-9)*140;
+   xS.strokeStyle="#ffd24d";xS.lineWidth=2;xS.beginPath();
+   xS.moveTo(px(-1),py(M.fit[0]-M.fit[1]));xS.lineTo(px(1),py(M.fit[0]+M.fit[1]));xS.stroke();
+   for(let k=0;k<M.d.length;k++){if(M.i[k]==null)continue;
+    xS.fillStyle=M.k[k]?"#fc6":"#666";
+    xS.beginPath();xS.arc(px(M.d[k]),py(M.i[k]),2.6,0,7);xS.fill();}
+   xS.fillStyle="#999";xS.font="10px sans-serif";
+   xS.fillText("cosθ→",260,166);xS.fillText("밝기↑",4,12);}
  }
  if(iMode=="왜곡"){
   const cv=document.getElementById("csc"), ctx=cv.getContext("2d");
