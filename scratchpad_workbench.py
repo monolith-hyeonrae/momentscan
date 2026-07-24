@@ -16,6 +16,10 @@ v0.20.1 **자기-가림 수리**(모의 렌더 자가 적발): 측면에서 등�
 v0.20.2 **역광 붕괴 수리**(pv mls 2/7 진단): 1차 피팅이 "빛=뒤"면 clamp-트림이 전
 점을 죽여 None(f305 110→3). lit 트림=lit 모집단 충분(≥max(12, 30%))할 때만 + 붕괴
 시 마지막 유효 피팅 반환 — 역광 프레임도 (낮은 신뢰의) 방향을 정직 방출.
+v0.21.2 **클립-고정 밝기 척도**(user 판독 "f570은 어두운데 지도는 강렬"): 프레임별
+min-max 스트레치가 어두운 프레임의 최대점을 최대 노랑으로 렌더 — SH 구면 캐비어트의
+재생산. 지도·산점 색/y축을 클립 p2~p98(mrange)에 고정 → 프레임 간 세기 비교 성립,
+캡션에 척도 명시.
 v0.21 **지도·산점 전-프레임화**(user "모든 프레임에 법선 시각화가 없네"): 픽-한정
 관례가 1층 임의-프레임 검증 직무와 불일치 — **정준 레이아웃은 프레임 불변**(정준화의
 존재 이유)이므로 클립당 1회(mlay=중앙값 배치)만 싣고, 프레임엔 정수 압축 3배열만
@@ -688,8 +692,12 @@ def build_clip(clip_id, out_root, wb_dir):
         med_lay = np.nanmedian(c_acc, axis=0)
         if np.isfinite(med_lay).all():
             mlay = [[round(float(x), 2), round(float(y), 2)] for x, y in med_lay]
+    mi_valid = mi_arr[mi_arr >= 0]
+    mrange = ([int(np.percentile(mi_valid, 2)), int(np.percentile(mi_valid, 98))]
+              if len(mi_valid) > 100 else None)   # v0.21.2 클립-고정 밝기 척도
 
-    return {"clip": clip_id, "tid": t["tid"], "n": n, "vf": vf, "cur": cur, "lf": lf, "mlay": mlay,
+    return {"clip": clip_id, "tid": t["tid"], "n": n, "vf": vf, "cur": cur, "lf": lf,
+            "mlay": mlay, "mrange": mrange,
             "selftest": selftest, "rows": rows, "ghost": ghost, "absent": absent, "pv": pv}
 
 
@@ -1257,7 +1265,7 @@ function renderInsp(C,m){
     <div class="note">법선 화살 — 색=<b>cosθ 예측</b>(광원 향한 정도=산점 x축; 빨강=정면·파랑=등짐 · 픽 한정)</div>`
     :`<div class="note">법선 화살(썸네일 오버레이)은 픽 프레임 한정</div>`)+`
     <canvas id="mcc" width="300" height="300" style="border:1px solid #444;margin-top:4px"></canvas>
-    <div class="note">정준(코-중심) 빛 지도 — 포즈 소거, 색=<b>관측 밝기</b>(열 척도=산점 y축), 화살=얼굴-기준 광방향 · 두 패널의 색 불일치 지점=램버트 잔차(그림자·반사)</div>
+    <div class="note">정준(코-중심) 빛 지도 — 포즈 소거, 색=<b>관측 밝기</b>(열 척도, <b>클립-고정 ${C.mrange?C.mrange[0]+"~"+C.mrange[1]:"프레임"}</b> 기준=산점 y축), 화살=얼굴-기준 광방향 · 화살 색과 불일치 지점=램버트 잔차(그림자·반사)</div>
     <canvas id="msc" width="300" height="170" style="border:1px solid #444;margin-top:4px"></canvas>
     <div class="note">램버트 산점: cosθ vs 밝기 · 직선=피팅 ${r.mf?r.mf[0]+"+"+r.mf[1]+"·cosθ":"--"} (회색=피팅 미사용)</div></div>`
    :`<div class="note" style="margin-top:6px">mesh-LS 측정 없음 (이 프레임)</div>`}
@@ -1355,13 +1363,13 @@ function renderInsp(C,m){
       xA.beginPath();xA.moveTo(x,y);xA.lineTo(x+M.n[k][0]*15,y+M.n[k][1]*15);xA.stroke();}};
     if(r.th)imA.src=r.th;}}
   const vals=r.mi.filter(v=>v>=0);
-  const lo=Math.min(...vals),hi=Math.max(...vals);
+  const lo=C.mrange?C.mrange[0]:Math.min(...vals), hi=C.mrange?C.mrange[1]:Math.max(...vals);   // 클립-고정 척도
   const cC=document.getElementById("mcc");
   if(cC&&C.mlay){const xC=cC.getContext("2d");
    xC.fillStyle="#1c1c1c";xC.fillRect(0,0,300,300);
    for(let k=0;k<r.mi.length;k++){if(r.mi[k]<0||r.mq[k]==0)continue;
     const x=150+C.mlay[k][0]*95,y=150-C.mlay[k][1]*95;
-    const tb2=(r.mi[k]-lo)/(hi-lo+1e-9);
+    const tb2=Math.max(0,Math.min(1,(r.mi[k]-lo)/(hi-lo+1e-9)));
     xC.fillStyle=`hsl(${(270+tb2*150)%360},88%,${30+tb2*38}%)`;   // 열 척도(보라→빨강→노랑)
     xC.beginPath();xC.arc(x,y,6.5,0,7);xC.fill();}
    if(r.ma!=null&&r.me!=null){
@@ -1375,7 +1383,7 @@ function renderInsp(C,m){
   const cS=document.getElementById("msc");
   if(cS&&r.mf){const xS=cS.getContext("2d");
    xS.fillStyle="#222";xS.fillRect(0,0,300,170);
-   const px=d=>20+(d+1)/2*260, py=v=>158-(v-lo)/(hi-lo+1e-9)*140;
+   const px=d=>20+(d+1)/2*260, py=v=>158-Math.max(0,Math.min(1,(v-lo)/(hi-lo+1e-9)))*140;
    xS.strokeStyle="#ffd24d";xS.lineWidth=2;xS.beginPath();
    xS.moveTo(px(-1),py(r.mf[0]-r.mf[1]));xS.lineTo(px(1),py(r.mf[0]+r.mf[1]));xS.stroke();
    for(let k=0;k<r.mi.length;k++){if(r.mi[k]<0||r.md[k]==-127||r.mq[k]==0)continue;
