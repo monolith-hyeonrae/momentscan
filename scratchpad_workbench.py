@@ -16,6 +16,9 @@ v0.20.1 **자기-가림 수리**(모의 렌더 자가 적발): 측면에서 등�
 v0.20.2 **역광 붕괴 수리**(pv mls 2/7 진단): 1차 피팅이 "빛=뒤"면 clamp-트림이 전
 점을 죽여 None(f305 110→3). lit 트림=lit 모집단 충분(≥max(12, 30%))할 때만 + 붕괴
 시 마지막 유효 피팅 반환 — 역광 프레임도 (낮은 신뢰의) 방향을 정직 방출.
+v0.21.4 **광량맵 file:// 수리**(user "32×32에 아무것도 안 뜸"): getImageData가 onload
+첫 줄이라 file:// canvas 오염(SecurityError)에서 전체 무산 — 시각=순수 drawImage
+컬러 32×32 선(先)도장(오염 무관) + 그레이·블러·lr/tb 재현=try/catch(HTTP 서빙에서만).
 v0.21.2 **클립-고정 밝기 척도**(user 판독 "f570은 어두운데 지도는 강렬"): 프레임별
 min-max 스트레치가 어두운 프레임의 최대점을 최대 노랑으로 렌더 — SH 구면 캐비어트의
 재생산. 지도·산점 색/y축을 클립 p2~p98(mrange)에 고정 → 프레임 간 세기 비교 성립,
@@ -1190,7 +1193,7 @@ function drawMask(r){   // v0.17: skin 마스크 재현 — hull 클립 + 20앵�
    ctx.beginPath();ctx.arc(p[0]*224,p[1]*224,0.6*sig,0,7);ctx.stroke();}
  };
  img.src=r.th;}
-function drawLmap(r){   // v0.17: 32×32 광량 맵 재현(bbox 크롭→그레이→5탭 블러) + lr/tb 재계산 대조
+function drawLmap(r){   // v0.21.4: 시각=순수 drawImage(파일:// 오염 무관) → 수치 재현=픽셀 접근 가능할 때만
  const cv=document.getElementById("dmc");
  if(!cv||!r.th)return;
  const ctx=cv.getContext("2d"), img=new Image();
@@ -1199,32 +1202,37 @@ function drawLmap(r){   // v0.17: 32×32 광량 맵 재현(bbox 크롭→그레�
   const t=document.createElement("canvas");t.width=32;t.height=32;
   const tc=t.getContext("2d");
   tc.drawImage(img,bb[0]*224,bb[1]*224,Math.max((bb[2]-bb[0])*224,1),Math.max((bb[3]-bb[1])*224,1),0,0,32,32);
-  const id=tc.getImageData(0,0,32,32), d=id.data;
-  let g=new Float32Array(1024);
-  for(let i=0;i<1024;i++)g[i]=0.299*d[i*4]+0.587*d[i*4+1]+0.114*d[i*4+2];
-  const K=[1,4,6,4,1];
-  const blur=(src,horiz)=>{const out=new Float32Array(1024);
-   for(let y=0;y<32;y++)for(let x=0;x<32;x++){let s=0,w=0;
-    for(let k=-2;k<=2;k++){const xx=horiz?x+k:x, yy=horiz?y:y+k;
-     if(xx<0||xx>31||yy<0||yy>31)continue;
-     s+=K[k+2]*src[yy*32+xx];w+=K[k+2];}
-    out[y*32+x]=s/w;}
-   return out;};
-  g=blur(blur(g,true),false);
-  let L=0,R=0,T=0,B=0;
-  for(let y=0;y<32;y++)for(let x=0;x<32;x++){const v=g[y*32+x];
-   if(x<16)L+=v;else R+=v;if(y<16)T+=v;else B+=v;}
-  const lr=((L-R)/(L+R+1e-6)).toFixed(3), tb=((T-B)/(T+B+1e-6)).toFixed(3);
-  for(let i=0;i<1024;i++){const v=Math.round(g[i]);
-   d[i*4]=v;d[i*4+1]=v;d[i*4+2]=v;d[i*4+3]=255;}
-  tc.putImageData(id,0,0);
+  const grid=()=>{ctx.strokeStyle="rgba(216,196,85,0.5)";
+   ctx.beginPath();ctx.moveTo(64,0);ctx.lineTo(64,128);ctx.moveTo(0,64);ctx.lineTo(128,64);ctx.stroke();};
   ctx.imageSmoothingEnabled=false;
   ctx.clearRect(0,0,128,128);
-  ctx.drawImage(t,0,0,128,128);
-  ctx.strokeStyle="rgba(216,196,85,0.5)";
-  ctx.beginPath();ctx.moveTo(64,0);ctx.lineTo(64,128);ctx.moveTo(0,64);ctx.lineTo(128,64);ctx.stroke();
+  ctx.drawImage(t,0,0,128,128);grid();
   const lv=document.getElementById("lmv");
-  if(lv)lv.textContent=`재현 lr ${lr} tb ${tb} (저장 ${r.lr??"--"} / ${r.tb??"--"})`;
+  try{
+   const id=tc.getImageData(0,0,32,32), d=id.data;
+   let g=new Float32Array(1024);
+   for(let i=0;i<1024;i++)g[i]=0.299*d[i*4]+0.587*d[i*4+1]+0.114*d[i*4+2];
+   const K=[1,4,6,4,1];
+   const blur=(src,horiz)=>{const out=new Float32Array(1024);
+    for(let y=0;y<32;y++)for(let x=0;x<32;x++){let s=0,w=0;
+     for(let k=-2;k<=2;k++){const xx=horiz?x+k:x, yy=horiz?y:y+k;
+      if(xx<0||xx>31||yy<0||yy>31)continue;
+      s+=K[k+2]*src[yy*32+xx];w+=K[k+2];}
+     out[y*32+x]=s/w;}
+    return out;};
+   g=blur(blur(g,true),false);
+   let L=0,R=0,T=0,B=0;
+   for(let y=0;y<32;y++)for(let x=0;x<32;x++){const v=g[y*32+x];
+    if(x<16)L+=v;else R+=v;if(y<16)T+=v;else B+=v;}
+   const lr=((L-R)/(L+R+1e-6)).toFixed(3), tb=((T-B)/(T+B+1e-6)).toFixed(3);
+   for(let i=0;i<1024;i++){const v=Math.round(g[i]);
+    d[i*4]=v;d[i*4+1]=v;d[i*4+2]=v;d[i*4+3]=255;}
+   tc.putImageData(id,0,0);
+   ctx.drawImage(t,0,0,128,128);grid();
+   if(lv)lv.textContent=`재현 lr ${lr} tb ${tb} (저장 ${r.lr??"--"} / ${r.tb??"--"})`;
+  }catch(e){
+   if(lv)lv.textContent="컬러 32×32 표시 중 — 그레이·수치 재현은 HTTP 서빙에서만 (file://=픽셀 접근 차단)";
+  }
  };
  img.src=r.th;}
 function shEval(sh,x,y,z){
