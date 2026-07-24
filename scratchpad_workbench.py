@@ -10,6 +10,9 @@ v0.20 **mesh-LS 이중 자 병기**(user "v0.20 시공" + Sapiens 프로브 판�
 canonicalize 동일 수학, 색=관측 밝기+얼굴-기준 광방향 화살]·램버트 산점[cosθ vs
 밝기+피팅 직선]). 수학 노트: 피팅=카메라 공간(픽셀 소재지), 방향 출력=정준 회전
 — 직교 동치라 결과 좌표는 이미 코-중심.
+v0.20.1 **자기-가림 수리**(모의 렌더 자가 적발): 측면에서 등진(N_z≤0.05) 점이 배경/
+머리칼을 표본해 지도에 유효 데이터처럼 표시 — 피팅 입력 선제 제외+시각화 v 플래그
+(정준 지도·산점에서 제외, 트림점=회색).
 v0.19.3 **소프트 존 + 존 세기 floor**(user 교정 "좋은 빛=f1~50 탑승장 / f269 렘=밋밋"):
 f1~50 실측=클립 최고 세기(raw 휘도 118~175·채도 77~94)·정면(az±25)·el 34~40인데
 **ldr 0.33~0.63(ld pct 0.4~12)** → ld≥50이 전멸시킴 — 밝고 부드러운 빛(소프트박스/
@@ -257,6 +260,7 @@ def _mls_frame(frm, P_i, cbv, gray_full=None):
     v3 = np.stack([P_i[:468, 0] * cw, P_i[:468, 1] * ch, P_i[:468, 2] * cw], 1)
     v3 *= np.array([1.0, -1.0, -1.0])
     N = _vertex_normals(v3)[SKIN110]
+    I[N[:, 2] <= 0.05] = np.nan   # 자기-가림(카메라 등짐) 점 = 배경/머리칼 표본 — 선제 제외
     fit = _fit_light_gray(I, N)
     if fit is None:
         return None
@@ -641,6 +645,7 @@ def build_clip(clip_id, out_root, wb_dir):
                            "d": [round(float(v), 2) for v in ndl],
                            "i": [None if not np.isfinite(v) else round(float(v)) for v in I_m],
                            "k": [int(v) for v in keep_m],
+                           "v": [int(N_m[k2, 2] > 0.05) for k2 in range(len(SKIN110))],
                            "fit": [round(a_m, 1), round(mag, 1)]}
         pv[str(f)] = {"lm": lm2, "bs": bs_top, "rl": num(t["roll"][i], 1), "lap": lap_ok,
                       "mls": mls}
@@ -1314,10 +1319,10 @@ function renderInsp(C,m){
    xC.fillStyle="#1c1c1c";xC.fillRect(0,0,300,300);
    const vals=M.i.filter(v=>v!=null);
    const lo=Math.min(...vals),hi=Math.max(...vals);
-   for(let k=0;k<M.c.length;k++){if(M.i[k]==null)continue;
+   for(let k=0;k<M.c.length;k++){if(M.i[k]==null||(M.v&&!M.v[k]))continue;
     const x=150+M.c[k][0]*95,y=150-M.c[k][1]*95;
     const tb2=(M.i[k]-lo)/(hi-lo+1e-9);
-    xC.fillStyle=`hsl(${270-tb2*215},90%,${30+tb2*35}%)`;
+    xC.fillStyle=M.k[k]?`hsl(${270-tb2*215},90%,${30+tb2*35}%)`:"#555";
     xC.beginPath();xC.arc(x,y,6,0,7);xC.fill();}
    if(r.ma!=null&&r.me!=null){
     const azr=r.ma*Math.PI/180,elr=r.me*Math.PI/180;
@@ -1335,7 +1340,7 @@ function renderInsp(C,m){
    const px=d=>20+(d+1)/2*260, py=v=>158-(v-lo)/(hi-lo+1e-9)*140;
    xS.strokeStyle="#ffd24d";xS.lineWidth=2;xS.beginPath();
    xS.moveTo(px(-1),py(M.fit[0]-M.fit[1]));xS.lineTo(px(1),py(M.fit[0]+M.fit[1]));xS.stroke();
-   for(let k=0;k<M.d.length;k++){if(M.i[k]==null)continue;
+   for(let k=0;k<M.d.length;k++){if(M.i[k]==null||(M.v&&!M.v[k]))continue;
     xS.fillStyle=M.k[k]?"#fc6":"#666";
     xS.beginPath();xS.arc(px(M.d[k]),py(M.i[k]),2.6,0,7);xS.fill();}
    xS.fillStyle="#999";xS.font="10px sans-serif";
