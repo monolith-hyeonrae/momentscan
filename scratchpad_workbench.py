@@ -134,7 +134,8 @@ from scratchpad_likeness_sat import skin_sv
 
 RACE = resolve("race981")
 FRONTAL_DEG = RACE.camera.frontal_deg
-CLIPS = ("test_3", "test_12", "dual_2", "test_4", "test_0", "international_1")
+CLIPS = ("test_3", "test_12", "dual_2", "test_4", "test_0", "international_1",
+         "251227002408570", "251227002408802")   # v0.21.3 실운영 클립 2종(user 요청)
 THUMB = 224     # 저장 원치수 — 픽 행은 원치수, 풀은 112 축소 표시+호버 확대
 EDGES = [[c.start, c.end] for c in (*_FLC.FACE_LANDMARKS_CONTOURS, *_FLC.FACE_LANDMARKS_NOSE)]
 
