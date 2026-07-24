@@ -1254,10 +1254,10 @@ function renderInsp(C,m){
     <div><canvas id="fsc" width="96" height="96" style="border:1px solid #444"></canvas>
      <div class="note" style="text-align:center">얼굴-좌표 구면 ●=광방향</div></div></div>
    ${r.mi?`<div style="margin-top:8px">`+(pv&&pv.mls?`<canvas id="mlc" width="300" height="300" style="border:1px solid #444"></canvas>
-    <div class="note">법선 화살 — 색=광원 향한 정도 (빨강=정면·파랑=등짐 · 픽 한정)</div>`
+    <div class="note">법선 화살 — 색=<b>cosθ 예측</b>(광원 향한 정도=산점 x축; 빨강=정면·파랑=등짐 · 픽 한정)</div>`
     :`<div class="note">법선 화살(썸네일 오버레이)은 픽 프레임 한정</div>`)+`
     <canvas id="mcc" width="300" height="300" style="border:1px solid #444;margin-top:4px"></canvas>
-    <div class="note">정준(코-중심) 빛 지도 — 포즈 소거, 색=관측 밝기, 화살=얼굴-기준 광방향</div>
+    <div class="note">정준(코-중심) 빛 지도 — 포즈 소거, 색=<b>관측 밝기</b>(열 척도=산점 y축), 화살=얼굴-기준 광방향 · 두 패널의 색 불일치 지점=램버트 잔차(그림자·반사)</div>
     <canvas id="msc" width="300" height="170" style="border:1px solid #444;margin-top:4px"></canvas>
     <div class="note">램버트 산점: cosθ vs 밝기 · 직선=피팅 ${r.mf?r.mf[0]+"+"+r.mf[1]+"·cosθ":"--"} (회색=피팅 미사용)</div></div>`
    :`<div class="note" style="margin-top:6px">mesh-LS 측정 없음 (이 프레임)</div>`}
@@ -1362,7 +1362,7 @@ function renderInsp(C,m){
    for(let k=0;k<r.mi.length;k++){if(r.mi[k]<0||r.mq[k]==0)continue;
     const x=150+C.mlay[k][0]*95,y=150-C.mlay[k][1]*95;
     const tb2=(r.mi[k]-lo)/(hi-lo+1e-9);
-    xC.fillStyle=`hsl(${270-tb2*215},88%,${36+tb2*32}%)`;
+    xC.fillStyle=`hsl(${(270+tb2*150)%360},88%,${30+tb2*38}%)`;   // 열 척도(보라→빨강→노랑)
     xC.beginPath();xC.arc(x,y,6.5,0,7);xC.fill();}
    if(r.ma!=null&&r.me!=null){
     const azr=r.ma*Math.PI/180,elr=r.me*Math.PI/180;
