@@ -13,6 +13,9 @@ canonicalize 동일 수학, 색=관측 밝기+얼굴-기준 광방향 화살]·�
 v0.20.1 **자기-가림 수리**(모의 렌더 자가 적발): 측면에서 등진(N_z≤0.05) 점이 배경/
 머리칼을 표본해 지도에 유효 데이터처럼 표시 — 피팅 입력 선제 제외+시각화 v 플래그
 (정준 지도·산점에서 제외, 트림점=회색).
+v0.20.2 **역광 붕괴 수리**(pv mls 2/7 진단): 1차 피팅이 "빛=뒤"면 clamp-트림이 전
+점을 죽여 None(f305 110→3). lit 트림=lit 모집단 충분(≥max(12, 30%))할 때만 + 붕괴
+시 마지막 유효 피팅 반환 — 역광 프레임도 (낮은 신뢰의) 방향을 정직 방출.
 v0.19.3 **소프트 존 + 존 세기 floor**(user 교정 "좋은 빛=f1~50 탑승장 / f269 렘=밋밋"):
 f1~50 실측=클립 최고 세기(raw 휘도 118~175·채도 77~94)·정면(az±25)·el 34~40인데
 **ldr 0.33~0.63(ld pct 0.4~12)** → ld≥50이 전멸시킴 — 밝고 부드러운 빛(소프트박스/
@@ -227,19 +230,28 @@ def _vertex_normals(v):
 
 
 def _fit_light_gray(I, N):
-    """I (P,) 밝기 × N (P,3) 법선 → (a, m(3,), keep) 강건 램버트 LS. None=실패."""
+    """I (P,) 밝기 × N (P,3) 법선 → (a, m(3,), keep) 강건 램버트 LS. None=실패.
+
+    clamp-트림(음영면 제거)은 lit 모집단이 충분할 때만 — 역광이면 대부분이 unlit인
+    게 정상이라 무조건 트림하면 자멸한다(f305: 110→3→붕괴, v0.20.2 수리)."""
     keep = np.isfinite(I)
+    if keep.sum() < 12:
+        return None
     A_full = np.concatenate([np.ones((len(I), 1)), N], axis=1)
     th = None
     for _ in range(3):
         if keep.sum() < 12:
-            return None
+            break
         th, *_ = np.linalg.lstsq(A_full[keep], I[keep], rcond=None)
         r = np.abs(A_full @ th - I)
         m = th[1:]
         lit = (N @ (m / (np.linalg.norm(m) + 1e-9))) > -0.05
-        cut = np.percentile(r[keep], 75)
-        keep = keep & (r <= cut) & lit & np.isfinite(I)
+        nxt = keep & (r <= np.percentile(r[keep], 75)) & np.isfinite(I)
+        if lit.sum() >= max(12, 0.3 * keep.sum()):
+            nxt = nxt & lit
+        keep = nxt
+    if th is None:
+        return None
     return float(th[0]), th[1:], keep
 
 
@@ -471,7 +483,7 @@ def build_clip(clip_id, out_root, wb_dir):
                     Lf_m = t["R3"][i].T @ l_m
                     mls_az[i] = np.degrees(np.arctan2(Lf_m[0], Lf_m[2]))
                     mls_el[i] = np.degrees(np.arcsin(np.clip(Lf_m[1], -1, 1)))
-                    mls_r[i] = mag / max(a_m, 1e-3)
+                    mls_r[i] = min(mag / max(a_m, 1e-3), 99.0)   # a→0 병리 표시 캡
                     sh_m = t["SH"][i]
                     if np.isfinite(sh_m).all():
                         Ld_m = np.array([sh_m[3], sh_m[2], -sh_m[1]])
