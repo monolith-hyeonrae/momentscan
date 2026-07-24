@@ -383,6 +383,21 @@ crop이 부적절해 결정된 likeness에 신뢰가 없다"; 실증 계기=풀 
    합류 구도: **LS 피팅=우리 백색상자 계기 유지, 법선 소스만 스왑 가능**(MediaPipe
    mesh↔Sapiens dense — el 계통차 중재+캐스트 섀도우 잔차 맵 성립). 다음 프로브 후보:
    0.4B 법선(test_4 측면 el 중재)+pointmap(dual_2 주/보조). mb-lic 등재: v1/v2 구분.
+   → **Sapiens2 프로브 실행(2026-07-24, 도구=scratchpad_sapiens_probe.py 3단)**: 0.4b
+   normal+pointmap, transformers 5.14 네이티브(전용 venv, 레시피=독스트링). **판정 4**:
+   ①**pointmap 5/5** — dual_2 주(t1)/보조(t0) 전후를 전 표본 프레임에서 정답(ΔZ 0.23
+   ~0.31 안정적 마진) → "role=depth vote"의 물리 신호 실증, 후보-티어 투표 스테이지
+   후보 성립 ②**el 중재 = DPR 고평가 적발(예비)**: test_4 측면에서 Sapiens el(22~28)이
+   mesh el(13~27) 편 — f408은 5.3° 합의, DPR(38~58)이 아웃라이어 = **MediaPipe z 스케일
+   무죄, DPR el 편향(+20~30°) 유죄** 방향. ⚠존 el 밴드가 DPR le 위에 있으므로 봉인
+   전에 방향 소스 재고 필요(f408이 el 28이면 렘A 진입 — 존 배정이 바뀜) ③**정면 3자
+   합의**: international·test_0 정면에서 sap↔dpr 6.6~19°(확산 f377조차 6.6°) — 방향
+   판독의 신뢰 기반 3중화 ④역광 f658=3자 전원 약피팅(ratio 0.15~0.27) — "방향은 level
+   floor 위에서만" 독트린 3자 재확인. 부수: Sapiens 관례=우리 flipped-camera와 동일
+   (flip 1,1,1; 정면-뺨 교정은 마진 0.02 불량→R₃ z열 전역 정합으로 교정), mesh ratio
+   a→0 폭주(f379) 재현=softness 자 후보에서 감점. **다음: v0.20 후보=워크벤치 mesh-LS
+   병기(방향 이중화+프레임-수준 신뢰, le 소스 재고 포함) · Sapiens 편입은 별도 트랙
+   (pointmap 주/보조 투표=최우선 실용, 법선=후보-티어 자).**
    → **user 방향 확인(세션 마감 반추)**: "실제 포토그래퍼도 포트레이트 촬영 때 이
    조명 상태들을 고려한다 — 시스템이 포토그래퍼를 대신하는 방향" — core-criterion
    (portrait 기준 출처=사진사·제어가능 쿼리)의 첫 실행 사례로 확정. 존=사진 문법이
