@@ -36,9 +36,14 @@ if MODE == "prep":
     for tri in faces:
         for a in tri:
             adj.setdefault(int(a), set()).update(int(b) for b in tri if b != a)
-    skin = set(wb.SKIN_ANCHORS)
+    # 씨앗 = SKIN_ANCHORS + 눈밑 삼각형 CHEEK_PTS(user 교정 2026-07-24: 렘브란트 핵심
+    # 영역[눈아래 코 좌우]이 빠져 있었음), 1-링 확장 후 눈 테두리 제외 → 110점
+    EYE_RING = frozenset((33, 7, 163, 144, 145, 153, 154, 155, 133, 173, 157, 158, 159, 160, 161, 246,
+                          263, 249, 390, 373, 374, 380, 381, 382, 362, 398, 384, 385, 386, 387, 388, 466))
+    skin = set(wb.SKIN_ANCHORS) | set(wb.CHEEK_PTS)
     for a in list(skin):
         skin |= adj.get(a, set())
+    skin -= EYE_RING
     SKIN_IDX = np.array(sorted(i for i in skin if i < 468), int)
     
     
