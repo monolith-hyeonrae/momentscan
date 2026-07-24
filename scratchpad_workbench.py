@@ -16,6 +16,9 @@ v0.20.1 **자기-가림 수리**(모의 렌더 자가 적발): 측면에서 등�
 v0.20.2 **역광 붕괴 수리**(pv mls 2/7 진단): 1차 피팅이 "빛=뒤"면 clamp-트림이 전
 점을 죽여 None(f305 110→3). lit 트림=lit 모집단 충분(≥max(12, 30%))할 때만 + 붕괴
 시 마지막 유효 피팅 반환 — 역광 프레임도 (낮은 신뢰의) 방향을 정직 방출.
+v0.20.3 **정준 지도 전점 채색**(user 판독 "정면인데 반쪽만 표시"): 트림점 회색 표시가
+지도의 2/3을 지움 — 트림은 피팅용이지 관측 무효가 아님. 지도=전 가시점 밝기색(트림
+구분은 산점도에만 유지).
 v0.19.3 **소프트 존 + 존 세기 floor**(user 교정 "좋은 빛=f1~50 탑승장 / f269 렘=밋밋"):
 f1~50 실측=클립 최고 세기(raw 휘도 118~175·채도 77~94)·정면(az±25)·el 34~40인데
 **ldr 0.33~0.63(ld pct 0.4~12)** → ld≥50이 전멸시킴 — 밝고 부드러운 빛(소프트박스/
@@ -1334,8 +1337,8 @@ function renderInsp(C,m){
    for(let k=0;k<M.c.length;k++){if(M.i[k]==null||(M.v&&!M.v[k]))continue;
     const x=150+M.c[k][0]*95,y=150-M.c[k][1]*95;
     const tb2=(M.i[k]-lo)/(hi-lo+1e-9);
-    xC.fillStyle=M.k[k]?`hsl(${270-tb2*215},90%,${30+tb2*35}%)`:"#555";
-    xC.beginPath();xC.arc(x,y,6,0,7);xC.fill();}
+    xC.fillStyle=`hsl(${270-tb2*215},88%,${36+tb2*32}%)`;   // 전 가시점 채색(트림≠무효)
+    xC.beginPath();xC.arc(x,y,6.5,0,7);xC.fill();}
    if(r.ma!=null&&r.me!=null){
     const azr=r.ma*Math.PI/180,elr=r.me*Math.PI/180;
     const dx=Math.sin(azr)*Math.cos(elr),dy=Math.sin(elr);
