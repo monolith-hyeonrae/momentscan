@@ -16,6 +16,7 @@ v0.20.1 **자기-가림 수리**(모의 렌더 자가 적발): 측면에서 등�
 v0.20.2 **역광 붕괴 수리**(pv mls 2/7 진단): 1차 피팅이 "빛=뒤"면 clamp-트림이 전
 점을 죽여 None(f305 110→3). lit 트림=lit 모집단 충분(≥max(12, 30%))할 때만 + 붕괴
 시 마지막 유효 피팅 반환 — 역광 프레임도 (낮은 신뢰의) 방향을 정직 방출.
+v0.30.2 **백화=영상 채널 이관**(user 분류 판정 "노출 비정상은 영상 채널 소관"): 빛=조명의 물리 상태/영상=기록의 온전성 분업 — 백화 배지를 빛 태그에서 영상 탭으로 이사(서명 유지, 영상 채널 1층 순회 시 정식 계기 씨앗).
 v0.30.1 **백화 태그**(user "test_12 밝기순이 이상" 진단): 측정은 물리 정직(상단=실제 최고 휘도)이나 의미론 갈림 — 백화가 밝기 1위 옹립. 근본=clip_hi 250 문턱이 test_12 백화(218~230) 미포착(원장 기록 사실의 실물 재현, lum_eff 할인 무력). 백화 실서명=고휘도∧저채도 → 태그(lmr≥205∧chr≤45, test_12 184장·타 클립 오폭 0). clip_hi 문턱 재교정=파이프라인 상수 의제(lk-sampling2) 예약.
 v0.30 **세기=정렬 렌즈**(user 정식화 "축마다 상호작용이 다르다 — 방향·확산=구분, 세기=일렬 줄세우기; 이 프로그램의 자랑=다축 해석의 맥락적 sort"): 존 시스템 범주화 철회, 풀 정렬 모드 확장(시간/점수/밝기 lmr/채도 chr/조명비 hd 순환) — 쿼리=구분(필터)+정렬(sort)의 두 동사.
 v0.29.1 **그림자 축=확산 계열 명시**(user "조명비와 연관 아니냐" — corr 실측: 직사 클립 +0.61~0.71/확산 클립 ≈0): ③깊이(조명비=필 광량)·④경계 날카로움(반음영 폭)=광원 크기의 두 얼굴, 분리 케이스(필 채운 하드광) 실재+hh 텍스처 오염이라 축 유지·관계 라벨 명시.
@@ -1306,7 +1307,6 @@ function lightTags(C,r){
  const rc=ratioCls(r.hd);
  if(rc)T.push({t:"조명비 "+rc.txt,c:"#4aa7a0"});
  if(r.lt!=null)T.push({t:r.lt>=75?"밝음":r.lt<25?"어두움":"보통 밝기",c:"#999"});
- if(r.lmr!=null&&r.chr!=null&&r.lmr>=205&&r.chr<=45)T.push({t:"백화 ⚠",c:"#e8e8e8"});
  if(C.lseg){const sg=C.lseg.find(s2=>s2[0]<=r.f&&r.f<=s2[1]);
   if(sg){const SL={hard:"직사 구간",flat:"확산·평광 구간",back:"역광 구간",dark:"어두운 구간",na:"무측정 구간"};
    const SC={hard:"#d98a3d",flat:"#4aa7a0",back:"#9a6fd0",dark:"#5a6a7a",na:"#555"};
@@ -1356,10 +1356,12 @@ function renderInsp(C,m){
     <b>mesh-LS az ${r.ma==null?"--":r.ma}° · el ${r.me==null?"--":r.me}°</b> · 조명비 ≈ ${r.hd==null?"--":(r.hd>=0.95?"20:1+":(1/(1-r.hd)).toFixed(1)+":1")} (hd ${r.hd==null?"--":r.hd}) · R² ${r.r2==null?"--":r.r2} · 방향성 ${r.mr==null?"--":r.mr} · DPR 합의 ${r.ag==null?"--":r.ag+"°"}${(r.ag!=null&&r.ag>45)||(r.mr!=null&&r.mr<0.3)?' <span style="color:#e88">⚠방향 불신('+(r.ag!=null&&r.ag>45?"이중 자 불일치":"무방향")+')</span>':""}<br>
     클립 판별력 lf=${C.lf}</div>`;
  }else if(iMode=="영상"){
-  body=(pv&&pv.lap)?`<img src="thumbs/${C.clip}/f${String(r.f).padStart(5,"0")}_lap.jpg" style="width:224px;border:1px solid #444">
+  const wash=(r.lmr!=null&&r.chr!=null&&r.lmr>=205&&r.chr<=45);
+  const wb2=wash?`<div style="margin-bottom:6px"><span style="display:inline-block;border:1px solid #e8e8e8;color:#e8e8e8;border-radius:9px;padding:1px 8px;font-size:11px">백화 ⚠ (고휘도 ${r.lmr} ∧ 저채도 ${r.chr} — 기록 포화)</span></div>`:"";
+  body=wb2+((pv&&pv.lap)?`<img src="thumbs/${C.clip}/f${String(r.f).padStart(5,"0")}_lap.jpg" style="width:224px;border:1px solid #444">
     <div class="note">Laplacian 선명 히트맵 (밝음=엣지 살아있음)</div>
     <div class="note">선명 sp ${r.sp==null?"--":r.sp}%</div>`
-   :`<div class="note">선명 히트맵은 픽 프레임 한정. sp ${r.sp==null?"--":r.sp}%</div>`;
+   :`<div class="note">선명 히트맵은 픽 프레임 한정. sp ${r.sp==null?"--":r.sp}%</div>`);
  }else{ // 왜곡
   body=`<canvas id="csc" width="300" height="80" style="border:1px solid #444"></canvas>
    <div class="note">실선=cs(정체성 판독성 pct) · 점선=mv(입-가시 pct) · 주황=선택 프레임</div>
