@@ -23,7 +23,6 @@ if MODE == "prep":
     
     sys.path.insert(0, "/home/hyeonrae/repo/p981/momentscan")
     import scratchpad_workbench as wb  # noqa: E402
-    from momentscan.surface.recipe_preview import _canonical_faces  # noqa: E402
     
     OUT = Path("/home/hyeonrae/repo/p981/momentscan/output/l2")
     SCR = Path.cwd()
@@ -31,20 +30,9 @@ if MODE == "prep":
     IN.mkdir(exist_ok=True)
     TW, TH = 768, 1024
     
-    faces = np.array(_canonical_faces(), int)
-    adj = {}
-    for tri in faces:
-        for a in tri:
-            adj.setdefault(int(a), set()).update(int(b) for b in tri if b != a)
-    # 씨앗 = SKIN_ANCHORS + 눈밑 삼각형 CHEEK_PTS(user 교정 2026-07-24: 렘브란트 핵심
-    # 영역[눈아래 코 좌우]이 빠져 있었음), 1-링 확장 후 눈 테두리 제외 → 110점
-    EYE_RING = frozenset((33, 7, 163, 144, 145, 153, 154, 155, 133, 173, 157, 158, 159, 160, 161, 246,
-                          263, 249, 390, 373, 374, 380, 381, 382, 362, 398, 384, 385, 386, 387, 388, 466))
-    skin = set(wb.SKIN_ANCHORS) | set(wb.CHEEK_PTS)
-    for a in list(skin):
-        skin |= adj.get(a, set())
-    skin -= EYE_RING
-    SKIN_IDX = np.array(sorted(i for i in skin if i < 468), int)
+    # v0.21.5: 점 세트·토폴로지=워크벤치 단일홈 재사용 (밀도 포함 계기 동일성 유지)
+    faces = wb.MESH_FACES
+    SKIN_IDX = wb.SKIN110
     
     
     def vertex_normals(v):

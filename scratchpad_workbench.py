@@ -16,6 +16,11 @@ v0.20.1 **자기-가림 수리**(모의 렌더 자가 적발): 측면에서 등�
 v0.20.2 **역광 붕괴 수리**(pv mls 2/7 진단): 1차 피팅이 "빛=뒤"면 clamp-트림이 전
 점을 죽여 None(f305 110→3). lit 트림=lit 모집단 충분(≥max(12, 30%))할 때만 + 붕괴
 시 마지막 유효 피팅 반환 — 역광 프레임도 (낮은 신뢰의) 방향을 정직 방출.
+v0.21.5 **계측점 밀도 110→64**(user "밀도 줄이자"): 선별 씨앗 30(SKIN_ANCHORS∪
+CHEEK_PTS) 전부 보존+링 확장분은 정준 obj 좌표 FPS로 34점 — 미지수 4개에 과잉이던
+방정식 수 감축, 데이터 ~40%↓. 앵커 안정(f532 az 44/el 19, 110점 대비 수 도 이내)·
+역광/측면 생존(keep 25~27). 여유 항목: 강직사 정면 keep 13(가드 12 근접 — 흔들리면
+target 72로). 프로브 도구=워크벤치 토폴로지 단일홈으로 통합.
 v0.21.4 **광량맵 file:// 수리**(user "32×32에 아무것도 안 뜸"): getImageData가 onload
 첫 줄이라 file:// canvas 오염(SecurityError)에서 전체 무산 — 시각=순수 drawImage
 컬러 32×32 선(先)도장(오염 무관) + 그레이·블러·lr/tb 재현=try/catch(HTTP 서빙에서만).
@@ -209,24 +214,37 @@ def rank01(x, flip=False):
     return 1 - r if flip else r
 
 
-def _mesh_topology():
-    """v0.20 mesh-LS 재료 — 정준 obj faces + 스킨 110점(SKIN_ANCHORS∪CHEEK_PTS 1-링
-    −눈테두리). obj 경로=geometry.CANONICAL_OBJ 단일홈(외부 dep 등재 동일)."""
+def _mesh_topology(target=64):
+    """v0.20 mesh-LS 재료 — 정준 obj faces + 스킨 점. obj=geometry.CANONICAL_OBJ 단일홈.
+
+    v0.21.5(user "밀도 줄이자"): 선별 씨앗(SKIN_ANCHORS∪CHEEK_PTS) 전부 보존 +
+    1-링 확장분은 정준 obj 좌표 farthest-point 샘플링으로 target까지 — 미지수 4개에
+    110 방정식은 과잉, 단 측면 가시성-필터·강건 트림 뒤에도 ≥12점이 남을 여유는 유지."""
     from momentscan.perception.readings.geometry import CANONICAL_OBJ
-    faces = []
+    faces, verts = [], []
     for ln in Path(CANONICAL_OBJ).read_text(encoding="utf-8").splitlines():
         if ln.startswith("f "):
             faces.append([int(p.split("/")[0]) - 1 for p in ln.split()[1:4]])
+        elif ln.startswith("v "):
+            verts.append([float(p) for p in ln.split()[1:4]])
     faces = np.array(faces, int)
+    V = np.array(verts)
     adj = {}
     for tri in faces:
         for a in tri:
             adj.setdefault(int(a), set()).update(int(b) for b in tri if b != a)
-    skin = set(SKIN_ANCHORS) | set(CHEEK_PTS)
-    for a in list(skin):
-        skin |= adj.get(a, set())
-    skin -= EYE_RING
-    return faces, np.array(sorted(i for i in skin if i < 468), int)
+    seeds = {i for i in (set(SKIN_ANCHORS) | set(CHEEK_PTS)) if i < 468}
+    ring = set()
+    for a in seeds:
+        ring |= adj.get(a, set())
+    ring = {i for i in ring if i < 468} - seeds - EYE_RING
+    sel = sorted(seeds)
+    cand = sorted(ring)
+    while len(sel) < target and cand:
+        d = np.array([min(np.linalg.norm(V[c] - V[s]) for s in sel) for c in cand])
+        j = int(np.argmax(d))
+        sel.append(cand.pop(j))
+    return faces, np.array(sorted(sel), int)
 
 
 MESH_FACES, SKIN110 = _mesh_topology()
