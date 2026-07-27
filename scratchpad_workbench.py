@@ -16,6 +16,7 @@ v0.20.1 **자기-가림 수리**(모의 렌더 자가 적발): 측면에서 등�
 v0.20.2 **역광 붕괴 수리**(pv mls 2/7 진단): 1차 피팅이 "빛=뒤"면 clamp-트림이 전
 점을 죽여 None(f305 110→3). lit 트림=lit 모집단 충분(≥max(12, 30%))할 때만 + 붕괴
 시 마지막 유효 피팅 반환 — 역광 프레임도 (낮은 신뢰의) 방향을 정직 방출.
+v0.22.1 **정준 지도 이중 화살**(az 소스 판정 대조: 노랑=mesh·파랑=DPR — 밝은 무리 위치와 두 화살을 한 그림에서 눈-판정).
 v0.22 **계기 은퇴**(user 확정 "은퇴 후보 확정·제거"): 이미지-공간 세대 전면 정리 —
 lr/tb(32×32 좌우/상하 비대칭)·dp(=pct|lr|+|tb|)·pa(볼빛−턱그늘)+다이얼·32×32 광량맵
 ·마스크 볼/턱 마커·bb 필드. 근거=정준 이중 자(DPR la/le/ldr + mesh ma/me/mr)가 전부
@@ -1194,7 +1195,7 @@ function renderInsp(C,m){
     <div class="note">법선 화살 — 색=<b>cosθ 예측</b>(광원 향한 정도=산점 x축; 빨강=정면·파랑=등짐 · 픽 한정)</div>`
     :`<div class="note">법선 화살(썸네일 오버레이)은 픽 프레임 한정</div>`)+`
     <canvas id="mcc" width="300" height="300" style="border:1px solid #444;margin-top:4px"></canvas>
-    <div class="note">정준(코-중심) 빛 지도 — 포즈 소거, 색=<b>관측 밝기</b>(열 척도, <b>클립-고정 ${C.mrange?C.mrange[0]+"~"+C.mrange[1]:"프레임"}</b> 기준=산점 y축), 화살=얼굴-기준 광방향 · 화살 색과 불일치 지점=램버트 잔차(그림자·반사)</div>
+    <div class="note">정준(코-중심) 빛 지도 — 포즈 소거, 색=<b>관측 밝기</b>(열 척도, <b>클립-고정 ${C.mrange?C.mrange[0]+"~"+C.mrange[1]:"프레임"}</b> 기준=산점 y축) · 광방향 화살: <span style="color:#ffd24d"><b>노랑=mesh</b></span> vs <span style="color:#5ab4ff"><b>파랑=DPR</b></span> (az 소스 판정 대조)</div>
     <canvas id="msc" width="300" height="170" style="border:1px solid #444;margin-top:4px"></canvas>
     <div class="note">램버트 산점: cosθ vs 밝기 · 직선=피팅 ${r.mf?r.mf[0]+"+"+r.mf[1]+"·cosθ":"--"} (회색=피팅 미사용)</div></div>`
    :`<div class="note" style="margin-top:6px">mesh-LS 측정 없음 (이 프레임)</div>`}
@@ -1292,12 +1293,13 @@ function renderInsp(C,m){
     const tb2=Math.max(0,Math.min(1,(r.mi[k]-lo)/(hi-lo+1e-9)));
     xC.fillStyle=`hsl(${(270+tb2*150)%360},88%,${30+tb2*38}%)`;   // 열 척도(보라→빨강→노랑)
     xC.beginPath();xC.arc(x,y,6.5,0,7);xC.fill();}
-   if(r.ma!=null&&r.me!=null){
-    const azr=r.ma*Math.PI/180,elr=r.me*Math.PI/180;
-    const dx=Math.sin(azr)*Math.cos(elr),dy=Math.sin(elr);
-    xC.strokeStyle="#ffd24d";xC.lineWidth=3;xC.beginPath();xC.moveTo(150,150);
+   const arw=(az,el,col,w)=>{const a2=az*Math.PI/180,e2=el*Math.PI/180;
+    const dx=Math.sin(a2)*Math.cos(e2),dy=Math.sin(e2);
+    xC.strokeStyle=col;xC.lineWidth=w;xC.beginPath();xC.moveTo(150,150);
     xC.lineTo(150+dx*95,150-dy*95);xC.stroke();
-    xC.fillStyle="#ffd24d";xC.beginPath();xC.arc(150+dx*95,150-dy*95,4,0,7);xC.fill();}
+    xC.fillStyle=col;xC.beginPath();xC.arc(150+dx*95,150-dy*95,w+1,0,7);xC.fill();};
+   if(r.la!=null&&r.le!=null)arw(r.la,r.le,"#5ab4ff",2);   // 파랑=DPR (az 판정 대조용)
+   if(r.ma!=null&&r.me!=null)arw(r.ma,r.me,"#ffd24d",3);   // 노랑=mesh
    xC.fillStyle="#888";xC.font="10px sans-serif";
    xC.fillText("피사체 좌 →",232,292);xC.fillText("위 ↑",6,14);}
   const cS=document.getElementById("msc");
