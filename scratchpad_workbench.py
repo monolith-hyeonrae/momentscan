@@ -16,6 +16,7 @@ v0.20.1 **자기-가림 수리**(모의 렌더 자가 적발): 측면에서 등�
 v0.20.2 **역광 붕괴 수리**(pv mls 2/7 진단): 1차 피팅이 "빛=뒤"면 clamp-트림이 전
 점을 죽여 None(f305 110→3). lit 트림=lit 모집단 충분(≥max(12, 30%))할 때만 + 붕괴
 시 마지막 유효 피팅 반환 — 역광 프레임도 (낮은 신뢰의) 방향을 정직 방출.
+v0.27 **확산의 자=키:필(hd) 교체**(user 반증 "df −0.95에 방향 명확한 프레임 다수" — R²의 구조 결함 확정: 깊은 그림자=clamp 비선형이라 하드 극단도 R²≈0, 전체-가시점 계산이 트림-피팅과 불일치): hd=1−(그림자면/밝은면 중앙 밝기, cosθ 3분위 분할)=사진사의 키:필 비율. 검증=r2≤0.05 오분류 55장 중 15장 하드 복권(f529~537=렘브란트 이웃)·앵커 f532 0.62/f408 0.58·시각 상하위 분리 명확. R²=통계/산점 표시로 존치(클립 AUC는 R² 우위 — 직무 분리: 다이얼=프레임 자 hd, 클립 성향=lf·구간 지도). 세그먼트 분류도 hd로 통일.
 v0.26.1 **확산 다이얼=양극 복귀**(user 정합 확인 "방향성 존재/소멸 방향 조정이면 충분"): 창(df+dfw)→단일 양극 슬라이더(0=전체·+=R²≥df 하드만·−=R²≤1+df 소프트만) — 그룹핑 직무는 구간 지도가 승계, 통과영역 초록 칠은 유지.
 v0.26 **조명 구간 지도**(user "비슷한 부류끼리 그룹핑 안 됨" — R² 스칼라 창의 지각 한계 실증[좁은 창 안 lt 16~100·az 전방위 혼재]): 부류=결합 상태(방향×세기×확산)이고 그 단위는 시간 구간 — 카메라-기준 광방위(머리 회전 무관, mls_ca)+세기+R² 시계열을 블록 병합으로 분할, 구간 분류(직사/확산·평광/역광/어두움) → 타임라인 상단 색 밴드+범례. test_4 스모크=21구간, 렘브란트 앵커(f379·408)가 한 직사 구간에 정확히 동거.
 v0.25.3 **창 시각 피드백**(user "선택 영역 색상"): 히스토그램 bandf 지원 — df·dfw 조작 시 창 구간 빈이 초록으로 칠해지고 양끝 마커 표시(전체=마커 없음). 게이트는 창으로 정상 동작 실증(중심 0.35→r2 0.2~0.5만).
@@ -434,9 +435,9 @@ def compute_picks(rows, cfg):
             and (r["cs"] is None or r["cs"] >= cfg["cs_min"])
             and (r["mv"] is None or r["mv"] >= cfg["mv_min"])
             and (r["lt"] is None or r["lt"] >= cfg["lt_min"])
-            and (r["r2"] is None or cfg["df"] == 0
-                 or (cfg["df"] > 0 and r["r2"] >= cfg["df"])
-                 or (cfg["df"] < 0 and r["r2"] <= 1 + cfg["df"]))
+            and (r["hd"] is None or cfg["df"] == 0
+                 or (cfg["df"] > 0 and r["hd"] >= cfg["df"])
+                 or (cfg["df"] < 0 and r["hd"] <= 1 + cfg["df"]))
             and (r["ma"] is None or cfg["la_lo"] <= r["ma"] <= cfg["la_hi"])
             and (r["me"] is None or cfg["le_lo"] <= r["me"] <= cfg["le_hi"])
             and (r["ag"] is None or r["ag"] <= cfg["ag_max"])
@@ -601,6 +602,7 @@ def build_clip(clip_id, out_root, wb_dir):
     # v0.25 확산의 자 = R²(램버트 설명력, raw 0~1 — 분산 비율이라 클립-교차 절대 문턱
     # 성립; DPR ldr은 하드/소프트 클립 분리 AUC 0.248=역방향 실증으로 확산 자에서 은퇴)
     r2_arr = np.full(n, np.nan)
+    hd_arr = np.full(n, np.nan)   # v0.27 키:필 하드니스(1−그림자면/밝은면) — 확산 축의 자
     for i2 in range(n):
         if not np.isfinite(mf_m[i2]):
             continue
@@ -616,6 +618,10 @@ def build_clip(clip_id, out_root, wb_dir):
             continue
         ssr = ((Iv - (mf_a[i2] + mf_m[i2] * dv2)) ** 2).sum()
         r2_arr[i2] = max(0.0, 1.0 - ssr / sst)
+        t1_, t2_ = np.percentile(dv2, [33, 67])
+        lit_, sh_ = Iv[dv2 >= t2_], Iv[dv2 <= t1_]
+        if len(lit_) >= 5 and len(sh_) >= 5 and np.median(lit_) >= 5:
+            hd_arr[i2] = float(np.clip(1.0 - np.median(sh_) / np.median(lit_), 0, 1))
 
     def _spread(v):
         fin = v[np.isfinite(v)]
@@ -660,7 +666,7 @@ def build_clip(clip_id, out_root, wb_dir):
                      "md": ([int(v) for v in md_arr[i]] if np.isfinite(mf_m[i]) else None),
                      "mq": ([int(v) for v in mq_arr[i]] if np.isfinite(mf_m[i]) else None),
                      "mf": ([num(mf_a[i], 1), num(mf_m[i], 1)] if np.isfinite(mf_m[i]) else None),
-                     "r2": num(r2_arr[i], 2),
+                     "r2": num(r2_arr[i], 2), "hd": num(hd_arr[i], 2),
                      "la": num(la_deg[i], 0), "le": num(le_deg[i], 0),
                      "ldr": num(ldr_raw[i], 2), "ld": num(ld_pct[i], 1),
                      "rm": ([round(float(v), 3) for v in R3[i].ravel()]
@@ -739,8 +745,8 @@ def build_clip(clip_id, out_root, wb_dir):
         cax = _smed(np.cos(np.radians(mls_ca)))
         cay = _smed(np.sin(np.radians(mls_ca)))
         lum_n = _smed(np.clip(np.nan_to_num(t["lum_eff"], nan=np.nan) / 255.0, 0, 1))
-        r2s = _smed(r2_arr)
-        feat = np.stack([0.7 * cax, 0.7 * cay, 1.0 * lum_n, 0.6 * r2s], 1)
+        hds = _smed(hd_arr)
+        feat = np.stack([0.7 * cax, 0.7 * cay, 1.0 * lum_n, 0.8 * hds], 1)
         BLK = 12
         merged = []
         for b0 in range(0, n, BLK):
@@ -764,10 +770,10 @@ def build_clip(clip_id, out_root, wb_dir):
                 continue
             seg_ca = float(np.degrees(np.arctan2(mv[1], mv[0])))
             seg_lm = mv[2] * 255.0
-            seg_r2 = mv[3] / 0.6
+            seg_hd = mv[3] / 0.8
             cls = ("dark" if seg_lm < 55 else
                    "back" if abs(seg_ca) > 110 else
-                   "hard" if seg_r2 >= 0.33 else "flat")
+                   "hard" if seg_hd >= 0.42 else "flat")
             lseg.append([f0, f1, cls])
 
     return {"clip": clip_id, "tid": t["tid"], "n": n, "vf": vf, "cur": cur, "lf": lf,
@@ -916,7 +922,7 @@ const DIALS=[
  ["빛"],
  ["lt_min","조도·생동 lt pct >=",0,90,5],
  ["hh_max","거칠기 hh pct <=",10,100,5],
- ["df","확산 축: ◀ − 방향성 소멸(소프트)만 · 0=전체 · + 방향성 존재(하드)만 ▶",-0.95,0.95,0.05],
+ ["df","확산 축: ◀ − 소프트(그림자 차오름)만 · 0=전체 · + 하드(그림자 깊음)만 ▶ (자=키:필 hd)",-0.95,0.95,0.05],
  ["la_lo","정준 방위 az 하한 (소스=mesh-LS · 0=정면 +=피사체좌)",-180,180,5],
  ["la_hi","정준 방위 az 상한",-180,180,5],
  ["le_lo","정준 고도 el 하한 (소스=mesh-LS · +=위)",-90,90,5],
@@ -963,7 +969,7 @@ const K2G={sym_max:"포즈",dev_lo:"포즈",dev_hi:"포즈",pt_max:"포즈",
 function gPass(r,c,g){   // 채널별 하드 게이트 (v0.11: mute=게이트 해제)
  if(g==0)return r.sy<c.sym_max&&r.dv>c.dev_lo&&r.dv<c.dev_hi&&Math.abs(r.pc)<c.pt_max;
  if(g==1)return r.pu>=c.pu_min&&r.ex>=c.ex_min&&r.ex<=c.ex_max;
- if(g==2)return (r.lt==null||r.lt>=c.lt_min)&&(r.hh==null||r.hh<=c.hh_max)&&(r.r2==null||c.df==0||(c.df>0?r.r2>=c.df:r.r2<=1+c.df))&&(r.ma==null||(r.ma>=c.la_lo&&r.ma<=c.la_hi))&&(r.me==null||(r.me>=c.le_lo&&r.me<=c.le_hi))&&(r.ag==null||r.ag<=c.ag_max);
+ if(g==2)return (r.lt==null||r.lt>=c.lt_min)&&(r.hh==null||r.hh<=c.hh_max)&&(r.hd==null||c.df==0||(c.df>0?r.hd>=c.df:r.hd<=1+c.df))&&(r.ma==null||(r.ma>=c.la_lo&&r.ma<=c.la_hi))&&(r.me==null||(r.me>=c.le_lo&&r.me<=c.le_hi))&&(r.ag==null||r.ag<=c.ag_max);
  if(g==3)return r.sp==null||r.sp>=c.sp_min;
  return (r.cs==null||r.cs>=c.cs_min)&&(r.mv==null||r.mv>=c.mv_min);}
 function firstFail(r,c,M){
@@ -1120,7 +1126,7 @@ const HSPEC={
  cs_min:{f:r=>r.cs,dir:"above"},
  mv_min:{f:r=>r.mv,dir:"above"},
  lt_min:{f:r=>r.lt,dir:"above"},
- df:{f:r=>r.r2,bandf:c=>c.df==0?null:(c.df>0?[c.df,1]:[0,1+c.df])},
+ df:{f:r=>r.hd,bandf:c=>c.df==0?null:(c.df>0?[c.df,1]:[0,1+c.df])},
  la_hi:{f:r=>r.ma,band:["la_lo","la_hi"]},
  le_hi:{f:r=>r.me,band:["le_lo","le_hi"]},
  ag_max:{f:r=>r.ag,dir:"below"},
@@ -1305,7 +1311,7 @@ function renderInsp(C,m){
    <div class="note"><b>lt ${r.lt==null?"--":r.lt}% = (휘도 ${r.lm==null?"--":r.lm}% + 색량 ${r.ch==null?"--":r.ch}%)/2</b> · raw 휘도 ${r.lmr==null?"--":r.lmr} / 색량 ${r.chr==null?"--":r.chr} <span style="color:#987">(pct 포화 대조용)</span><br>
     거칠기 hh ${r.hh==null?"--":r.hh}%<br>
     <b>정준 az ${r.la==null?"--":r.la}° · el ${r.le==null?"--":r.le}°</b> (0=정면 +=피사체좌/위) · 방향성 ldr ${r.ldr==null?"--":r.ldr}, ld ${r.ld==null?"--":r.ld}%${r.ldr!=null&&r.ldr<0.25?' <span style="color:#e88">⚠확산—방위 신뢰불가</span>':""}<br>
-    <b>mesh-LS az ${r.ma==null?"--":r.ma}° · el ${r.me==null?"--":r.me}°</b> · R² ${r.r2==null?"--":r.r2} · 방향성 ${r.mr==null?"--":r.mr} · DPR 합의 ${r.ag==null?"--":r.ag+"°"}${(r.ag!=null&&r.ag>45)||(r.mr!=null&&r.mr<0.3)?' <span style="color:#e88">⚠방향 불신('+(r.ag!=null&&r.ag>45?"이중 자 불일치":"무방향")+')</span>':""}<br>
+    <b>mesh-LS az ${r.ma==null?"--":r.ma}° · el ${r.me==null?"--":r.me}°</b> · 키:필 hd ${r.hd==null?"--":r.hd} · R² ${r.r2==null?"--":r.r2} · 방향성 ${r.mr==null?"--":r.mr} · DPR 합의 ${r.ag==null?"--":r.ag+"°"}${(r.ag!=null&&r.ag>45)||(r.mr!=null&&r.mr<0.3)?' <span style="color:#e88">⚠방향 불신('+(r.ag!=null&&r.ag>45?"이중 자 불일치":"무방향")+')</span>':""}<br>
     클립 판별력 lf=${C.lf}</div>`;
  }else if(iMode=="영상"){
   body=(pv&&pv.lap)?`<img src="thumbs/${C.clip}/f${String(r.f).padStart(5,"0")}_lap.jpg" style="width:224px;border:1px solid #444">
@@ -1481,7 +1487,7 @@ const STRIPS=[   // v0.14: 채널 → 세부 채널(트리) → 다이얼
  {g:"빛",fader:"w_light",subs:[
    {t:"① 세기 (조도·생동 lum×chroma)",dials:["lt_min"]},
    {t:"② 방향 — 존 선택 (본선=mesh-LS·대조=DPR)",dials:[],zones:1,adv:["la_lo","la_hi","le_lo","le_hi","ag_max"]},
-   {t:"③ 확산 — ◀ 방향성 소멸(소프트) / 방향성 존재(하드) ▶",dials:["df"]},
+   {t:"③ 확산 — ◀ 소프트(그림자 차오름) / 하드(그림자 깊음) ▶",dials:["df"]},
    {t:"④ 그림자 (거칠기)",dials:["hh_max"]}]},
  {g:"영상",fader:"w_image",subs:[
    {t:"선명 (face blur)",dials:["sp_min"]}]},
