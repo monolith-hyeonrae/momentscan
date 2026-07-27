@@ -16,6 +16,13 @@ v0.20.1 **자기-가림 수리**(모의 렌더 자가 적발): 측면에서 등�
 v0.20.2 **역광 붕괴 수리**(pv mls 2/7 진단): 1차 피팅이 "빛=뒤"면 clamp-트림이 전
 점을 죽여 None(f305 110→3). lit 트림=lit 모집단 충분(≥max(12, 30%))할 때만 + 붕괴
 시 마지막 유효 피팅 반환 — 역광 프레임도 (낮은 신뢰의) 방향을 정직 방출.
+v0.25 **확산의 자=R² 교체(의제② 종결)**: 후보 4종 클립-앵커 중재(흐림 test_3·test_0
+vs 직사 test_4·251227*) — **현직 DPR ldr=AUC 0.248 역방향 실증**(은퇴, 표시 대조만)
+· mesh mr 0.537 · fc(얼굴대비) 0.519 · **R²=0.768 유일 분리**(test_3=0.00 자백).
+③확산 다이얼=R² raw(0~1, 분산비라 클립-교차 절대 문턱 성립 — pct 함정 회피).
+존에서 확산 조건 전면 제거(방향 실재 게이트=ag가 대행; R² 하한은 mesh-취약 프레임
+[f532 트림 붕괴]을 오폭). **"소프트" 존 정체 정정→"프론트(밝은 정면광)"**: intl
+f1~50 R²=0.59=반직사 — 소프트박스 라벨은 역방향 자(ldr) 위의 오명이었음.
 v0.24 **빛 채널 4축 재편**(user "다이얼 4가지면 되지 않나 — 세기·방향·확산·그림자"):
 계기 감사의 4질문과 동형 좌표 채택 — ①세기(lt) ②방향(존 선택=1급, az/el 밴드·합의각
 =고급 접기) ③확산(방향성 밴드) ④그림자(hh). 사진사는 각도가 아니라 셋업을 고른다.
@@ -193,7 +200,7 @@ OVAL_ORDER = _oval_order()
 DEFAULT_CFG = {"sym_max": 0.6, "dev_lo": -15.0, "dev_hi": 15.0, "pt_max": 99.0, "pu_min": 0.4,
                "cs_min": 0.0, "mv_min": 0.0, "lt_min": 0.0, "ex_min": 0.0, "ex_max": 1.0,
                "gap_min": 12, "hh_max": 100.0, "sp_min": 0.0,
-               "ld_min": 0.0, "ld_max": 100.0, "la_lo": -180.0, "la_hi": 180.0, "le_lo": -90.0, "le_hi": 90.0,
+               "ld_min": 0.0, "ld_max": 1.0, "la_lo": -180.0, "la_hi": 180.0, "le_lo": -90.0, "le_hi": 90.0,
                "ag_max": 180.0,
                "w_face": 0.45, "w_light": 0.20, "w_image": 0.15, "w_distort": 0.20}
 
@@ -422,7 +429,7 @@ def compute_picks(rows, cfg):
             and (r["cs"] is None or r["cs"] >= cfg["cs_min"])
             and (r["mv"] is None or r["mv"] >= cfg["mv_min"])
             and (r["lt"] is None or r["lt"] >= cfg["lt_min"])
-            and (r["ld"] is None or cfg["ld_min"] <= r["ld"] <= cfg["ld_max"])
+            and (r["r2"] is None or cfg["ld_min"] <= r["r2"] <= cfg["ld_max"])
             and (r["ma"] is None or cfg["la_lo"] <= r["ma"] <= cfg["la_hi"])
             and (r["me"] is None or cfg["le_lo"] <= r["me"] <= cfg["le_hi"])
             and (r["ag"] is None or r["ag"] <= cfg["ag_max"])
@@ -582,6 +589,25 @@ def build_clip(clip_id, out_root, wb_dir):
     ldr_raw[bad_sh] = np.nan
     ld_pct = pct_rank(ldr_raw)
 
+    # v0.25 확산의 자 = R²(램버트 설명력, raw 0~1 — 분산 비율이라 클립-교차 절대 문턱
+    # 성립; DPR ldr은 하드/소프트 클립 분리 AUC 0.248=역방향 실증으로 확산 자에서 은퇴)
+    r2_arr = np.full(n, np.nan)
+    for i2 in range(n):
+        if not np.isfinite(mf_m[i2]):
+            continue
+        I2 = mi_arr[i2].astype(float)
+        d2 = md_arr[i2].astype(float) / 100.0
+        m2 = (I2 >= 0) & (mq_arr[i2] > 0) & (np.abs(d2) <= 1.0)
+        if m2.sum() < 15:
+            continue
+        Iv, dv2 = I2[m2], d2[m2]
+        sst = ((Iv - Iv.mean()) ** 2).sum()
+        if sst <= 1e-6:
+            r2_arr[i2] = 0.0
+            continue
+        ssr = ((Iv - (mf_a[i2] + mf_m[i2] * dv2)) ** 2).sum()
+        r2_arr[i2] = max(0.0, 1.0 - ssr / sst)
+
     def _spread(v):
         fin = v[np.isfinite(v)]
         if len(fin) < 10:
@@ -625,6 +651,7 @@ def build_clip(clip_id, out_root, wb_dir):
                      "md": ([int(v) for v in md_arr[i]] if np.isfinite(mf_m[i]) else None),
                      "mq": ([int(v) for v in mq_arr[i]] if np.isfinite(mf_m[i]) else None),
                      "mf": ([num(mf_a[i], 1), num(mf_m[i], 1)] if np.isfinite(mf_m[i]) else None),
+                     "r2": num(r2_arr[i], 2),
                      "la": num(la_deg[i], 0), "le": num(le_deg[i], 0),
                      "ldr": num(ldr_raw[i], 2), "ld": num(ld_pct[i], 1),
                      "rm": ([round(float(v), 3) for v in R3[i].ravel()]
@@ -834,8 +861,8 @@ const DIALS=[
  ["빛"],
  ["lt_min","조도·생동 lt pct >=",0,90,5],
  ["hh_max","거칠기 hh pct <=",10,100,5],
- ["ld_min","하드 하한: 방향성 ld pct >= (올리면 하드만)",0,90,5],
- ["ld_max","소프트 상한: 방향성 ld pct <= (내리면 소프트만)",10,100,5],
+ ["ld_min","하드 하한: R² 램버트 설명력 >= (올리면 하드만)",0,0.9,0.05],
+ ["ld_max","확산 상한: R² <= (내리면 확산만)",0.1,1,0.05],
  ["la_lo","정준 방위 az 하한 (소스=mesh-LS · 0=정면 +=피사체좌)",-180,180,5],
  ["la_hi","정준 방위 az 상한",-180,180,5],
  ["le_lo","정준 고도 el 하한 (소스=mesh-LS · +=위)",-90,90,5],
@@ -855,7 +882,7 @@ const DIALS=[
 ];
 const DEF={sym_max:0.6,dev_lo:-15,dev_hi:15,pt_max:99,pu_min:0.4,cs_min:0,mv_min:0,lt_min:0,
            ex_min:0,ex_max:1.0,gap_min:12,hh_max:100,sp_min:0,
-           ld_min:0,ld_max:100,la_lo:-180,la_hi:180,le_lo:-90,le_hi:90,ag_max:180,
+           ld_min:0,ld_max:1,la_lo:-180,la_hi:180,le_lo:-90,le_hi:90,ag_max:180,
            w_face:0.45,w_light:0.20,w_image:0.15,w_distort:0.20};
 let A={...DEF}, Bcfg=null, GT={}, cur=0, sortMode="time", poseOpen=false, ATT=false;
 let selF=null, iMode="포즈", collapsed={};
@@ -882,7 +909,7 @@ const K2G={sym_max:"포즈",dev_lo:"포즈",dev_hi:"포즈",pt_max:"포즈",
 function gPass(r,c,g){   // 채널별 하드 게이트 (v0.11: mute=게이트 해제)
  if(g==0)return r.sy<c.sym_max&&r.dv>c.dev_lo&&r.dv<c.dev_hi&&Math.abs(r.pc)<c.pt_max;
  if(g==1)return r.pu>=c.pu_min&&r.ex>=c.ex_min&&r.ex<=c.ex_max;
- if(g==2)return (r.lt==null||r.lt>=c.lt_min)&&(r.hh==null||r.hh<=c.hh_max)&&(r.ld==null||(r.ld>=c.ld_min&&r.ld<=c.ld_max))&&(r.ma==null||(r.ma>=c.la_lo&&r.ma<=c.la_hi))&&(r.me==null||(r.me>=c.le_lo&&r.me<=c.le_hi))&&(r.ag==null||r.ag<=c.ag_max);
+ if(g==2)return (r.lt==null||r.lt>=c.lt_min)&&(r.hh==null||r.hh<=c.hh_max)&&(r.r2==null||(r.r2>=c.ld_min&&r.r2<=c.ld_max))&&(r.ma==null||(r.ma>=c.la_lo&&r.ma<=c.la_hi))&&(r.me==null||(r.me>=c.le_lo&&r.me<=c.le_hi))&&(r.ag==null||r.ag<=c.ag_max);
  if(g==3)return r.sp==null||r.sp>=c.sp_min;
  return (r.cs==null||r.cs>=c.cs_min)&&(r.mv==null||r.mv>=c.mv_min);}
 function firstFail(r,c,M){
@@ -1036,8 +1063,8 @@ const HSPEC={
  cs_min:{f:r=>r.cs,dir:"above"},
  mv_min:{f:r=>r.mv,dir:"above"},
  lt_min:{f:r=>r.lt,dir:"above"},
- ld_min:{f:r=>r.ld,dir:"above"},
- ld_max:{f:r=>r.ld,dir:"below"},
+ ld_min:{f:r=>r.r2,dir:"above"},
+ ld_max:{f:r=>r.r2,dir:"below"},
  la_hi:{f:r=>r.ma,band:["la_lo","la_hi"]},
  le_hi:{f:r=>r.me,band:["le_lo","le_hi"]},
  ag_max:{f:r=>r.ag,dir:"below"},
@@ -1216,7 +1243,7 @@ function renderInsp(C,m){
    <div class="note"><b>lt ${r.lt==null?"--":r.lt}% = (휘도 ${r.lm==null?"--":r.lm}% + 색량 ${r.ch==null?"--":r.ch}%)/2</b> · raw 휘도 ${r.lmr==null?"--":r.lmr} / 색량 ${r.chr==null?"--":r.chr} <span style="color:#987">(pct 포화 대조용)</span><br>
     거칠기 hh ${r.hh==null?"--":r.hh}%<br>
     <b>정준 az ${r.la==null?"--":r.la}° · el ${r.le==null?"--":r.le}°</b> (0=정면 +=피사체좌/위) · 방향성 ldr ${r.ldr==null?"--":r.ldr}, ld ${r.ld==null?"--":r.ld}%${r.ldr!=null&&r.ldr<0.25?' <span style="color:#e88">⚠확산—방위 신뢰불가</span>':""}<br>
-    <b>mesh-LS az ${r.ma==null?"--":r.ma}° · el ${r.me==null?"--":r.me}°</b> · 방향성 ${r.mr==null?"--":r.mr} · DPR 합의 ${r.ag==null?"--":r.ag+"°"}${(r.ag!=null&&r.ag>45)||(r.mr!=null&&r.mr<0.3)?' <span style="color:#e88">⚠방향 불신('+(r.ag!=null&&r.ag>45?"이중 자 불일치":"무방향")+')</span>':""}<br>
+    <b>mesh-LS az ${r.ma==null?"--":r.ma}° · el ${r.me==null?"--":r.me}°</b> · R² ${r.r2==null?"--":r.r2} · 방향성 ${r.mr==null?"--":r.mr} · DPR 합의 ${r.ag==null?"--":r.ag+"°"}${(r.ag!=null&&r.ag>45)||(r.mr!=null&&r.mr<0.3)?' <span style="color:#e88">⚠방향 불신('+(r.ag!=null&&r.ag>45?"이중 자 불일치":"무방향")+')</span>':""}<br>
     클립 판별력 lf=${C.lf}</div>`;
  }else if(iMode=="영상"){
   body=(pv&&pv.lap)?`<img src="thumbs/${C.clip}/f${String(r.f).padStart(5,"0")}_lap.jpg" style="width:224px;border:1px solid #444">
@@ -1404,11 +1431,11 @@ const MCOL={"표정·얼굴":"#e08aa8","빛":"#d8c455","영상":"#55aacc","왜�
 let deckTab="포즈";
 function setTab(g){deckTab=g;if(STAGES.includes(g))iMode=g;buildPanel();render();}
 function setZone(z){   // v0.19 사진 문법 존 프리셋 (정준 az/el 다이얼 일괄)
- const Z={remA:{la_lo:20,la_hi:60,le_lo:10,le_hi:55,ld_min:50,ld_max:100,lt_min:60,ag_max:45},
-          remB:{la_lo:-60,la_hi:-20,le_lo:10,le_hi:55,ld_min:50,ld_max:100,lt_min:60,ag_max:45},
-          bfly:{la_lo:-15,la_hi:15,le_lo:20,le_hi:60,ld_min:50,ld_max:100,lt_min:60,ag_max:45},
-          soft:{la_lo:-30,la_hi:30,le_lo:10,le_hi:55,ld_min:0,ld_max:30,lt_min:75,ag_max:45},
-          zoff:{la_lo:-180,la_hi:180,le_lo:-90,le_hi:90,ld_min:0,ld_max:100,lt_min:0,ag_max:180}};
+ const Z={remA:{la_lo:20,la_hi:60,le_lo:10,le_hi:55,ld_min:0,ld_max:1,lt_min:60,ag_max:45},
+          remB:{la_lo:-60,la_hi:-20,le_lo:10,le_hi:55,ld_min:0,ld_max:1,lt_min:60,ag_max:45},
+          bfly:{la_lo:-15,la_hi:15,le_lo:20,le_hi:60,ld_min:0,ld_max:1,lt_min:60,ag_max:45},
+          front:{la_lo:-30,la_hi:30,le_lo:10,le_hi:55,ld_min:0,ld_max:1,lt_min:75,ag_max:45},
+          zoff:{la_lo:-180,la_hi:180,le_lo:-90,le_hi:90,ld_min:0,ld_max:1,lt_min:0,ag_max:180}};
  Object.assign(A,Z[z]);iMode="빛";buildPanel();render();}
 function dialHTML(k){
  const [,lbl,mn,mx,stp]=D2META[k];
@@ -1450,7 +1477,7 @@ function buildPanel(){   // v0.13: 채널 탭 데크 + 미터 브리지
   body=`<div class="chanview${MUTE[S.g]?" gmuted":""}"><div class="body">`+
    S.subs.map(sub=>`<div class="subch"><div class="subttl">${sub.t}</div>`+
     (sub.zones?`<div style="margin:2px 0 5px">`+[["remA","렘브란트 az+"],["remB","렘브란트 az−"],
-      ["bfly","버터플라이"],["soft","소프트(밝은 확산)"],["zoff","존 해제"]].map(([z,l])=>
+      ["bfly","버터플라이"],["front","프론트(밝은 정면광)"],["zoff","존 해제"]].map(([z,l])=>
       `<button onclick="setZone('${z}')" style="font-size:10px;background:#333;color:#d8c455;border:1px solid #555;border-radius:3px;margin-right:4px;cursor:pointer;padding:1px 6px">${l}</button>`).join("")+
       `<div style="font-size:10px;color:#987;margin-top:2px">존=방향성 클립 전용 — 헤더 lf·⚠확산 배지 확인</div></div>`:"")+
     sub.dials.map(dialHTML).join("")+
