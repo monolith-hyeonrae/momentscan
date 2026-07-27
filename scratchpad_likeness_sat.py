@@ -72,7 +72,10 @@ def skin_sv(frame, pts, cb):
     v_mean = float((vv * wm).sum() / sw)
     c_mean = float((cv_ * wm).sum() / sw)
     c_std = float(np.sqrt(((cv_ - c_mean) ** 2 * wm).sum() / sw))
-    return s_mean, c_std, v_mean, c_mean
+    # v0.30.3: 타원 전체 중앙값 — 지각 밝기의 자(앵커 가중 평균은 백화 고원에서 포화).
+    # 말미 추가라 기존 언패킹(r[0]~r[3]) 불변.
+    v_med = float(np.median(V.ravel()[facemask.ravel() > 0]))
+    return s_mean, c_std, v_mean, c_mean, v_med
 
 
 def analyze(clip_id: str, out_root: Path) -> tuple[np.ndarray, dict]:

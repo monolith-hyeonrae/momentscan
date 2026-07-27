@@ -16,6 +16,7 @@ v0.20.1 **자기-가림 수리**(모의 렌더 자가 적발): 측면에서 등�
 v0.20.2 **역광 붕괴 수리**(pv mls 2/7 진단): 1차 피팅이 "빛=뒤"면 clamp-트림이 전
 점을 죽여 None(f305 110→3). lit 트림=lit 모집단 충분(≥max(12, 30%))할 때만 + 붕괴
 시 마지막 유효 피팅 반환 — 역광 프레임도 (낮은 신뢰의) 방향을 정직 방출.
+v0.30.3 **밝기 정렬의 자=타원 중앙값**(user 반례 f224-f454-f473: 배포 lmr 3자 동률 208.4±0.1=타이브레이크 노이즈였고, 기전=**앵커-가중 평균이 백화 고원에서 포화**[앵커 지역이 먼저 똑같이 날아감] — 지각 차이는 타원 전체에 잔존[중앙값 f473 241 vs f454 212, Δ29]): skin_sv에 v_med 말미 추가(언패킹 불변), 정렬 lum=lmd(타원 중앙값)·게이트 lt=현행 유지(직무 분리).
 v0.30.2 **백화=영상 채널 이관**(user 분류 판정 "노출 비정상은 영상 채널 소관"): 빛=조명의 물리 상태/영상=기록의 온전성 분업 — 백화 배지를 빛 태그에서 영상 탭으로 이사(서명 유지, 영상 채널 1층 순회 시 정식 계기 씨앗).
 v0.30.1 **백화 태그**(user "test_12 밝기순이 이상" 진단): 측정은 물리 정직(상단=실제 최고 휘도)이나 의미론 갈림 — 백화가 밝기 1위 옹립. 근본=clip_hi 250 문턱이 test_12 백화(218~230) 미포착(원장 기록 사실의 실물 재현, lum_eff 할인 무력). 백화 실서명=고휘도∧저채도 → 태그(lmr≥205∧chr≤45, test_12 184장·타 클립 오폭 0). clip_hi 문턱 재교정=파이프라인 상수 의제(lk-sampling2) 예약.
 v0.30 **세기=정렬 렌즈**(user 정식화 "축마다 상호작용이 다르다 — 방향·확산=구분, 세기=일렬 줄세우기; 이 프로그램의 자랑=다축 해석의 맥락적 sort"): 존 시스템 범주화 철회, 풀 정렬 모드 확장(시간/점수/밝기 lmr/채도 chr/조명비 hd 순환) — 쿼리=구분(필터)+정렬(sort)의 두 동사.
@@ -496,6 +497,7 @@ def build_clip(clip_id, out_root, wb_dir):
         return max(0, int(cx - s)), max(0, int(cy - s)), min(W0, int(cx + s)), min(H0, int(cy + s))
 
     chroma = np.full(n, np.nan)
+    lum_med = np.full(n, np.nan)   # v0.30.3 타원 중앙 휘도(지각 밝기 정렬의 자)
     mls_az = np.full(n, np.nan)  # v0.20 mesh-LS 이중 자(백색상자 램버트 피팅)
     mls_el = np.full(n, np.nan)
     mls_r = np.full(n, np.nan)
@@ -528,6 +530,7 @@ def build_clip(clip_id, out_root, wb_dir):
             r = skin_sv(frm, pts, cbv)
             if r is not None:
                 chroma[i] = r[3]
+                lum_med[i] = r[4]
             mfit = _mls_frame(frm, P[i], cbv)
             if mfit is not None:
                 a_m, m_m, keep_m, N_m, _, I_m, v3_m = mfit
@@ -669,7 +672,7 @@ def build_clip(clip_id, out_root, wb_dir):
                      "cs": num(cs_pct[i], 1), "mv": num(mv_pct[i], 1), "lt": num(light_pct[i], 1),
                      "lm": num(lum_pct[i], 1), "ch": num(ch_pct[i], 1),
                      "hh": num(hh_pct[i], 1), "sp": num(sharp_pct[i], 1),
-                     "lmr": num(t["lum_eff"][i], 1), "chr": num(chroma[i], 1),
+                     "lmr": num(t["lum_eff"][i], 1), "lmd": num(lum_med[i], 1), "chr": num(chroma[i], 1),
                      "ma": num(mls_az[i], 0), "me": num(mls_el[i], 0),
                      "mr": num(mls_r[i], 2), "ag": num(mls_ag[i], 0),
                      "mi": ([int(v) for v in mi_arr[i]] if np.isfinite(mf_m[i]) else None),
@@ -1074,7 +1077,7 @@ function render(){
   ` · <b>빛 판별력 lf=${C.lf==null?"?":C.lf}</b>${C.lf!=null&&C.lf<0.35?` <span style="color:#e88"><b>⚠확산 클립 — 방위·존 판독 금지(포즈-편향)</b></span>`:""}${ATT?` <span style="color:#fc6">(감쇠: w_light ${A.w_light}→${(A.w_light*(C.lf==null?1:C.lf)).toFixed(2)})</span>`:""}`+
   (anyMute()?` · <span style="color:#e06666"><b>${STAGES.filter(s=>!MUTE[s]).length==1?"SOLO: "+STAGES.find(s=>!MUTE[s]):"MUTE: "+STAGES.filter(s=>MUTE[s]).join(", ")}</b></span>`:"")+
   ` · 풀 정렬:</span>
-  <button onclick="const M2=['time','score','lum','chr','ratio'];sortMode=M2[(M2.indexOf(sortMode)+1)%M2.length];render()">정렬: ${({time:'시간순',score:'점수순',lum:'밝기순(백화 포함)',chr:'채도순',ratio:'조명비순'})[sortMode]}</button>
+  <button onclick="const M2=['time','score','lum','chr','ratio'];sortMode=M2[(M2.indexOf(sortMode)+1)%M2.length];render()">정렬: ${({time:'시간순',score:'점수순',lum:'밝기순(타원 중앙값)',chr:'채도순',ratio:'조명비순'})[sortMode]}</button>
   <button onclick="poseOpen=!poseOpen;render()">포즈 눈금 ${poseOpen?'닫기':'보기'}</button>
   <label style="font-size:12px;color:#bbb;margin-left:6px"><input type="checkbox" ${ATT?"checked":""}
    onchange="ATT=this.checked;render()"> 빛 분산-감쇠(시험)</label>`;
@@ -1106,11 +1109,11 @@ function render(){
  h+=`</div>`;   // 결과 박스 닫기
  const sv=C.rows.filter(r=>pass(r,A));
  sv.forEach(r=>r._s=score(r,A,C.lf));
- const SORTK={lum:r=>r.lmr,chr:r=>r.chr,ratio:r=>r.hd};
+ const SORTK={lum:r=>r.lmd??r.lmr,chr:r=>r.chr,ratio:r=>r.hd};
  const ordered=sortMode=="time"?sv.slice().sort((a,b)=>a.f-b.f)
   :sortMode=="score"?sv.slice().sort((a,b)=>b._s-a._s)
   :sv.slice().sort((a,b)=>((SORTK[sortMode](b)??-1)-(SORTK[sortMode](a)??-1)));
- h+=`<div class="box"><div class="boxttl">생존 풀 (A, ${sv.length}행 전체 · ${({time:'시간순',score:'점수순',lum:'밝기순(lmr)',chr:'채도순(chr)',ratio:'조명비순(hd)'})[sortMode]})</div>
+ h+=`<div class="box"><div class="boxttl">생존 풀 (A, ${sv.length}행 전체 · ${({time:'시간순',score:'점수순',lum:'밝기순(lmd 타원 중앙값)',chr:'채도순(chr)',ratio:'조명비순(hd)'})[sortMode]})</div>
   <div class="strip sm">`+ordered.map(r=>cellHTML(C.clip,r,"")).join("")+`</div></div>`;
  document.getElementById("main").innerHTML=h;
  drawTimeline(C,m);
@@ -1350,7 +1353,7 @@ function renderInsp(C,m){
     <canvas id="msc" width="300" height="170" style="border:1px solid #444;margin-top:4px"></canvas>
     <div class="note">램버트 산점: cosθ vs 밝기 · 직선=피팅 ${r.mf?r.mf[0]+"+"+r.mf[1]+"·cosθ":"--"} (회색=피팅 미사용)</div></div>`
    :`<div class="note" style="margin-top:6px">mesh-LS 측정 없음 (이 프레임)</div>`}
-   <div class="note"><b>lt ${r.lt==null?"--":r.lt}% = (휘도 ${r.lm==null?"--":r.lm}% + 색량 ${r.ch==null?"--":r.ch}%)/2</b> · raw 휘도 ${r.lmr==null?"--":r.lmr} / 색량 ${r.chr==null?"--":r.chr} <span style="color:#987">(pct 포화 대조용)</span><br>
+   <div class="note"><b>lt ${r.lt==null?"--":r.lt}% = (휘도 ${r.lm==null?"--":r.lm}% + 색량 ${r.ch==null?"--":r.ch}%)/2</b> · raw 휘도 가중 ${r.lmr==null?"--":r.lmr} · 중앙 ${r.lmd==null?"--":r.lmd} / 색량 ${r.chr==null?"--":r.chr} <span style="color:#987">(pct 포화 대조용)</span><br>
     거칠기 hh ${r.hh==null?"--":r.hh}%<br>
     <b>정준 az ${r.la==null?"--":r.la}° · el ${r.le==null?"--":r.le}°</b> (0=정면 +=피사체좌/위) · 방향성 ldr ${r.ldr==null?"--":r.ldr}, ld ${r.ld==null?"--":r.ld}%${r.ldr!=null&&r.ldr<0.25?' <span style="color:#e88">⚠확산—방위 신뢰불가</span>':""}<br>
     <b>mesh-LS az ${r.ma==null?"--":r.ma}° · el ${r.me==null?"--":r.me}°</b> · 조명비 ≈ ${r.hd==null?"--":(r.hd>=0.95?"20:1+":(1/(1-r.hd)).toFixed(1)+":1")} (hd ${r.hd==null?"--":r.hd}) · R² ${r.r2==null?"--":r.r2} · 방향성 ${r.mr==null?"--":r.mr} · DPR 합의 ${r.ag==null?"--":r.ag+"°"}${(r.ag!=null&&r.ag>45)||(r.mr!=null&&r.mr<0.3)?' <span style="color:#e88">⚠방향 불신('+(r.ag!=null&&r.ag>45?"이중 자 불일치":"무방향")+')</span>':""}<br>
