@@ -834,8 +834,8 @@ const DIALS=[
  ["빛"],
  ["lt_min","조도·생동 lt pct >=",0,90,5],
  ["hh_max","거칠기 hh pct <=",10,100,5],
- ["ld_min","방향성 ld pct >= (|SH1|/DC)",0,90,5],
- ["ld_max","방향성 ld pct <= (소프트 상한)",10,100,5],
+ ["ld_min","하드 하한: 방향성 ld pct >= (올리면 하드만)",0,90,5],
+ ["ld_max","소프트 상한: 방향성 ld pct <= (내리면 소프트만)",10,100,5],
  ["la_lo","정준 방위 az 하한 (소스=mesh-LS · 0=정면 +=피사체좌)",-180,180,5],
  ["la_hi","정준 방위 az 상한",-180,180,5],
  ["le_lo","정준 고도 el 하한 (소스=mesh-LS · +=위)",-90,90,5],
@@ -1392,7 +1392,7 @@ const STRIPS=[   // v0.14: 채널 → 세부 채널(트리) → 다이얼
  {g:"빛",fader:"w_light",subs:[
    {t:"① 세기 (조도·생동 lum×chroma)",dials:["lt_min"]},
    {t:"② 방향 — 존 선택 (본선=mesh-LS·대조=DPR)",dials:[],zones:1,adv:["la_lo","la_hi","le_lo","le_hi","ag_max"]},
-   {t:"③ 확산 (방향성 밴드: 소프트↔하드)",dials:["ld_min","ld_max"]},
+   {t:"③ 확산 — 방향광/환경광 비율 (낮음=소프트·감싸는 빛 / 높음=하드·단일 광원)",dials:["ld_min","ld_max"]},
    {t:"④ 그림자 (거칠기)",dials:["hh_max"]}]},
  {g:"영상",fader:"w_image",subs:[
    {t:"선명 (face blur)",dials:["sp_min"]}]},
