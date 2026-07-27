@@ -16,6 +16,7 @@ v0.20.1 **자기-가림 수리**(모의 렌더 자가 적발): 측면에서 등�
 v0.20.2 **역광 붕괴 수리**(pv mls 2/7 진단): 1차 피팅이 "빛=뒤"면 clamp-트림이 전
 점을 죽여 None(f305 110→3). lit 트림=lit 모집단 충분(≥max(12, 30%))할 때만 + 붕괴
 시 마지막 유효 피팅 반환 — 역광 프레임도 (낮은 신뢰의) 방향을 정직 방출.
+v0.28 **조명비 클래스 + 프레임 빛-태그**(user 제안 "방향처럼 조명비도 레이블 구분 + 프레임 태깅=이 소프트웨어가 하려는 일이 명확해짐"): 조명비 4클래스(플랫<0.2·소프트<0.4·중간<0.6·하드≥0.6 — 앵커 보정 초기값, N:1 병기)+검사 뷰 빛 탭 상단 태그 칩(방향 존/조명비/세기/조명 구간/거친 그림자/⚠신뢰) — 프레임=사진사 언어의 상태 서술.
 v0.27.2 **용어 정정: 조명비(lighting ratio)**(user "차오름 근거가 어디냐 — 검색 안 됨": 차오름=내 조어였음을 자백, 기성 교과서 용어=조명비 key:fill로 전면 교체 · 검사 뷰=N:1 표기 · 우리 hd=반사광 근사 1/(1−hd):1).
 v0.27.1 **표기=그림자 차오름 통일**(user 채택 "차오름 비율이 납득"): 다이얼·검사 뷰·사전을 차오름 문법으로(차오름 100%=소프트·0%=하드), 내부 값 hd=1−차오름 유지.
 v0.27 **확산의 자=키:필(hd) 교체**(user 반증 "df −0.95에 방향 명확한 프레임 다수" — R²의 구조 결함 확정: 깊은 그림자=clamp 비선형이라 하드 극단도 R²≈0, 전체-가시점 계산이 트림-피팅과 불일치): hd=1−(그림자면/밝은면 중앙 밝기, cosθ 3분위 분할)=사진사의 키:필 비율. 검증=r2≤0.05 오분류 55장 중 15장 하드 복권(f529~537=렘브란트 이웃)·앵커 f532 0.62/f408 0.58·시각 상하위 분리 명확. R²=통계/산점 표시로 존치(클립 AUC는 R² 우위 — 직무 분리: 다이얼=프레임 자 hd, 클립 성향=lf·구간 지도). 세그먼트 분류도 hd로 통일.
@@ -1275,6 +1276,32 @@ function shEval(sh,x,y,z){
  return sh[0]*0.2821+sh[1]*0.4886*y+sh[2]*0.4886*z+sh[3]*0.4886*x
   +sh[4]*1.0925*x*y+sh[5]*1.0925*y*z+sh[6]*0.3154*(3*z*z-1)
   +sh[7]*1.0925*x*z+sh[8]*0.5462*(x*x-y*y);}
+function ratioCls(hd){
+ if(hd==null)return null;
+ const r=hd>=0.95?20:1/(1-hd);
+ const cls=hd<0.2?"플랫":hd<0.4?"소프트":hd<0.6?"중간":"하드";
+ return {cls,txt:cls+" "+(r>=20?"20:1+":r.toFixed(1)+":1")};}
+function lightTags(C,r){
+ const T=[];
+ if(r.ma!=null&&r.me!=null){
+  const az=r.ma, el=r.me, warn=(r.ag!=null&&r.ag>45)?" ⚠":"";
+  let dl;
+  if(Math.abs(az)>110)dl="역광";
+  else if(Math.abs(az)<=15&&el>=20&&el<=60)dl="버터플라이";
+  else if(az>=20&&az<=60&&el>=10&&el<=55)dl="렘브란트(좌광)";
+  else if(az>=-60&&az<=-20&&el>=10&&el<=55)dl="렘브란트(우광)";
+  else if(Math.abs(az)<=30&&el>=10&&el<=55)dl="정면광";
+  else dl=`측광 ${az}°/${el}°`;
+  T.push({t:dl+warn,c:"#d8c455"});}
+ const rc=ratioCls(r.hd);
+ if(rc)T.push({t:"조명비 "+rc.txt,c:"#4aa7a0"});
+ if(r.lt!=null)T.push({t:r.lt>=75?"밝음":r.lt<25?"어두움":"보통 밝기",c:"#999"});
+ if(C.lseg){const sg=C.lseg.find(s2=>s2[0]<=r.f&&r.f<=s2[1]);
+  if(sg){const SL={hard:"직사 구간",flat:"확산·평광 구간",back:"역광 구간",dark:"어두운 구간",na:"무측정 구간"};
+   const SC={hard:"#d98a3d",flat:"#4aa7a0",back:"#9a6fd0",dark:"#5a6a7a",na:"#555"};
+   T.push({t:SL[sg[2]]||sg[2],c:SC[sg[2]]||"#555"});}}
+ if(r.hh!=null&&r.hh>=80)T.push({t:"거친 그림자",c:"#c07070"});
+ return T;}
 function renderInsp(C,m){
  const el=document.getElementById("insp");
  const r=C.rows.find(r=>r.f==selF);
@@ -1293,7 +1320,9 @@ function renderInsp(C,m){
     <div class="note">pupil ${r.pu} · ex(비 eyeLook 최대) ${r.ex}</div>`
    :`<div class="note">blendshape 상세는 픽 프레임 한정. pupil ${r.pu} · ex ${r.ex}</div>`;
  }else if(iMode=="빛"){
-  body=`<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-start">
+  const TG=lightTags(C,r);
+  body=`<div style="margin-bottom:6px">${TG.map(g=>`<span style="display:inline-block;border:1px solid ${g.c};color:${g.c};border-radius:9px;padding:1px 8px;margin:0 4px 4px 0;font-size:11px">${g.t}</span>`).join("")}</div>
+   <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-start">
     <div><canvas id="mkc" width="224" height="224" style="border:1px solid #444"></canvas>
      <div class="note" style="text-align:center">skin 마스크 (초록=가중, 선=타원 hull)</div></div>
    </div>
