@@ -16,6 +16,9 @@ v0.20.1 **자기-가림 수리**(모의 렌더 자가 적발): 측면에서 등�
 v0.20.2 **역광 붕괴 수리**(pv mls 2/7 진단): 1차 피팅이 "빛=뒤"면 clamp-트림이 전
 점을 죽여 None(f305 110→3). lit 트림=lit 모집단 충분(≥max(12, 30%))할 때만 + 붕괴
 시 마지막 유효 피팅 반환 — 역광 프레임도 (낮은 신뢰의) 방향을 정직 방출.
+v0.24 **빛 채널 4축 재편**(user "다이얼 4가지면 되지 않나 — 세기·방향·확산·그림자"):
+계기 감사의 4질문과 동형 좌표 채택 — ①세기(lt) ②방향(존 선택=1급, az/el 밴드·합의각
+=고급 접기) ③확산(방향성 밴드) ④그림자(hh). 사진사는 각도가 아니라 셋업을 고른다.
 v0.23.1 **약어 사전 상주**(user "az·el 등 약어 모르겠다"): 마스터 탭에 전 약어 사전 — 도구는 자기 설명을 해야 한다.
 v0.23 **방향 소스 전환: mesh 본선**(판정 완결): az 중재=밝기-무게중심 각(법선·램버트
 무관, 눈-판정의 정량판) — 전 코퍼스 2802프레임 중앙오차 mesh 29.9° vs DPR 51.5°,
@@ -1387,9 +1390,10 @@ const STRIPS=[   // v0.14: 채널 → 세부 채널(트리) → 다이얼
    {t:"눈동자 가시",dials:["pu_min"]},
    {t:"표정 밴드",dials:["ex_min","ex_max"]}]},
  {g:"빛",fader:"w_light",subs:[
-   {t:"조도·생동 (lum×chroma)",dials:["lt_min"]},
-   {t:"정준 방향 (본선=mesh-LS · 대조=DPR)",dials:["ld_min","ld_max","la_lo","la_hi","le_lo","le_hi","ag_max"],zones:1},
-   {t:"거칠기 (harsh)",dials:["hh_max"]}]},
+   {t:"① 세기 (조도·생동 lum×chroma)",dials:["lt_min"]},
+   {t:"② 방향 — 존 선택 (본선=mesh-LS·대조=DPR)",dials:[],zones:1,adv:["la_lo","la_hi","le_lo","le_hi","ag_max"]},
+   {t:"③ 확산 (방향성 밴드: 소프트↔하드)",dials:["ld_min","ld_max"]},
+   {t:"④ 그림자 (거칠기)",dials:["hh_max"]}]},
  {g:"영상",fader:"w_image",subs:[
    {t:"선명 (face blur)",dials:["sp_min"]}]},
  {g:"왜곡",fader:"w_distort",subs:[
@@ -1449,7 +1453,8 @@ function buildPanel(){   // v0.13: 채널 탭 데크 + 미터 브리지
       ["bfly","버터플라이"],["soft","소프트(밝은 확산)"],["zoff","존 해제"]].map(([z,l])=>
       `<button onclick="setZone('${z}')" style="font-size:10px;background:#333;color:#d8c455;border:1px solid #555;border-radius:3px;margin-right:4px;cursor:pointer;padding:1px 6px">${l}</button>`).join("")+
       `<div style="font-size:10px;color:#987;margin-top:2px">존=방향성 클립 전용 — 헤더 lf·⚠확산 배지 확인</div></div>`:"")+
-    sub.dials.map(dialHTML).join("")+`</div>`).join("")+`</div><div class="fblock">`+
+    sub.dials.map(dialHTML).join("")+
+    (sub.adv?`<details style="margin-top:4px"><summary style="font-size:11px;color:#987;cursor:pointer">고급 — 밴드 직접 조작</summary>`+sub.adv.map(dialHTML).join("")+`</details>`:"")+`</div>`).join("")+`</div><div class="fblock">`+
    (S.fader?`<div class="fader"><span class="mlbl">가중 페이더</span>
      <input type="range" min="0" max="0.8" step="0.05" value="${A[S.fader]}"
       oninput="A['${S.fader}']=+this.value;document.getElementById('fv_${S.fader}').textContent=this.value;iMode='${S.g}';scheduleRender()">
