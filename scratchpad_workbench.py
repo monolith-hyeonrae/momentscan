@@ -16,6 +16,7 @@ v0.20.1 **자기-가림 수리**(모의 렌더 자가 적발): 측면에서 등�
 v0.20.2 **역광 붕괴 수리**(pv mls 2/7 진단): 1차 피팅이 "빛=뒤"면 clamp-트림이 전
 점을 죽여 None(f305 110→3). lit 트림=lit 모집단 충분(≥max(12, 30%))할 때만 + 붕괴
 시 마지막 유효 피팅 반환 — 역광 프레임도 (낮은 신뢰의) 방향을 정직 방출.
+v0.23.1 **약어 사전 상주**(user "az·el 등 약어 모르겠다"): 마스터 탭에 전 약어 사전 — 도구는 자기 설명을 해야 한다.
 v0.23 **방향 소스 전환: mesh 본선**(판정 완결): az 중재=밝기-무게중심 각(법선·램버트
 무관, 눈-판정의 정량판) — 전 코퍼스 2802프레임 중앙오차 mesh 29.9° vs DPR 51.5°,
 8클립 중 7승(무승부=확산 test_0)·f408 관측 +62°에 mesh +55°/DPR +14°. el 중재=Sapiens
@@ -1431,7 +1432,14 @@ function buildPanel(){   // v0.13: 채널 탭 데크 + 미터 브리지
      onchange="ATT=this.checked;render()"> 빛 분산-감쇠(lf)</label></div>
    <div class="fblock"><div class="note"><span id="mstat"></span><br><br>
     <b>S</b>=솔로(1층 검증) · <b>M</b>=뮤트(게이트 해제+가중 0)<br>
-    다이얼 터치 → 우측 검사 뷰 전환 · 주황 •=기본값 이탈</div></div></div>`;
+    다이얼 터치 → 우측 검사 뷰 전환 · 주황 •=기본값 이탈<br><br>
+    <b>약어 사전</b> (방향=얼굴-기준 정준 좌표)<br>
+    <b>az</b> 방위각(0=정면 +=피사체좌 ±180=후방) · <b>el</b> 고도각(+=위)<br>
+    <b>ma/me</b>=mesh-LS az/el(본선) · <b>la/le</b>=DPR az/el(대조)<br>
+    <b>ag</b> 두 자 합의각 · <b>mr</b> mesh 방향성 · <b>ld/ldr</b> DPR 방향성 pct/raw<br>
+    <b>lt</b> 조도·생동=(lm 휘도+ch 색량)/2 · <b>lmr/chr</b> raw · <b>hh</b> 거칠기 · <b>lf</b> 클립 빛 판별력<br>
+    <b>dv</b> yaw 편차 · <b>sy</b> 뺨 대칭 · <b>pt/pc</b> pitch/클립Δ · <b>rl</b> roll · <b>pu</b> 눈동자 가시<br>
+    <b>ex</b> 표정 강도 · <b>sp</b> 선명 · <b>cs</b> 정체성 판독성 · <b>mv</b> 입 가시</div></div></div>`;
  }else{
   const S=STRIPS.find(s=>s.g==deckTab);
   body=`<div class="chanview${MUTE[S.g]?" gmuted":""}"><div class="body">`+
