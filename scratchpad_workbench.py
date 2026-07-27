@@ -16,6 +16,7 @@ v0.20.1 **자기-가림 수리**(모의 렌더 자가 적발): 측면에서 등�
 v0.20.2 **역광 붕괴 수리**(pv mls 2/7 진단): 1차 피팅이 "빛=뒤"면 clamp-트림이 전
 점을 죽여 None(f305 110→3). lit 트림=lit 모집단 충분(≥max(12, 30%))할 때만 + 붕괴
 시 마지막 유효 피팅 반환 — 역광 프레임도 (낮은 신뢰의) 방향을 정직 방출.
+v0.25.3 **창 시각 피드백**(user "선택 영역 색상"): 히스토그램 bandf 지원 — df·dfw 조작 시 창 구간 빈이 초록으로 칠해지고 양끝 마커 표시(전체=마커 없음). 게이트는 창으로 정상 동작 실증(중심 0.35→r2 0.2~0.5만).
 v0.25.2 **확산 창(window) 쿼리**(user "임계값이 아니라 구간 선택"): df=창 중심(−0.05=전체·0=소프트~1=하드)+dfw=반폭 — 축 위를 창이 미끄러지며 "그 정도로 하드한" 구간을 직접 쿼리.
 v0.25.1 **확산 양극 슬라이더**(user "한쪽=소프트·반대쪽=하드로 조정"): 밴드 2다이얼 → df 하나(중앙 0=전체, −쪽=R²≤1+df 소프트만, +쪽=R²≥df 하드만).
 v0.25 **확산의 자=R² 교체(의제② 종결)**: 후보 4종 클립-앵커 중재(흐림 test_3·test_0
@@ -1066,7 +1067,8 @@ const HSPEC={
  cs_min:{f:r=>r.cs,dir:"above"},
  mv_min:{f:r=>r.mv,dir:"above"},
  lt_min:{f:r=>r.lt,dir:"above"},
- df:{f:r=>r.r2,dir:"above"},
+ df:{f:r=>r.r2,bandf:c=>c.df<0?null:[c.df-c.dfw,c.df+c.dfw]},
+ dfw:{f:r=>r.r2,bandf:c=>c.df<0?null:[c.df-c.dfw,c.df+c.dfw]},
  la_hi:{f:r=>r.ma,band:["la_lo","la_hi"]},
  le_hi:{f:r=>r.me,band:["le_lo","le_hi"]},
  ag_max:{f:r=>r.ag,dir:"below"},
@@ -1090,9 +1092,11 @@ function drawDialHists(C,m){
   for(const v of vals){let b=Math.floor((Math.min(mx,Math.max(mn,v))-mn)/(mx-mn)*NB);
    if(b>=NB)b=NB-1;if(b<0)b=0;bins[b]++;}
   const bm=Math.max(...bins,1), thr=A[k];
-  const isBand=!!sp.band, blo=isBand?A[sp.band[0]]:null, bhi=isBand?A[sp.band[1]]:null;
+  const bf=sp.bandf?sp.bandf(A):undefined;
+  const isBand=!!sp.band||(bf!==undefined&&bf!==null), bandOff=(sp.bandf&&bf===null);
+  const blo=bf?bf[0]:(sp.band?A[sp.band[0]]:null), bhi=bf?bf[1]:(sp.band?A[sp.band[1]]:null);
   const tx=v=>4+(Math.min(mx,Math.max(mn,v))-mn)/(mx-mn)*(W-8);
-  const inPass=v=>isBand?(v>blo&&v<bhi):(sp.dir=="below"?v<thr:v>=thr);
+  const inPass=v=>bandOff?true:(isBand?(v>=blo&&v<=bhi):(sp.dir=="below"?v<thr:v>=thr));
   for(let i=0;i<NB;i++){
    const x0=4+i*(W-8)/NB, bh=Math.round((H-13)*bins[i]/bm);
    const mid=mn+(i+0.5)*(mx-mn)/NB;
@@ -1100,7 +1104,8 @@ function drawDialHists(C,m){
    ctx.fillRect(x0,H-3-bh,Math.max(1,(W-8)/NB-1),bh);
   }
   ctx.fillStyle="#fc6";
-  if(isBand){ctx.fillRect(tx(blo)-0.8,1,1.6,H-2);ctx.fillRect(tx(bhi)-0.8,1,1.6,H-2);}
+  if(bandOff){}
+  else if(isBand){ctx.fillRect(tx(blo)-0.8,1,1.6,H-2);ctx.fillRect(tx(bhi)-0.8,1,1.6,H-2);}
   else ctx.fillRect(tx(thr)-0.8,1,1.6,H-2);
   ctx.fillStyle="#7ac";
   for(const f of m.pA){const r=byf[f];if(!r)continue;const v=sp.f(r);if(v==null||!isFinite(v))continue;
