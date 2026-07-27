@@ -16,6 +16,7 @@ v0.20.1 **자기-가림 수리**(모의 렌더 자가 적발): 측면에서 등�
 v0.20.2 **역광 붕괴 수리**(pv mls 2/7 진단): 1차 피팅이 "빛=뒤"면 clamp-트림이 전
 점을 죽여 None(f305 110→3). lit 트림=lit 모집단 충분(≥max(12, 30%))할 때만 + 붕괴
 시 마지막 유효 피팅 반환 — 역광 프레임도 (낮은 신뢰의) 방향을 정직 방출.
+v0.27.2 **용어 정정: 조명비(lighting ratio)**(user "차오름 근거가 어디냐 — 검색 안 됨": 차오름=내 조어였음을 자백, 기성 교과서 용어=조명비 key:fill로 전면 교체 · 검사 뷰=N:1 표기 · 우리 hd=반사광 근사 1/(1−hd):1).
 v0.27.1 **표기=그림자 차오름 통일**(user 채택 "차오름 비율이 납득"): 다이얼·검사 뷰·사전을 차오름 문법으로(차오름 100%=소프트·0%=하드), 내부 값 hd=1−차오름 유지.
 v0.27 **확산의 자=키:필(hd) 교체**(user 반증 "df −0.95에 방향 명확한 프레임 다수" — R²의 구조 결함 확정: 깊은 그림자=clamp 비선형이라 하드 극단도 R²≈0, 전체-가시점 계산이 트림-피팅과 불일치): hd=1−(그림자면/밝은면 중앙 밝기, cosθ 3분위 분할)=사진사의 키:필 비율. 검증=r2≤0.05 오분류 55장 중 15장 하드 복권(f529~537=렘브란트 이웃)·앵커 f532 0.62/f408 0.58·시각 상하위 분리 명확. R²=통계/산점 표시로 존치(클립 AUC는 R² 우위 — 직무 분리: 다이얼=프레임 자 hd, 클립 성향=lf·구간 지도). 세그먼트 분류도 hd로 통일.
 v0.26.1 **확산 다이얼=양극 복귀**(user 정합 확인 "방향성 존재/소멸 방향 조정이면 충분"): 창(df+dfw)→단일 양극 슬라이더(0=전체·+=R²≥df 하드만·−=R²≤1+df 소프트만) — 그룹핑 직무는 구간 지도가 승계, 통과영역 초록 칠은 유지.
@@ -923,7 +924,7 @@ const DIALS=[
  ["빛"],
  ["lt_min","조도·생동 lt pct >=",0,90,5],
  ["hh_max","거칠기 hh pct <=",10,100,5],
- ["df","확산: ◀ − 그림자 차오름 큼(소프트)만 · 0=전체 · + 차오름 작음(하드)만 ▶",-0.95,0.95,0.05],
+ ["df","확산: ◀ − 조명비 낮음(~2:1 소프트)만 · 0=전체 · + 조명비 높음(4:1+ 하드)만 ▶",-0.95,0.95,0.05],
  ["la_lo","정준 방위 az 하한 (소스=mesh-LS · 0=정면 +=피사체좌)",-180,180,5],
  ["la_hi","정준 방위 az 상한",-180,180,5],
  ["le_lo","정준 고도 el 하한 (소스=mesh-LS · +=위)",-90,90,5],
@@ -1312,7 +1313,7 @@ function renderInsp(C,m){
    <div class="note"><b>lt ${r.lt==null?"--":r.lt}% = (휘도 ${r.lm==null?"--":r.lm}% + 색량 ${r.ch==null?"--":r.ch}%)/2</b> · raw 휘도 ${r.lmr==null?"--":r.lmr} / 색량 ${r.chr==null?"--":r.chr} <span style="color:#987">(pct 포화 대조용)</span><br>
     거칠기 hh ${r.hh==null?"--":r.hh}%<br>
     <b>정준 az ${r.la==null?"--":r.la}° · el ${r.le==null?"--":r.le}°</b> (0=정면 +=피사체좌/위) · 방향성 ldr ${r.ldr==null?"--":r.ldr}, ld ${r.ld==null?"--":r.ld}%${r.ldr!=null&&r.ldr<0.25?' <span style="color:#e88">⚠확산—방위 신뢰불가</span>':""}<br>
-    <b>mesh-LS az ${r.ma==null?"--":r.ma}° · el ${r.me==null?"--":r.me}°</b> · 그림자 차오름 ${r.hd==null?"--":Math.round((1-r.hd)*100)+"%"} (hd ${r.hd==null?"--":r.hd}) · R² ${r.r2==null?"--":r.r2} · 방향성 ${r.mr==null?"--":r.mr} · DPR 합의 ${r.ag==null?"--":r.ag+"°"}${(r.ag!=null&&r.ag>45)||(r.mr!=null&&r.mr<0.3)?' <span style="color:#e88">⚠방향 불신('+(r.ag!=null&&r.ag>45?"이중 자 불일치":"무방향")+')</span>':""}<br>
+    <b>mesh-LS az ${r.ma==null?"--":r.ma}° · el ${r.me==null?"--":r.me}°</b> · 조명비 ≈ ${r.hd==null?"--":(r.hd>=0.95?"20:1+":(1/(1-r.hd)).toFixed(1)+":1")} (hd ${r.hd==null?"--":r.hd}) · R² ${r.r2==null?"--":r.r2} · 방향성 ${r.mr==null?"--":r.mr} · DPR 합의 ${r.ag==null?"--":r.ag+"°"}${(r.ag!=null&&r.ag>45)||(r.mr!=null&&r.mr<0.3)?' <span style="color:#e88">⚠방향 불신('+(r.ag!=null&&r.ag>45?"이중 자 불일치":"무방향")+')</span>':""}<br>
     클립 판별력 lf=${C.lf}</div>`;
  }else if(iMode=="영상"){
   body=(pv&&pv.lap)?`<img src="thumbs/${C.clip}/f${String(r.f).padStart(5,"0")}_lap.jpg" style="width:224px;border:1px solid #444">
@@ -1488,7 +1489,7 @@ const STRIPS=[   // v0.14: 채널 → 세부 채널(트리) → 다이얼
  {g:"빛",fader:"w_light",subs:[
    {t:"① 세기 (조도·생동 lum×chroma)",dials:["lt_min"]},
    {t:"② 방향 — 존 선택 (본선=mesh-LS·대조=DPR)",dials:[],zones:1,adv:["la_lo","la_hi","le_lo","le_hi","ag_max"]},
-   {t:"③ 확산 — 그림자 차오름 비율 (차오름 클수록 소프트)",dials:["df"]},
+   {t:"③ 확산 — 조명비 key:fill lighting ratio (낮음=소프트·높음=하드)",dials:["df"]},
    {t:"④ 그림자 (거칠기)",dials:["hh_max"]}]},
  {g:"영상",fader:"w_image",subs:[
    {t:"선명 (face blur)",dials:["sp_min"]}]},
@@ -1538,7 +1539,7 @@ function buildPanel(){   // v0.13: 채널 탭 데크 + 미터 브리지
     <b>az</b> 방위각(0=정면 +=피사체좌 ±180=후방) · <b>el</b> 고도각(+=위)<br>
     <b>ma/me</b>=mesh-LS az/el(본선) · <b>la/le</b>=DPR az/el(대조)<br>
     <b>ag</b> 두 자 합의각 · <b>mr</b> mesh 방향성 · <b>ld/ldr</b> DPR 방향성 pct/raw<br>
-    <b>lt</b> 조도·생동=(lm 휘도+ch 색량)/2 · <b>lmr/chr</b> raw · <b>hd</b> 확산(1−그림자 차오름 비율; 차오름 클수록 소프트) · <b>hh</b> 거칠기 · <b>lf</b> 클립 빛 판별력<br>
+    <b>lt</b> 조도·생동=(lm 휘도+ch 색량)/2 · <b>lmr/chr</b> raw · <b>hd</b> 확산=1−(그림자면/밝은면) → 조명비 key:fill ≈ 1/(1−hd):1 (2:1=소프트·8:1=하드, 사진 표준 용어=lighting ratio) · <b>hh</b> 거칠기 · <b>lf</b> 클립 빛 판별력<br>
     <b>dv</b> yaw 편차 · <b>sy</b> 뺨 대칭 · <b>pt/pc</b> pitch/클립Δ · <b>rl</b> roll · <b>pu</b> 눈동자 가시<br>
     <b>ex</b> 표정 강도 · <b>sp</b> 선명 · <b>cs</b> 정체성 판독성 · <b>mv</b> 입 가시</div></div></div>`;
  }else{
