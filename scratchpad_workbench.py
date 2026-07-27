@@ -16,6 +16,7 @@ v0.20.1 **자기-가림 수리**(모의 렌더 자가 적발): 측면에서 등�
 v0.20.2 **역광 붕괴 수리**(pv mls 2/7 진단): 1차 피팅이 "빛=뒤"면 clamp-트림이 전
 점을 죽여 None(f305 110→3). lit 트림=lit 모집단 충분(≥max(12, 30%))할 때만 + 붕괴
 시 마지막 유효 피팅 반환 — 역광 프레임도 (낮은 신뢰의) 방향을 정직 방출.
+v0.30.1 **백화 태그**(user "test_12 밝기순이 이상" 진단): 측정은 물리 정직(상단=실제 최고 휘도)이나 의미론 갈림 — 백화가 밝기 1위 옹립. 근본=clip_hi 250 문턱이 test_12 백화(218~230) 미포착(원장 기록 사실의 실물 재현, lum_eff 할인 무력). 백화 실서명=고휘도∧저채도 → 태그(lmr≥205∧chr≤45, test_12 184장·타 클립 오폭 0). clip_hi 문턱 재교정=파이프라인 상수 의제(lk-sampling2) 예약.
 v0.30 **세기=정렬 렌즈**(user 정식화 "축마다 상호작용이 다르다 — 방향·확산=구분, 세기=일렬 줄세우기; 이 프로그램의 자랑=다축 해석의 맥락적 sort"): 존 시스템 범주화 철회, 풀 정렬 모드 확장(시간/점수/밝기 lmr/채도 chr/조명비 hd 순환) — 쿼리=구분(필터)+정렬(sort)의 두 동사.
 v0.29.1 **그림자 축=확산 계열 명시**(user "조명비와 연관 아니냐" — corr 실측: 직사 클립 +0.61~0.71/확산 클립 ≈0): ③깊이(조명비=필 광량)·④경계 날카로움(반음영 폭)=광원 크기의 두 얼굴, 분리 케이스(필 채운 하드광) 실재+hh 텍스처 오염이라 축 유지·관계 라벨 명시.
 v0.29 **축 순수화 + 종합 셋업 분리**(user 정식화 "렘브란트·버터플라이=종합 상태, 방향 다이얼=방향만, 확산 다이얼=조명비만"): 빛 채널 3층 — ⓪종합 셋업(존=방향×조명비[렘·버플 hd≥0.4 복원, 리허설 107장 앵커 유지]×세기×합의 일괄) / ②방향=순수 방위 구분 버튼(정면/좌/우/후방[랩 밴드])+고급 각도 / ③확산=조명비 클래스 버튼(플랫/소프트/중간/하드=hd 밴드)+고급 dfl/dfh. df 양극 다이얼 은퇴(클래스 버튼이 승계).
@@ -1072,7 +1073,7 @@ function render(){
   ` · <b>빛 판별력 lf=${C.lf==null?"?":C.lf}</b>${C.lf!=null&&C.lf<0.35?` <span style="color:#e88"><b>⚠확산 클립 — 방위·존 판독 금지(포즈-편향)</b></span>`:""}${ATT?` <span style="color:#fc6">(감쇠: w_light ${A.w_light}→${(A.w_light*(C.lf==null?1:C.lf)).toFixed(2)})</span>`:""}`+
   (anyMute()?` · <span style="color:#e06666"><b>${STAGES.filter(s=>!MUTE[s]).length==1?"SOLO: "+STAGES.find(s=>!MUTE[s]):"MUTE: "+STAGES.filter(s=>MUTE[s]).join(", ")}</b></span>`:"")+
   ` · 풀 정렬:</span>
-  <button onclick="const M2=['time','score','lum','chr','ratio'];sortMode=M2[(M2.indexOf(sortMode)+1)%M2.length];render()">정렬: ${({time:'시간순',score:'점수순',lum:'밝기순',chr:'채도순',ratio:'조명비순'})[sortMode]}</button>
+  <button onclick="const M2=['time','score','lum','chr','ratio'];sortMode=M2[(M2.indexOf(sortMode)+1)%M2.length];render()">정렬: ${({time:'시간순',score:'점수순',lum:'밝기순(백화 포함)',chr:'채도순',ratio:'조명비순'})[sortMode]}</button>
   <button onclick="poseOpen=!poseOpen;render()">포즈 눈금 ${poseOpen?'닫기':'보기'}</button>
   <label style="font-size:12px;color:#bbb;margin-left:6px"><input type="checkbox" ${ATT?"checked":""}
    onchange="ATT=this.checked;render()"> 빛 분산-감쇠(시험)</label>`;
@@ -1305,6 +1306,7 @@ function lightTags(C,r){
  const rc=ratioCls(r.hd);
  if(rc)T.push({t:"조명비 "+rc.txt,c:"#4aa7a0"});
  if(r.lt!=null)T.push({t:r.lt>=75?"밝음":r.lt<25?"어두움":"보통 밝기",c:"#999"});
+ if(r.lmr!=null&&r.chr!=null&&r.lmr>=205&&r.chr<=45)T.push({t:"백화 ⚠",c:"#e8e8e8"});
  if(C.lseg){const sg=C.lseg.find(s2=>s2[0]<=r.f&&r.f<=s2[1]);
   if(sg){const SL={hard:"직사 구간",flat:"확산·평광 구간",back:"역광 구간",dark:"어두운 구간",na:"무측정 구간"};
    const SC={hard:"#d98a3d",flat:"#4aa7a0",back:"#9a6fd0",dark:"#5a6a7a",na:"#555"};
