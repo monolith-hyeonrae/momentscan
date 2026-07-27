@@ -16,6 +16,12 @@ v0.20.1 **자기-가림 수리**(모의 렌더 자가 적발): 측면에서 등�
 v0.20.2 **역광 붕괴 수리**(pv mls 2/7 진단): 1차 피팅이 "빛=뒤"면 clamp-트림이 전
 점을 죽여 None(f305 110→3). lit 트림=lit 모집단 충분(≥max(12, 30%))할 때만 + 붕괴
 시 마지막 유효 피팅 반환 — 역광 프레임도 (낮은 신뢰의) 방향을 정직 방출.
+v0.23 **방향 소스 전환: mesh 본선**(판정 완결): az 중재=밝기-무게중심 각(법선·램버트
+무관, 눈-판정의 정량판) — 전 코퍼스 2802프레임 중앙오차 mesh 29.9° vs DPR 51.5°,
+8클립 중 7승(무승부=확산 test_0)·f408 관측 +62°에 mesh +55°/DPR +14°. el 중재=Sapiens
+(기존). → 존/게이트의 방위·고도=ma/me로 재배선(la/le=DPR은 대조 표시 유지), **합의
+게이트 ag_max 다이얼 신설**(존 프리셋 45°, 기본 180=off — "방향 쿼리는 두 자 합의
+시에만"). ld(방향성)는 잠정 DPR 유지 — softness 자(R²) 확정 시 교체(의제 2).
 v0.22.1 **정준 지도 이중 화살**(az 소스 판정 대조: 노랑=mesh·파랑=DPR — 밝은 무리 위치와 두 화살을 한 그림에서 눈-판정).
 v0.22 **계기 은퇴**(user 확정 "은퇴 후보 확정·제거"): 이미지-공간 세대 전면 정리 —
 lr/tb(32×32 좌우/상하 비대칭)·dp(=pct|lr|+|tb|)·pa(볼빛−턱그늘)+다이얼·32×32 광량맵
@@ -184,6 +190,7 @@ DEFAULT_CFG = {"sym_max": 0.6, "dev_lo": -15.0, "dev_hi": 15.0, "pt_max": 99.0, 
                "cs_min": 0.0, "mv_min": 0.0, "lt_min": 0.0, "ex_min": 0.0, "ex_max": 1.0,
                "gap_min": 12, "hh_max": 100.0, "sp_min": 0.0,
                "ld_min": 0.0, "ld_max": 100.0, "la_lo": -180.0, "la_hi": 180.0, "le_lo": -90.0, "le_hi": 90.0,
+               "ag_max": 180.0,
                "w_face": 0.45, "w_light": 0.20, "w_image": 0.15, "w_distort": 0.20}
 
 
@@ -412,8 +419,9 @@ def compute_picks(rows, cfg):
             and (r["mv"] is None or r["mv"] >= cfg["mv_min"])
             and (r["lt"] is None or r["lt"] >= cfg["lt_min"])
             and (r["ld"] is None or cfg["ld_min"] <= r["ld"] <= cfg["ld_max"])
-            and (r["la"] is None or cfg["la_lo"] <= r["la"] <= cfg["la_hi"])
-            and (r["le"] is None or cfg["le_lo"] <= r["le"] <= cfg["le_hi"])
+            and (r["ma"] is None or cfg["la_lo"] <= r["ma"] <= cfg["la_hi"])
+            and (r["me"] is None or cfg["le_lo"] <= r["me"] <= cfg["le_hi"])
+            and (r["ag"] is None or r["ag"] <= cfg["ag_max"])
             and (r["hh"] is None or r["hh"] <= cfg["hh_max"])
             and (r["sp"] is None or r["sp"] >= cfg["sp_min"])
             and cfg["ex_min"] <= r["ex"] <= cfg["ex_max"]]
@@ -824,10 +832,11 @@ const DIALS=[
  ["hh_max","거칠기 hh pct <=",10,100,5],
  ["ld_min","방향성 ld pct >= (|SH1|/DC)",0,90,5],
  ["ld_max","방향성 ld pct <= (소프트 상한)",10,100,5],
- ["la_lo","정준 방위 az 하한 (0=정면 +=피사체좌 ±180=후방)",-180,180,5],
+ ["la_lo","정준 방위 az 하한 (소스=mesh-LS · 0=정면 +=피사체좌)",-180,180,5],
  ["la_hi","정준 방위 az 상한",-180,180,5],
- ["le_lo","정준 고도 el 하한 (+=위)",-90,90,5],
+ ["le_lo","정준 고도 el 하한 (소스=mesh-LS · +=위)",-90,90,5],
  ["le_hi","정준 고도 el 상한",-90,90,5],
+ ["ag_max","이중 자 합의각 <= (도 · 180=off)",15,180,5],
  ["영상"],
  ["sp_min","선명 sp pct >=",0,90,5],
  ["왜곡"],
@@ -842,7 +851,7 @@ const DIALS=[
 ];
 const DEF={sym_max:0.6,dev_lo:-15,dev_hi:15,pt_max:99,pu_min:0.4,cs_min:0,mv_min:0,lt_min:0,
            ex_min:0,ex_max:1.0,gap_min:12,hh_max:100,sp_min:0,
-           ld_min:0,ld_max:100,la_lo:-180,la_hi:180,le_lo:-90,le_hi:90,
+           ld_min:0,ld_max:100,la_lo:-180,la_hi:180,le_lo:-90,le_hi:90,ag_max:180,
            w_face:0.45,w_light:0.20,w_image:0.15,w_distort:0.20};
 let A={...DEF}, Bcfg=null, GT={}, cur=0, sortMode="time", poseOpen=false, ATT=false;
 let selF=null, iMode="포즈", collapsed={};
@@ -863,13 +872,13 @@ const SURV="#69d069";
 const K2G={sym_max:"포즈",dev_lo:"포즈",dev_hi:"포즈",pt_max:"포즈",
  pu_min:"표정·얼굴",ex_min:"표정·얼굴",ex_max:"표정·얼굴",
  lt_min:"빛",hh_max:"빛",sp_min:"영상",cs_min:"왜곡",mv_min:"왜곡",
- ld_min:"빛",ld_max:"빛",la_lo:"빛",la_hi:"빛",le_lo:"빛",le_hi:"빛",
+ ld_min:"빛",ld_max:"빛",la_lo:"빛",la_hi:"빛",le_lo:"빛",le_hi:"빛",ag_max:"빛",
  w_face:"표정·얼굴",w_light:"빛",w_image:"영상",w_distort:"왜곡"};
 
 function gPass(r,c,g){   // 채널별 하드 게이트 (v0.11: mute=게이트 해제)
  if(g==0)return r.sy<c.sym_max&&r.dv>c.dev_lo&&r.dv<c.dev_hi&&Math.abs(r.pc)<c.pt_max;
  if(g==1)return r.pu>=c.pu_min&&r.ex>=c.ex_min&&r.ex<=c.ex_max;
- if(g==2)return (r.lt==null||r.lt>=c.lt_min)&&(r.hh==null||r.hh<=c.hh_max)&&(r.ld==null||(r.ld>=c.ld_min&&r.ld<=c.ld_max))&&(r.la==null||(r.la>=c.la_lo&&r.la<=c.la_hi))&&(r.le==null||(r.le>=c.le_lo&&r.le<=c.le_hi));
+ if(g==2)return (r.lt==null||r.lt>=c.lt_min)&&(r.hh==null||r.hh<=c.hh_max)&&(r.ld==null||(r.ld>=c.ld_min&&r.ld<=c.ld_max))&&(r.ma==null||(r.ma>=c.la_lo&&r.ma<=c.la_hi))&&(r.me==null||(r.me>=c.le_lo&&r.me<=c.le_hi))&&(r.ag==null||r.ag<=c.ag_max);
  if(g==3)return r.sp==null||r.sp>=c.sp_min;
  return (r.cs==null||r.cs>=c.cs_min)&&(r.mv==null||r.mv>=c.mv_min);}
 function firstFail(r,c,M){
@@ -1025,8 +1034,9 @@ const HSPEC={
  lt_min:{f:r=>r.lt,dir:"above"},
  ld_min:{f:r=>r.ld,dir:"above"},
  ld_max:{f:r=>r.ld,dir:"below"},
- la_hi:{f:r=>r.la,band:["la_lo","la_hi"]},
- le_hi:{f:r=>r.le,band:["le_lo","le_hi"]},
+ la_hi:{f:r=>r.ma,band:["la_lo","la_hi"]},
+ le_hi:{f:r=>r.me,band:["le_lo","le_hi"]},
+ ag_max:{f:r=>r.ag,dir:"below"},
  hh_max:{f:r=>r.hh,dir:"below"},
  sp_min:{f:r=>r.sp,dir:"above"},
  ex_max:{f:r=>r.ex,band:["ex_min","ex_max"]},
@@ -1377,7 +1387,7 @@ const STRIPS=[   // v0.14: 채널 → 세부 채널(트리) → 다이얼
    {t:"표정 밴드",dials:["ex_min","ex_max"]}]},
  {g:"빛",fader:"w_light",subs:[
    {t:"조도·생동 (lum×chroma)",dials:["lt_min"]},
-   {t:"정준 방향 (얼굴-좌표 SH)",dials:["ld_min","ld_max","la_lo","la_hi","le_lo","le_hi"],zones:1},
+   {t:"정준 방향 (본선=mesh-LS · 대조=DPR)",dials:["ld_min","ld_max","la_lo","la_hi","le_lo","le_hi","ag_max"],zones:1},
    {t:"거칠기 (harsh)",dials:["hh_max"]}]},
  {g:"영상",fader:"w_image",subs:[
    {t:"선명 (face blur)",dials:["sp_min"]}]},
@@ -1389,11 +1399,11 @@ const MCOL={"표정·얼굴":"#e08aa8","빛":"#d8c455","영상":"#55aacc","왜�
 let deckTab="포즈";
 function setTab(g){deckTab=g;if(STAGES.includes(g))iMode=g;buildPanel();render();}
 function setZone(z){   // v0.19 사진 문법 존 프리셋 (정준 az/el 다이얼 일괄)
- const Z={remA:{la_lo:20,la_hi:60,le_lo:10,le_hi:55,ld_min:50,ld_max:100,lt_min:60},
-          remB:{la_lo:-60,la_hi:-20,le_lo:10,le_hi:55,ld_min:50,ld_max:100,lt_min:60},
-          bfly:{la_lo:-15,la_hi:15,le_lo:20,le_hi:60,ld_min:50,ld_max:100,lt_min:60},
-          soft:{la_lo:-30,la_hi:30,le_lo:10,le_hi:55,ld_min:0,ld_max:30,lt_min:75},
-          zoff:{la_lo:-180,la_hi:180,le_lo:-90,le_hi:90,ld_min:0,ld_max:100,lt_min:0}};
+ const Z={remA:{la_lo:20,la_hi:60,le_lo:10,le_hi:55,ld_min:50,ld_max:100,lt_min:60,ag_max:45},
+          remB:{la_lo:-60,la_hi:-20,le_lo:10,le_hi:55,ld_min:50,ld_max:100,lt_min:60,ag_max:45},
+          bfly:{la_lo:-15,la_hi:15,le_lo:20,le_hi:60,ld_min:50,ld_max:100,lt_min:60,ag_max:45},
+          soft:{la_lo:-30,la_hi:30,le_lo:10,le_hi:55,ld_min:0,ld_max:30,lt_min:75,ag_max:45},
+          zoff:{la_lo:-180,la_hi:180,le_lo:-90,le_hi:90,ld_min:0,ld_max:100,lt_min:0,ag_max:180}};
  Object.assign(A,Z[z]);iMode="빛";buildPanel();render();}
 function dialHTML(k){
  const [,lbl,mn,mx,stp]=D2META[k];
