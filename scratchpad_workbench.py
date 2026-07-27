@@ -16,6 +16,7 @@ v0.20.1 **자기-가림 수리**(모의 렌더 자가 적발): 측면에서 등�
 v0.20.2 **역광 붕괴 수리**(pv mls 2/7 진단): 1차 피팅이 "빛=뒤"면 clamp-트림이 전
 점을 죽여 None(f305 110→3). lit 트림=lit 모집단 충분(≥max(12, 30%))할 때만 + 붕괴
 시 마지막 유효 피팅 반환 — 역광 프레임도 (낮은 신뢰의) 방향을 정직 방출.
+v0.26 **조명 구간 지도**(user "비슷한 부류끼리 그룹핑 안 됨" — R² 스칼라 창의 지각 한계 실증[좁은 창 안 lt 16~100·az 전방위 혼재]): 부류=결합 상태(방향×세기×확산)이고 그 단위는 시간 구간 — 카메라-기준 광방위(머리 회전 무관, mls_ca)+세기+R² 시계열을 블록 병합으로 분할, 구간 분류(직사/확산·평광/역광/어두움) → 타임라인 상단 색 밴드+범례. test_4 스모크=21구간, 렘브란트 앵커(f379·408)가 한 직사 구간에 정확히 동거.
 v0.25.3 **창 시각 피드백**(user "선택 영역 색상"): 히스토그램 bandf 지원 — df·dfw 조작 시 창 구간 빈이 초록으로 칠해지고 양끝 마커 표시(전체=마커 없음). 게이트는 창으로 정상 동작 실증(중심 0.35→r2 0.2~0.5만).
 v0.25.2 **확산 창(window) 쿼리**(user "임계값이 아니라 구간 선택"): df=창 중심(−0.05=전체·0=소프트~1=하드)+dfw=반폭 — 축 위를 창이 미끄러지며 "그 정도로 하드한" 구간을 직접 쿼리.
 v0.25.1 **확산 양극 슬라이더**(user "한쪽=소프트·반대쪽=하드로 조정"): 밴드 2다이얼 → df 하나(중앙 0=전체, −쪽=R²≤1+df 소프트만, +쪽=R²≥df 하드만).
@@ -492,6 +493,7 @@ def build_clip(clip_id, out_root, wb_dir):
     mq_arr = np.zeros((n, K110), np.int8)        # 0=비가시 1=관측(트림) 2=피팅사용
     mf_a = np.full(n, np.nan)
     mf_m = np.full(n, np.nan)
+    mls_ca = np.full(n, np.nan)   # v0.26 카메라-기준 광방위(머리 회전 무관 — 구간 분할용)
     c_acc = np.full((n, K110, 2), np.nan)        # 정준 xy(클립 중앙값 → mlay)
     tdir = wb_dir / "thumbs" / clip_id
     tdir.mkdir(parents=True, exist_ok=True)
@@ -519,6 +521,7 @@ def build_clip(clip_id, out_root, wb_dir):
                 mag = float(np.linalg.norm(m_m))
                 if mag > 1e-6:
                     l_m = m_m / mag
+                    mls_ca[i] = np.degrees(np.arctan2(l_m[0], l_m[2]))
                     Lf_m = t["R3"][i].T @ l_m
                     mls_az[i] = np.degrees(np.arctan2(Lf_m[0], Lf_m[2]))
                     mls_el[i] = np.degrees(np.arcsin(np.clip(Lf_m[1], -1, 1)))
@@ -719,8 +722,54 @@ def build_clip(clip_id, out_root, wb_dir):
     mrange = ([int(np.percentile(mi_valid, 2)), int(np.percentile(mi_valid, 98))]
               if len(mi_valid) > 100 else None)   # v0.21.2 클립-고정 밝기 척도
 
+    # v0.26 조명 구간 지도 — (카메라-기준 방향, 세기, 확산) 결합 상태의 시계열 분할.
+    # 카메라-기준인 이유: 태양은 머리가 돌아도 카메라 좌표에서 불변 → 구간=장면 조명 변화.
+    def _smed(x, k=7):
+        out = np.copy(x)
+        for i2 in range(len(x)):
+            w = x[max(0, i2 - k):i2 + k + 1]
+            w = w[np.isfinite(w)]
+            out[i2] = np.median(w) if len(w) else np.nan
+        return out
+
+    lseg = []
+    if n > 30:
+        cax = _smed(np.cos(np.radians(mls_ca)))
+        cay = _smed(np.sin(np.radians(mls_ca)))
+        lum_n = _smed(np.clip(np.nan_to_num(t["lum_eff"], nan=np.nan) / 255.0, 0, 1))
+        r2s = _smed(r2_arr)
+        feat = np.stack([0.7 * cax, 0.7 * cay, 1.0 * lum_n, 0.6 * r2s], 1)
+        BLK = 12
+        merged = []
+        for b0 in range(0, n, BLK):
+            segf = feat[b0:b0 + BLK]
+            fin = np.isfinite(segf).all(axis=1)
+            mv = segf[fin].mean(0) if fin.sum() >= 4 else None
+            blk = [b0, min(b0 + BLK, n), mv]
+            if merged and merged[-1][2] is not None and mv is not None                and float(np.linalg.norm(merged[-1][2] - mv)) < 0.22:
+                w0 = merged[-1][1] - merged[-1][0]
+                w1 = blk[1] - blk[0]
+                merged[-1][2] = (merged[-1][2] * w0 + mv * w1) / (w0 + w1)
+                merged[-1][1] = blk[1]
+            elif merged and merged[-1][2] is None and mv is None:
+                merged[-1][1] = blk[1]
+            else:
+                merged.append(blk)
+        for i0, i1, mv in merged:
+            f0, f1 = int(fx[i0]), int(fx[min(i1, n) - 1])
+            if mv is None:
+                lseg.append([f0, f1, "na"])
+                continue
+            seg_ca = float(np.degrees(np.arctan2(mv[1], mv[0])))
+            seg_lm = mv[2] * 255.0
+            seg_r2 = mv[3] / 0.6
+            cls = ("dark" if seg_lm < 55 else
+                   "back" if abs(seg_ca) > 110 else
+                   "hard" if seg_r2 >= 0.33 else "flat")
+            lseg.append([f0, f1, cls])
+
     return {"clip": clip_id, "tid": t["tid"], "n": n, "vf": vf, "cur": cur, "lf": lf,
-            "mlay": mlay, "mrange": mrange,
+            "mlay": mlay, "mrange": mrange, "lseg": lseg,
             "selftest": selftest, "rows": rows, "ghost": ghost, "absent": absent, "pv": pv}
 
 
@@ -972,7 +1021,10 @@ function legendHTML(){
    <span><i style="background:#7ac"></i>A 픽</span><span><i style="border:1px dashed #ca7;width:7px;height:7px"></i>B 픽</span>
    <span style="margin-left:8px">유령:</span>
    <span><i style="background:#a05244"></i>무효</span><span><i style="background:#5a78a0"></i>미측정</span>
-   <span><i style="background:#8a70b0"></i>파편</span><span><i style="background:#3a3a3a"></i>무검출</span></div>`;}
+   <span><i style="background:#8a70b0"></i>파편</span><span><i style="background:#3a3a3a"></i>무검출</span>
+   <span style="margin-left:8px">조명 구간(상단 밴드):</span>
+   <span><i style="background:#d98a3d"></i>직사</span><span><i style="background:#4aa7a0"></i>확산·평광</span>
+   <span><i style="background:#9a6fd0"></i>역광</span><span><i style="background:#5a6a7a"></i>어두움</span></div>`;}
 
 function render(){
  const sy0=window.scrollY;
@@ -1127,6 +1179,9 @@ function drawTimeline(C,m){
  const X=f=>4+(f-fmin)/(fmax-fmin)*(W-8);
  ctx.fillStyle="rgba(80,170,180,0.22)";
  for(const r of C.rows) if(r.b) ctx.fillRect(X(r.f)-1,0,2.2,H-8);
+ if(C.lseg){const LC={hard:"#d98a3d",flat:"#4aa7a0",back:"#9a6fd0",dark:"#5a6a7a",na:"#333"};
+  for(const sg of C.lseg){ctx.fillStyle=LC[sg[2]]||"#333";
+   ctx.fillRect(X(sg[0]),0,Math.max(1.5,X(sg[1])-X(sg[0])),5);}}
  for(const r of C.rows){
   const ff=firstFail(r,A);
   ctx.fillStyle=ff<0?SURV:SCOL[ff];
