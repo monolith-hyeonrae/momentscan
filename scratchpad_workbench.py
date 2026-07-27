@@ -1434,6 +1434,7 @@ function buildPanel(){   // v0.13: 채널 탭 데크 + 미터 브리지
     <b>S</b>=솔로(1층 검증) · <b>M</b>=뮤트(게이트 해제+가중 0)<br>
     다이얼 터치 → 우측 검사 뷰 전환 · 주황 •=기본값 이탈<br><br>
     <b>약어 사전</b> (방향=얼굴-기준 정준 좌표)<br>
+    <b>mesh-LS</b>=랜드마크 메쉬 법선×<b>L</b>east <b>S</b>quares(최소제곱) 램버트 역산 — 물리 자 / <b>DPR</b>=학습 조명 추정기<br>
     <b>az</b> 방위각(0=정면 +=피사체좌 ±180=후방) · <b>el</b> 고도각(+=위)<br>
     <b>ma/me</b>=mesh-LS az/el(본선) · <b>la/le</b>=DPR az/el(대조)<br>
     <b>ag</b> 두 자 합의각 · <b>mr</b> mesh 방향성 · <b>ld/ldr</b> DPR 방향성 pct/raw<br>
