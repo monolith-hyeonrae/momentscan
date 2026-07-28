@@ -157,6 +157,39 @@ worker `VideoProcessApi`/`VideoProcessSpringEvent`/`VideoProcessCallBackSpringEv
 일부는 심링크도 resolve()로 풀어버림) → detect clip_id 인자 + 서비스 하드링크
 별칭 이음매로 완화(L14, pytest 9핀).
 
+## 로컬 E2E 실검증 — S3 왕복 풀 루프 (2026-07-28)
+
+dev 버킷(`dev-981park-media-cju`) 상대로 **등록→디스패치 수신→S3 다운로드→분석
+→S3 업로드→콜백** 전 구간 PASS. 기동 커맨드(운영 파리티 플래그 세트):
+
+```
+momentscan server start --port 8080 --out output/svc \
+  --app-name cju-activity-moment-scan-process \
+  --eureka http://localhost:8761/eureka \
+  --control-url <control 베이스> \
+  --s3-bucket dev-981park-media-cju \
+  --output-uri s3://dev-981park-media-cju/video/moment-scan
+```
+
+- **등록/하트비트**: vanilla Eureka(docker :8761)에 `CJU-ACTIVITY-MOMENT-SCAN-PROCESS`
+  UP, 축출 한계(90s) 초과 생존으로 갱신 증명. 토큰 env 없으면 무인증 호출이라
+  vanilla와 호환(회사 상대는 EUREKA_* env 필수 — 7/15 실측).
+- **로컬 리허설 도구 = 직접 디스패치 POST**: 테스트 트리거는 parameter=null로
+  큐잉되므로 실물 소스 왕복엔 못 씀. control이 보내는 ProcessClientRequestDTO를
+  `/video/process/MOMENT_SCAN`에 직접 POST(+ :9099 콜백 캐처)로 동형 검증.
+- **왕복 3건**: ①wf9001(CEREMONY 10001.ts) — .ts 다운로드·디코드 정상(91프레임),
+  클립이 무얼굴 사무실 영상이라 검출 0 → **정직 VIDEO_ERROR 콜백**(errorMessage에
+  실패 스테이지 구조화). ②wf9002(test_3.mp4, `video/original/verify/MOMENT_SCAN/…`
+  업로드) — 146s 11스테이지, likeness.json 79KB 반출, **VIDEO_SUCCESS 콜백** +
+  resultPath.resultS3Video=반출 프리픽스. ③wf260728083309886(운영 D3 실클립,
+  실제 workflowId) — 38s PASS.
+- **BUSY 컨포먼스**: 처리 중 재디스패치 → `ACTIVITY-VIDEO-PROCESS.10002` 확인.
+- **관례 확정(임시)**: 소스 테스트 업로드=`video/original/verify/MOMENT_SCAN/{날짜}/`
+  (기존 verify/ 관례 미러) · 운영 코퍼스 미러=`video/original/D3/{yyyy}/{MM}/{dd}/`
+  (CDN 경로와 동형, 7/28 일일 50클립 싱크) · **반출=`video/moment-scan/{clip_id}/`**
+  (deliver가 clip_id 하위로 relpath 부가; 질문 5 합의 시 `--output-uri` 값만 교체).
+- 무얼굴 클립의 콜백 지위(VIDEO_ERROR가 맞나, "빈 성공"이 맞나)는 질문 4에 병합.
+
 ## 회사에 남은 질문 (갱신 2026-07-15 — 코드 판독 후)
 
 1. ~~등록 대상 Eureka~~ → **코드로 확정**: video control 자체
