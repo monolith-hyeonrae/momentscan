@@ -171,9 +171,14 @@ class JobRunner:
     """FIFO 단일 워커: Job 수리 → (detect →) run_pipeline → egress 반출 → Result."""
 
     def __init__(self, out_root: str, *, fps_default: int = 6,
-                 open_products: tuple[str, ...] = ("likeness",), node: str = "local"):
+                 open_products: tuple[str, ...] = ("likeness",), node: str = "local",
+                 output_uri_default: str | None = None):
         self.out_root = out_root
         self.fps_default = fps_default
+        # 서버-수준 기본 반출지 (s3://bucket/prefix 또는 로컬 dir) — 잡이 output_uri를
+        # 명시하지 않으면 이곳으로 반출. None = 현행(stash가 곧 저장소). 회사 디스패치
+        # 경로(company shim)는 output_uri를 안 실으므로 이 기본이 실질 반출지가 된다.
+        self.output_uri_default = output_uri_default
         # 노드 정체성 ("host:port") — 멀티노드 운용에서 "어느 서버가 이 잡을
         # 처리했나"의 답. Result·/health·/info·모든 로그 라인(constants)에 도장.
         self.node = node
@@ -327,7 +332,7 @@ class JobRunner:
 
         cdir = clip_dir(Path(out), clip_id)
         prefix, outputs = deliver(cdir, clip_id, collect_egress(cdir, effective),
-                                  job.get("output_uri"))
+                                  job.get("output_uri") or self.output_uri_default)
         result = {
             "schema": RESULT_SCHEMA,
             "clip_id": clip_id, "ok": True, "failure": None,
@@ -487,9 +492,11 @@ def serve_http(out_root: str, *, port: int = 8080, fps: int = 6,
                open_products: tuple[str, ...] = ("likeness",),
                eureka_url: str | None = None, advertise_host: str | None = None,
                app_name: str = APP_NAME,
-               control_url: str | None = None, s3_bucket: str | None = None) -> None:
+               control_url: str | None = None, s3_bucket: str | None = None,
+               output_uri: str | None = None) -> None:
     node = node_identity(advertise_host, port)
-    runner = JobRunner(out_root, fps_default=fps, open_products=open_products, node=node)
+    runner = JobRunner(out_root, fps_default=fps, open_products=open_products, node=node,
+                       output_uri_default=output_uri)
 
     # 회사 Eureka·control 콜백 공용 JWT (2026-07-15 실측: 등록도 콜백도 인증 필수).
     # 자격은 env로만 — ps/CLI-인자 노출 방지, 회사 패턴과 동일.

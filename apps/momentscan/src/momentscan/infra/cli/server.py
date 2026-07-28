@@ -53,6 +53,7 @@ def _cmd_serve(args: argparse.Namespace) -> int:
         app_name=args.app_name,
         control_url=args.control_url,
         s3_bucket=args.s3_bucket,
+        output_uri=args.output_uri,
     )
     return 0
 
@@ -215,6 +216,9 @@ def register(sub, common: argparse.ArgumentParser) -> None:
                          "+완료 콜백(company.py)이 열림")
     ps.add_argument("--s3-bucket", default=None,
                     help="상대 S3 key 소스의 해석 버킷 (로컬 경로 소스는 버킷 불요)")
+    ps.add_argument("--output-uri", default=None,
+                    help="결과 반출 기본지 (s3://bucket/prefix 또는 로컬 dir) — 잡의"
+                         " 명시 output_uri가 우선, 생략=stash가 곧 저장소(현행)")
     ps.add_argument("--log-file", default=None,
                     help="로그 파일 (기본 ~/logs/momentscan-{port}.log · '-'=stderr)")
     ps.add_argument("--socket", default=None, help="[--daemon] control socket path")

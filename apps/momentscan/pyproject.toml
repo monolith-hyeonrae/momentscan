@@ -12,6 +12,7 @@ license = { text = "TBD" }
 # Track A, torch for Track B) live in the isolated FeatureSource packages under
 # plugins/, never here — that is what keeps the venvs from colliding.
 dependencies = [
+    "boto3>=1.43.57",
     "msgspec>=0.21.1",
     "numpy",
     "polars",
