@@ -3,8 +3,9 @@
 # 게이트 철학: 검증을 아티팩트(이미지) 안에서 돌린다 — venv 중복 설치 없이
 # "배포될 그 물건"이 verify registry/api(GPU·모델 불필요, 인프로세스)를 통과해야 push.
 #
-# 필요 시크릿 1개: VISUALSTACK_TOKEN — private substrate 체크아웃용
-#   (fine-grained PAT: monolith-hyeonrae/visualstack, Contents read-only).
+# 필요 시크릿 1개: VISUALSTACK_SSH_KEY — private substrate 체크아웃용
+#   (visualstack의 read-only deploy key 개인키; 2026-08-03 배선 완료 — 회전 시
+#    ssh-keygen → repos/…/visualstack/keys 등록 → 이 시크릿 교체).
 # GHCR push는 GITHUB_TOKEN(permissions.packages)으로 충분.
 #
 # 레지스트리: 임시 GHCR (ecr:CreateRepository 권한 부재 — 2026-08-03 실측,
@@ -40,7 +41,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: monolith-hyeonrae/visualstack
-          token: ${{ secrets.VISUALSTACK_TOKEN }}
+          ssh-key: ${{ secrets.VISUALSTACK_SSH_KEY }}
           path: visualstack
 
       - uses: docker/setup-buildx-action@v3
