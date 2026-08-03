@@ -15,6 +15,11 @@ name: ci
 on:
   push:
     branches: [main]
+    paths:            # 문서-only 변경엔 빌드 안 돈다 — 단 docs/api는 런타임 정본(verify api 피검체)
+      - '**'
+      - '!docs/**'
+      - 'docs/api/**'
+      - '!**.md'
   workflow_dispatch:
 
 permissions:
