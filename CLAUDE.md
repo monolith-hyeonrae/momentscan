@@ -1,10 +1,12 @@
 # momentscan — 세션 부트 (p981.scan)
 
-p981 우산의 멤버 **MomentScan**. 비디오 → 타겟 고객 관측 → likeness/portrait/highlight
+p981 메타 레포의 멤버 **MomentScan** (메타 레포 = 크로스-시스템 계약·결정을 모아둔
+상위 조정 레포, 로컬 `~/repo/p981`; 과거 문서·커밋에선 별칭 "우산"으로 표기).
+비디오 → 타겟 고객 관측 → likeness/portrait/highlight
 추출. 독립 git·메모리 부팅 (이 파일 = 결정적 오리엔테이션 / 일화적 맥락 = 메모리 MEMORY.md).
 
 ## 세션 시작 의식
-1. `../mailbox/momentscan.md`의 `## 열림` 확인 → bead 회신은 우산 repo 커밋
+1. `../mailbox/momentscan.md`의 `## 열림` 확인 → bead 회신은 메타 레포 커밋
    (`git -C ~/repo/p981 ...`). 내부 R/rq 작업은 인박스에 복제하지 않는다.
 2. 메모리 `session-resume-point`로 직전 맥락 복원.
 3. **이 세션의 작업 트랙(R/E/rq ID) 하나를 선언**하고 그 범위에서 작업한다.
