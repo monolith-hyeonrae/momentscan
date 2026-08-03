@@ -316,6 +316,7 @@ class JobRunner:
         # R11: restrict the run to the effective products' closure (run only what will be
         # served). Empty effective (all requested products closed) → None = full pipeline (fallback).
         run = run_pipeline(out, clip_id, source=str(source) if source else None, fps=fps,
+                           source_origin=str(job["source_uri"]) if job.get("source_uri") else None,
                            products=list(effective) or None)
         if run["failed"]:
             raise RuntimeError(f"stages failed: {[f['name'] for f in run['failed']]}")
