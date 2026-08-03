@@ -80,6 +80,39 @@ Eureka = **전화번호부**다. 등록은 "MOMENTSCAN이라는 이름의 인스
   피어링돼 있으면 그대로 맞고, 아니면 도달 가능한 주소를 명시할 것.
   (Eureka에 등록된 주소로 게이트웨이가 "직접" 오기 때문에 이 값이 곧 라우팅 주소다.)
 
+## 3b. 컨테이너 배포 (2026-08-03 로컬 GPU E2E 검증)
+
+`deploy/docker/` — 3층 분리: **이미지=코드+파이썬 스택**(11.9GB, CUDA 베이스 불필요 —
+torch cu130 PyPI 휠이 CUDA 유저스페이스 수반, 호스트는 nvidia-container-toolkit만) /
+**웨이트=S3 번들**(2.5GB tar, entrypoint가 $HOME에 전개·마커 멱등, `HF_HUB_OFFLINE=1`
+전제라 번들이 정본 — 완전성 검사 = 컨테이너 안 `momentscan verify doctor` 13/15) /
+**상태=/data 볼륨**. env 계약(MS_*)은 entrypoint.sh 머리 주석이 정본.
+
+```bash
+# 빌드 (substrate는 named context — momentscan pyproject의 ../visualstack/* 경로 의존)
+docker build --build-context visualstack=../visualstack \
+    -f deploy/docker/Dockerfile -t momentscan:dev .
+# 실행 (로컬·온프레미스 참조 구현; AWS ASG는 launch template user-data가 같은 이미지)
+cd deploy/docker && cp env.example .env && docker compose up -d
+```
+
+빌드 함정 3개(전부 실증): ①insightface sdist → build-essential 필요 ②torch는
+extra 뒤(--all-extras 필수 — 기본 sync엔 안 들어옴) ③mediapipe → libgles2·libegl1
+없으면 features/parse가 libGLESv2로 죽음. uv 캐시 마운트 없으면 이미지 2배(22GB).
+
+웨이트 번들 재구성(모델 추가/교체 시): 로컬 검증 머신에서
+`.portrait981/models` + `.cache/visualstack` + `.insightface/models/{buffalo_l,6drepnet}`
++ `.hsemotion` + HF 4종(face-parsing·fashion-clip·dinov3-vitb16·depth-anything-v2-small)
+을 $HOME 기준 상대경로로 tar → `s3://…/models/moment-scan/momentscan-models-vN.tar`
+업로드 → env의 MS_MODELS_URI 갱신(마커가 URI 단위라 자동 재전개).
+
+스팟 대응: entrypoint가 IMDSv2 spot/instance-action을 5s 폴링 — 회수 예고 시
+서버에 SIGTERM(=유레카 즉시 해지, 진행 잡은 control 10분 재큐잉 규약에 위임).
+AWS 밖(로컬·온프레미스)에선 IMDS 부재로 조용히 무동작 = 같은 이미지 어디서나.
+
+⚠라이선스: buffalo_l(insightface)=비상업 연구 라이선스 — dev 검증은 진행하되
+**운영 투입 전 mb-lic 격상 필수**(대체 검출기 or 라이선스 합의).
+
 ## 4. 입출력 규약 (C1 요약)
 
 - `source_uri`: `s3://bucket/key.mp4` | `/local/path.mp4` | `file://…` —

@@ -1,0 +1,29 @@
+# 이미지 = 코드 + 파이썬 스택만. 웨이트·데이터·기록물은 전부 제외
+# (웨이트는 entrypoint가 S3 번들에서 전개 — deploy/docker/entrypoint.sh).
+.git
+.githooks
+.claude
+.venv
+.dockerignore
+
+# 로컬 산출물·데이터 (gitignore와 동일 계열)
+output/
+stash/
+clips/
+data/
+logs/
+preview_recipe/
+
+# 기록물·실험·레거시 — 런타임 불요
+_legacy/
+examples/
+experiments/
+fixtures/
+scratchpad_*.py
+
+# docs 중 런타임 필요한 것은 docs/api/openapi.yaml 하나 (service.py가 서빙)
+docs/*
+!docs/api
+
+# 자격 — 이미지 레이어에 절대 들어가면 안 됨 (COPY . . 방어)
+deploy/docker/.env

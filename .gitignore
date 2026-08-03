@@ -42,6 +42,10 @@ build/
 /preview_recipe/
 /experiments/IC-Light/
 
+# 배포 자격·로컬 오버레이 (env.example만 추적)
+/deploy/docker/.env
+/deploy/docker/compose.override.yaml
+
 # 고객 픽셀(얼굴 등 개인정보가 담긴 미디어)은 리포에 넣지 않는다.
 # 2026-07-28 experiments/*.png 32장 히스토리 소거 — 보존본은 /experiments/media/(로컬 전용),
 # 원본 히스토리·해시 대응표는 ~/repo/backups/momentscan-preclean-20260728.git.

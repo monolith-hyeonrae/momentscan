@@ -1,0 +1,40 @@
+# momentscan 서비스 — 로컬 검증·온프레미스 공용 컴포즈.
+# (AWS 스팟 ASG에서는 launch template user-data가 같은 이미지를 docker run — 이 파일은 그 참조 구현)
+#
+#   cd deploy/docker && cp env.example .env   # env 채우고
+#   docker compose up -d --build
+#
+# 전제: 호스트에 NVIDIA 드라이버 + nvidia-container-toolkit.
+services:
+  momentscan:
+    build:
+      context: ../..
+      dockerfile: deploy/docker/Dockerfile
+      additional_contexts:
+        visualstack: ../../../visualstack   # substrate 형제 체크아웃 (Dockerfile 주석 참조)
+    image: momentscan:dev
+    env_file: .env                 # MS_* + EUREKA_* + AWS_* (자격은 env로만 — 이미지에 굽지 않는다)
+    ports:
+      - "${MS_PORT:-8080}:${MS_PORT:-8080}"
+    volumes:
+      - ms-data:/data              # 산출물·로그
+      - ms-home:/root              # 웨이트 번들 웜 캐시 (재기동 시 재다운로드 스킵)
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:${MS_PORT:-8080}/health"]
+      interval: 30s
+      timeout: 5s
+      start_period: 300s           # 첫 부팅 = 웨이트 전개 + 모델 로드
+      retries: 3
+    stop_grace_period: 120s        # SIGTERM 후 진행 잡 마무리 여유 (스팟 예고 창과 동형)
+    restart: unless-stopped
+
+volumes:
+  ms-data:
+  ms-home:
