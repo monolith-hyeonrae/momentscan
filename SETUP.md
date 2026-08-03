@@ -1,174 +1,66 @@
 # momentscan — setup & layout
 
 The domain intent (what momentscan analyzes and why) lives in
-[`README.md`](README.md). This file documents the *repo's layout and
-how to run things*. Both files matter; read this one when you want
-to run code, the other when you want to understand the analysis.
+[`README.md`](README.md). This file documents *how to run things*.
+Layer map and boundary contracts: [`ARCHITECTURE.md`](ARCHITECTURE.md) ·
+[`docs/contracts.md`](docs/contracts.md). Directory map: README §디렉토리 지도.
 
 ## Quickstart (first 15 minutes)
 
 ```bash
-uv sync                                  # workspace + plugins (editable)
-uv run momentscan doctor                 # external deps check — models·binaries·stacks
+uv sync                                  # workspace + plugins + visualstack (editable)
+uv run momentscan verify doctor          # external deps census — models·binaries·stacks
                                          #   (checker, not fetcher: gated weights say how to obtain)
 uv run momentscan run /path/video.mp4    # ONE command: inline detect → full pipeline → report
-# → output/<clip>/index.html             deliverables (portraits · highlights · likeness)
+# → output/<clip>/index.html             deliverables front door
 # → output/<clip>/inspect/clip.html      the inspector — WHY each pick was made
 ```
 
-Operators processing many clips keep a warm daemon instead of inline detect:
-`momentscan serve` + `momentscan process <clip>`. Architecture / boundary
-contracts: [`ARCHITECTURE.md`](ARCHITECTURE.md) · [`docs/contracts.md`](docs/contracts.md).
-
-## Reoriented (2026-06-08)
-
-This repo is now the JEPA-PoC Track A/B **selection + eval** site
-([`docs/jepa-poc.md`](docs/jepa-poc.md)). The previous single-process
-``momentscan-worker`` is archived under ``_legacy/`` (preserved, not deleted).
-The new structure is a flat shared core + two **isolated** FeatureSource
-packages; the pipeline stages are skeletons, wired phase by phase (README 진행 상태).
-
-## Repository layout
-
-```
-momentscan/
-├── pyproject.toml                    uv workspace root; path-deps to visualstack
-├── README.md                         domain design intent + Distribution contract
-├── docs/jepa-poc.md                  north-star: PoC goal, two tracks, decisions
-├── SETUP.md                          you are here — code layout
-├── policies/                         domain policy JSON (reused)
-├── _legacy/momentscan-worker/        archived pre-reorientation worker
-├── apps/
-│   └── momentscan/                   CORE (light, shared) — track-agnostic
-│       └── src/momentscan/
-│           ├── features.py           FeatureSource Protocol + Tubelet/TrackFeatures (contract)
-│           ├── telemetry.py          CandidateLog schema (§8 contract)
-│           ├── tubelets.py           Step 0: tracks + attribution         (Phase 2)
-│           ├── select.py             center→Profile · residual→Highlight  (Phase 3)
-│           ├── evalharness.py        shared eval harness                  (Phase 3)
-│           └── __main__.py           CLI: step0 / features / select / eval
-└── plugins/                          ISOLATED FeatureSource packages (own venvs)
-    ├── features-specialist45d/       Track A — specialist 45D (onnx/mediapipe)
-    └── features-vjepa/               Track B — V-JEPA (torch; optional `backbone` extra)
-```
-
-> The two `plugins/` packages are isolated *only* at the feature-extractor
-> boundary, where deps conflict (onnx/mediapipe vs torch). Everything downstream
-> is the shared core — that is what keeps Track A vs Track B directly comparable.
-> The "Run a job" sections below describe the **archived** `_legacy` worker and
-> will be re-wired per phase.
+History in one line: reoriented 2026-06-08 (JEPA-PoC Track A/B), migrated into
+the p981 meta-repo 2026-07-07 — the trail lives in `docs/`.
 
 ## Sibling layout
 
-This repo expects to sit next to visualstack:
+This repo expects the visualstack substrate next door:
 
 ```
-~/repo/...
-├── visualstack/                 the OSS substrate
+~/repo/p981/
+├── visualstack/                 vision substrate (visualbus · visualpath · plugins)
 └── momentscan/                  this repo
 ```
 
-Path dependencies in `pyproject.toml` resolve `../visualstack/...`.
-If you place the repos differently, edit `[tool.uv.sources]` to point
-at the right location.
+Path dependencies in `pyproject.toml` resolve `../visualstack/...` as editable —
+changes to visualstack source are picked up without re-syncing. If you place the
+repos differently, edit `[tool.uv.sources]`.
 
-## Install
-
-```bash
-uv sync           # one-shot, resolves visualstack via editable path deps
-```
-
-This installs every visualstack sub-package as an editable
-dependency, so changes to visualstack source are picked up immediately
-without re-syncing.
-
-## Run a job (local)
+## Run
 
 ```bash
-# Process one video. Output goes to ./output/<job-id>/stash/...parquet.
-uv run momentscan-worker /path/to/video.mp4
-
-# With an explicit job id (matches whatever your orchestrator uses):
-uv run momentscan-worker /path/to/video.mp4 --job-id abc123
-
-# Long-running worker — expose Prometheus + UDS control for debugging:
-uv run momentscan-worker /path/to/video.mp4 --metrics --control
+uv run momentscan run <clip> [--only <stage> ...] [--force] [--source <video>]
+uv run momentscan server start [--port N] [--eureka URL] [--control-url URL] \
+                               [--s3-bucket B] [--output-uri s3://…]   # HTTP worker face
+uv run momentscan server status|stop
+uv run momentscan verify registry|api|replay|eval    # declaration·contract·regression gates
+uv run momentscan map|report|inspect|viz             # maps · result pages · inspector
 ```
 
-The worker prints **one JSON line on stdout** (the orchestrator
-parses this) and **structured JSON logs on stderr** (Loki / Promtail
-collects these).
+- The server face (Eureka registration, company dispatch dialect, S3 in/out) is
+  documented in [`docs/deploy-alpha.md`](docs/deploy-alpha.md); the container
+  path (image + weights bundle + compose) in `deploy/docker/` and the DevOps
+  launch contract in [`docs/deploy-handoff.md`](docs/deploy-handoff.md).
+- Long-running local server: `setsid nohup … &` (session-teardown safe) — or the
+  container, which is the deployment reference.
 
-stdout result line:
+## Where output goes
 
-```json
-{"job_id":"abc123","ok":true,"duration_seconds":4.21,"partitions_written":12,
- "error":null,"stash_dir":"/.../output/abc123/stash"}
-```
-
-stderr log line (one per logging event):
-
-```json
-{"ts":"2026-05-14T...","level":"INFO","logger":"momentscan.worker",
- "msg":"job done","service":"momentscan","worker_id":"w-local","hostname":"...",
- "job_id":"abc123","file_path":"/path/to/video.mp4",
- "duration_s":4.21,"partitions_written":12}
-```
-
-## Where does output go
-
-```
-<output_dir>/<job_id>/
-└── stash/
-    ├── 0/detections.parquet
-    ├── 1/detections.parquet
-    └── ...
-```
-
-Each `detections.parquet` is one partition's flat rows (one row per
-detection per frame, augmented with `expression__smile` per
-detection). Read with polars / DuckDB / pandas:
-
-```python
-import polars as pl
-df = pl.read_parquet("output/abc123/stash/0/detections.parquet")
-```
-
-Schema is the same as visualstack's stash output — see
-[`visualstack/docs/applications.md`](../visualstack/docs/applications.md)
-for the column conventions.
-
-## Where does the pipeline live
-
-[`apps/momentscan-worker/src/momentscan_worker/service.py`](apps/momentscan-worker/src/momentscan_worker/service.py)
-— `build_pipeline()` lists exactly which modules a job runs.
-Currently:
-
-```python
-Pipeline([
-    FaceDetect(...),
-    IoUTracker(),
-    FaceExpression(),
-    SmilingCloseup(...),
-])
-```
-
-Domain-specific composers (a `MomentScanScorer` consuming face
-detections + expression scores) go here as they're written, then
-move to `plugins/` once they accumulate enough surface to be reused.
-
-## Running a fleet (10 servers)
-
-See [`visualstack/docs/applications.md`](../visualstack/docs/applications.md)
-for the production deployment story — job queue (RQ / Celery /
-Postgres-as-queue), systemd unit template, Prometheus scrape config,
-Grafana dashboard variables.
+`output/<clip>/` — stage artifacts (parquet·json), `index.html` (report),
+`inspect/clip.html` (inspector). Products egress only what
+`analyzers.PRODUCTS` declares ∩ open products (`--products`).
 
 ## Useful adjacent tools
 
-- `python -m visualbus.control stats --socket <path>` — query a running
-  worker (when `--control` is on).
+- `python -m visualbus.control stats --socket <path>` — query a running daemon.
 - `python -m visualbus.control subscribe 'patterns=["signal/*","trigger/*"]' | jq .`
-  — live stream of every signal / trigger flowing through a worker.
-- `curl localhost:9100/metrics | grep visualstack_` — scrape Prometheus
-  metrics (when `--metrics` is on).
+  — live stream of signals/triggers through a worker.
+- Observability (Grafana + Loki + promtail, local stack):
+  [`docs/deploy-alpha.md`](docs/deploy-alpha.md) §5.
