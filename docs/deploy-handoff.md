@@ -10,7 +10,7 @@
 | 항목 | 값 |
 |---|---|
 | 이미지 | `ghcr.io/monolith-hyeonrae/momentscan:main` (11.9GB; ECR 발급 시 이관 — 아래 요청) |
-| 웨이트 번들 | `s3://dev-981park-media-cju/models/moment-scan/momentscan-models-v1.tar` (2.5GB — 부팅 시 컨테이너가 자가 전개, 운영 버킷 자리 협의 필요) |
+| 웨이트 번들 | `s3://dev-981park-media-cju/moment-scan/models/momentscan-models-v1.tar` (2.5GB — 부팅 시 컨테이너가 자가 전개, 운영 버킷 자리 협의 필요) |
 | 역할 | Eureka 워커 — control이 디스패치, 결과는 S3 반출 + 콜백. **인스턴스당 동시 1잡**(포화 시 10002 응답 → control이 다음 인스턴스로) |
 
 ## 인스턴스 요구
@@ -24,9 +24,14 @@
 
 ## IAM (인스턴스 역할 최소 권한)
 
-- `s3:GetObject` — `models/moment-scan/*` (웨이트), `video/original/*` (소스)
-- `s3:PutObject` — `video/moment-scan/*` (결과 반출; 프리픽스는 협의 중인 임시 관례)
+- `s3:GetObject` — `moment-scan/models/*` (웨이트), `video/original/*` (소스)
+- `s3:PutObject` — `moment-scan/out/*` (결과 반출)
 - ECR 이관 시 pull 권한 (GHCR 유지 시 read-only PAT를 인스턴스에 배치해야 하므로 ECR 권장)
+
+> **작업 공간 규약(2026-08-03)**: momentscan의 자발적 쓰기는 전부 버킷 최상위
+> `moment-scan/` 단일 루트 아래(models/·out/·sources/) — 공유 버킷을 어지럽히지
+> 않기 위한 소유 경계이자 삭제 경계(`rm --recursive` 한 방). 루트 밖은 디스패치가
+> 명시한 소스 키의 읽기만. 정식 자리(전용 버킷)는 아래 요청 2와 함께 협의.
 
 ## 실행 계약 (user-data 참조 구현)
 
@@ -41,14 +46,14 @@ docker run -d --name momentscan --gpus all --restart unless-stopped \
 `/etc/momentscan.env` (전체 계약 = 리포 `deploy/docker/env.example`):
 
 ```
-MS_MODELS_URI=s3://…/models/moment-scan/momentscan-models-v1.tar
+MS_MODELS_URI=s3://…/moment-scan/models/momentscan-models-v1.tar
 MS_PORT=8080
 MS_PRODUCTS=likeness
 MS_APP_NAME=cju-activity-moment-scan-process
 MS_EUREKA=https://…/activity-video/control/eureka
 MS_CONTROL_URL=https://…/activity-video/control
 MS_S3_BUCKET=<소스 버킷>
-MS_OUTPUT_URI=s3://<버킷>/video/moment-scan
+MS_OUTPUT_URI=s3://<버킷>/moment-scan/out
 EUREKA_TOKEN_URI=…        # OAuth2 client_credentials (등록·콜백 JWT)
 EUREKA_CLIENT_ID=…
 EUREKA_CLIENT_SECRET=…

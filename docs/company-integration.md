@@ -188,6 +188,9 @@ momentscan server start --port 8080 --out output/svc \
   (기존 verify/ 관례 미러) · 운영 코퍼스 미러=`video/original/D3/{yyyy}/{MM}/{dd}/`
   (CDN 경로와 동형, 7/28 일일 50클립 싱크) · **반출=`video/moment-scan/{clip_id}/`**
   (deliver가 clip_id 하위로 relpath 부가; 질문 5 합의 시 `--output-uri` 값만 교체).
+  **→ 2026-08-03 전면 개정(user: 공유 버킷 어지럽히기 금지)**: 위 경로 전부 버킷
+  최상위 **`moment-scan/` 단일 루트로 이동**(models/·out/·sources/verify/·
+  sources/D3-mirror/) — 자발적 쓰기는 이 루트 밖 금지, 규약 정본=deploy-handoff.md.
 - 무얼굴 클립의 콜백 지위(VIDEO_ERROR가 맞나, "빈 성공"이 맞나)는 질문 4에 병합.
 
 ## 회사에 남은 질문 (갱신 2026-07-15 — 코드 판독 후)

@@ -103,7 +103,7 @@ extra 뒤(--all-extras 필수 — 기본 sync엔 안 들어옴) ③mediapipe →
 웨이트 번들 재구성(모델 추가/교체 시): 로컬 검증 머신에서
 `.portrait981/models` + `.cache/visualstack` + `.insightface/models/{buffalo_l,6drepnet}`
 + `.hsemotion` + HF 4종(face-parsing·fashion-clip·dinov3-vitb16·depth-anything-v2-small)
-을 $HOME 기준 상대경로로 tar → `s3://…/models/moment-scan/momentscan-models-vN.tar`
+을 $HOME 기준 상대경로로 tar → `s3://…/moment-scan/models/momentscan-models-vN.tar`
 업로드 → env의 MS_MODELS_URI 갱신(마커가 URI 단위라 자동 재전개).
 
 스팟 대응: entrypoint가 IMDSv2 spot/instance-action을 5s 폴링 — 회수 예고 시
