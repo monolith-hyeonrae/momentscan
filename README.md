@@ -1,4 +1,4 @@
-# (프로젝트명 미정)
+# momentscan
 
 비디오/이미지에서 **인물 시그널의 분포를 추정하고, 그 분포를 읽어 답하는** 비전 분석 프로그램.
 
@@ -13,8 +13,8 @@
 
 > **이 문서는 *도메인 design intent*다.** 코드가 왜 이렇게 배치되어 있는가
 > (층 지도·격리 사다리·졸업 규칙·멤버십 테스트)는 [`ARCHITECTURE.md`](ARCHITECTURE.md),
-> 실행 방법은 [`SETUP.md`](SETUP.md)에. visualstack 위에 부트스트랩된 워커가 이미
-> 돌아간다 — `uv sync && uv run momentscan-worker <video>`.
+> 실행 방법은 [`SETUP.md`](SETUP.md)에. visualstack 위에 부트스트랩된 파이프라인이 이미
+> 돌아간다 — `uv sync && uv run momentscan run <clip>`.
 >
 > **북극성(2026-06-08~): [`docs/jepa-poc.md`](docs/jepa-poc.md).** 이 레포는 그 PoC의
 > Track A/B selection + eval 거점으로 재정렬됨. 아래 `Distribution`+읽기 계약은 유효하되,
@@ -24,13 +24,21 @@
 
 ### 이 레포의 위치
 
-이 작업은 *백지 재시작*이 아니다. 목적은 `../portrait981` 모노레포를 **상용 가능한 운영 상태**까지 가져가서 데일리 테스트로 검증하고, 그 위에 생성(depict)파트를 얹는 것. 그 전단계로 다음 분리가 필요하다:
+p981 메타 레포(크로스-시스템 계약·결정 홈)의 멤버. 형제 레포 **visualstack**(일반
+비전 substrate — visualbus·visualpath)을 경로 의존으로 끌어 쓰고, 그 위에서 세 제품을
+만든다. (구 portrait981 모노레포에서의 분리·이주는 2026-07-07 완료 — 경위는 docs/.)
 
-- **visual\*/vpx** — 일반 도구로 무르익었다. 별 레포로 분리.
-- **momentscan** — 활용층. 이 레포에서 새 데이터 모델(3-level + 평탄 column + provenance + weak prior) 위에 재구성. 검증된 visual\*/vpx 인프라를 의존성으로 끌어 쓴다.
-- **portrait981** — 도메인 통합 레이어로 남는다. 위 두 레포를 의존성으로 사용.
+### 디렉토리 지도
 
-따라서 이 레포에서의 작업은 *visual\*/vpx 평가·필요 시 리팩토링 + 그 위에 momentscan을 새 모델로 재구성*. 검증된 코드는 그대로 활용, 새 모델과 충돌하는 부분(예: visualbind의 65D 고정 벡터)만 손본다.
+| 위치 | 무엇 |
+|---|---|
+| `apps/momentscan/` | 제품 코드 (perception·products·surface·infra 층 — [`ARCHITECTURE.md`](ARCHITECTURE.md)) |
+| `plugins/` | 격리 FeatureSource 스택 (Track A onnx/mediapipe · Track B torch/V-JEPA) |
+| `policies/` | 선별 정책·신호 범위 (데이터) |
+| `workbench/` | 연구 워크벤치 — 알고리즘 검증용 참조 구현·프로브 (제품 코드 아님, [`workbench/README.md`](workbench/README.md)) |
+| `deploy/` | 컨테이너·관측 스택 ([`docs/deploy-handoff.md`](docs/deploy-handoff.md)) |
+| `docs/` | 문서 사슬 (계약 C1~C12 → 원장 → 청사진; 진입은 [`docs/ids.md`](docs/ids.md)) |
+| `fixtures/` | 특성화 골든·평가 라벨 |
 
 ---
 

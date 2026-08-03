@@ -14,12 +14,10 @@ data/
 logs/
 preview_recipe/
 
-# 기록물·실험·레거시 — 런타임 불요
-_legacy/
-examples/
+# 연구 도구·기록물 — 런타임 불요 (experiments/=로컬 미디어 보존 홈 잔존분)
+workbench/
 experiments/
 fixtures/
-scratchpad_*.py
 
 # docs 중 런타임 필요한 것은 docs/api/openapi.yaml 하나 (service.py가 서빙)
 docs/*
