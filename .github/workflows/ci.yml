@@ -1,0 +1,83 @@
+# momentscan CI — 이미지 빌드 → 이미지 안에서 계약 검증 → GHCR push.
+#
+# 게이트 철학: 검증을 아티팩트(이미지) 안에서 돌린다 — venv 중복 설치 없이
+# "배포될 그 물건"이 verify registry/api(GPU·모델 불필요, 인프로세스)를 통과해야 push.
+#
+# 필요 시크릿 1개: VISUALSTACK_TOKEN — private substrate 체크아웃용
+#   (fine-grained PAT: monolith-hyeonrae/visualstack, Contents read-only).
+# GHCR push는 GITHUB_TOKEN(permissions.packages)으로 충분.
+#
+# 레지스트리: 임시 GHCR (ecr:CreateRepository 권한 부재 — 2026-08-03 실측,
+# 회사 ECR 리포 발급 시 login/tags 두 줄만 교체).
+name: ci
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  IMAGE: ghcr.io/${{ github.repository }}   # ghcr.io/monolith-hyeonrae/momentscan
+
+jobs:
+  build-verify-push:
+    runs-on: ubuntu-latest
+    steps:
+      # hosted runner 여유 디스크 ~14GB vs 이미지 11.9GB — 선주입 SDK들을 비워 +25GB
+      - name: free disk
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
+          df -h / | tail -1
+
+      - uses: actions/checkout@v4
+        with:
+          path: momentscan
+
+      - uses: actions/checkout@v4
+        with:
+          repository: monolith-hyeonrae/visualstack
+          token: ${{ secrets.VISUALSTACK_TOKEN }}
+          path: visualstack
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: build (load for verify)
+        uses: docker/build-push-action@v6
+        with:
+          context: momentscan
+          file: momentscan/deploy/docker/Dockerfile
+          build-contexts: |
+            visualstack=visualstack
+          load: true
+          tags: ${{ env.IMAGE }}:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # 계약 검증 — 이미지 그 자체가 피검체 (GPU/웨이트/네트워크 불필요 항목만)
+      - name: verify in image
+        run: |
+          docker run --rm --entrypoint momentscan ${{ env.IMAGE }}:ci verify registry
+          docker run --rm --entrypoint momentscan ${{ env.IMAGE }}:ci verify api
+
+      - name: push
+        uses: docker/build-push-action@v6
+        with:
+          context: momentscan
+          file: momentscan/deploy/docker/Dockerfile
+          build-contexts: |
+            visualstack=visualstack
+          push: true
+          tags: |
+            ${{ env.IMAGE }}:main
+            ${{ env.IMAGE }}:sha-${{ github.sha }}
+          cache-from: type=gha
