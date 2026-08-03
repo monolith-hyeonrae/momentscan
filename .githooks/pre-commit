@@ -1,0 +1,16 @@
+#!/bin/sh
+# 미디어 파일(고객 얼굴 등 개인정보 픽셀) 리포 유입 차단.
+# 배경: 2026-07-28 experiments/*.png 32장(고객 얼굴 포함) 히스토리 소거 — 이 훅이 재발 방지 장치.
+# GitHub 등 원격에 올라간 픽셀은 사실상 회수 불가이므로 커밋 시점에 막는다.
+# 활성화(클론마다 1회): git config core.hooksPath .githooks
+# 의도적 예외(개인정보 없는 다이어그램 등)는: ALLOW_MEDIA=1 git commit ...
+[ -n "$ALLOW_MEDIA" ] && exit 0
+blocked=$(git diff --cached --name-only --diff-filter=AM \
+  | grep -iE '\.(png|jpe?g|gif|webp|bmp|tiff?|heic|mp4|ts|m2ts|webm|avi|mov|mkv)$')
+if [ -n "$blocked" ]; then
+  echo "commit 차단 — 미디어 파일은 리포에 넣지 않는다 (고객 개인정보 보호 구조):" >&2
+  echo "$blocked" | sed 's/^/  /' >&2
+  echo "개인정보가 없는 파일임이 확실하면: ALLOW_MEDIA=1 git commit ..." >&2
+  exit 1
+fi
+exit 0

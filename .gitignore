@@ -21,6 +21,9 @@ build/
 .idea/
 *.swp
 
+# Claude Code local session state
+.claude/
+
 # Local-only artifacts — anchored at repo root so the names don't collide
 # with package source directories.
 /stash/
@@ -38,3 +41,10 @@ build/
 /output/
 /preview_recipe/
 /experiments/IC-Light/
+
+# 고객 픽셀(얼굴 등 개인정보가 담긴 미디어)은 리포에 넣지 않는다.
+# 2026-07-28 experiments/*.png 32장 히스토리 소거 — 보존본은 /experiments/media/(로컬 전용),
+# 원본 히스토리·해시 대응표는 ~/repo/backups/momentscan-preclean-20260728.git.
+# 확장자-무관 일반 가드는 .githooks/pre-commit (활성화: git config core.hooksPath .githooks)
+/experiments/media/
+/experiments/*.png
