@@ -10,6 +10,7 @@ everything after the stash's detections + landmarks exist.
 from __future__ import annotations
 
 import datetime
+import hashlib
 import logging
 import time
 from pathlib import Path
@@ -210,9 +211,18 @@ def _scoped_order(order, only, products):
     return [a for a in order if a.name in want]
 
 
+def _sha256(p: Path) -> str:
+    h = hashlib.sha256()
+    with open(p, "rb") as f:
+        for chunk in iter(lambda: f.read(1 << 20), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
 def run_pipeline(out_root, clip_id: str, *, source=None, fps: int = 6,
                  force: bool = False, only=None, products=None, watch: bool = True,
-                 subject_query: str | None = None) -> dict:
+                 subject_query: str | None = None,
+                 source_origin: str | None = None) -> dict:
     """Run post-detect stages in registry DAG order; skip existing artifacts.
 
     `only` restricts to named stages; `products` restricts to the union of the named
@@ -232,9 +242,14 @@ def run_pipeline(out_root, clip_id: str, *, source=None, fps: int = 6,
     # provenance — what source produced these artifacts, when, with what fps. The
     # Storage port's audit/idempotency seam (source media expires; this is durable).
     # Per-clip only; nothing accumulates across visits. Written once, when a source
-    # is supplied and not already recorded.
+    # is supplied and not already recorded. source_uri = the file actually opened
+    # (may be a local source_cache copy); source_origin = the URI the job named
+    # (e.g. the S3 key — survives cache eviction); source_sha256 = fingerprint of
+    # the processed bytes (transport-independent identity).
     if source and not provenance_path(out_root, clip_id).exists():
-        rec = {"clip_id": clip_id, "source_uri": str(source), "fps": fps,
+        rec = {"clip_id": clip_id, "source_uri": str(source),
+               "source_origin": str(source_origin) if source_origin else str(source),
+               "fps": fps,
                "processed_at_unix": round(time.time(), 3),
                "processed_at_iso": datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds")}
         _src = Path(source)
@@ -242,6 +257,7 @@ def run_pipeline(out_root, clip_id: str, *, source=None, fps: int = 6,
             _st = _src.stat()
             rec["source_bytes"] = _st.st_size
             rec["source_mtime"] = round(_st.st_mtime, 3)
+            rec["source_sha256"] = _sha256(_src)
         write_provenance(out_root, clip_id, rec)
     # the run set DERIVES from ANALYZERS (the single authority): every stage/engine
     # analyzer except the frame-grain ingest (UPSTREAM_OF_RUNNER) runs, in DAG order.
