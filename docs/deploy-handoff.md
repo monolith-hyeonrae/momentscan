@@ -98,15 +98,18 @@ EUREKA_CLIENT_SECRET=…
 
 ## 요청 사항
 
-1. **회사 GitHub 리포 + 같은 이름의 ECR 리포**: 회사 표준은 ECR 리포 이름 =
-   GitHub 리포 이름이므로 리포 이름 협의가 먼저다(후보:
-   `cju-activity-moment-scan-process` — Eureka 앱 이름과 같은 계열).
-   CI가 ECR에 push할 AWS 자격 증명도 필요하다 — 기존 서비스 CI가 쓰는
-   계정(AWS_ACCESS_KEY_ID/SECRET 시크릿 방식)을 재사용할 수 있으면 그것으로.
-   (현재 개발 계정에는 ecr:CreateRepository 권한이 없다 — 2026-08-03 확인.)
-2. 인스턴스 IAM 역할(위 최소 권한) + 운영 버킷의 웨이트 번들 위치.
-3. EUREKA_* 운영 자격 증명(client_credentials). dev 자격으로는 검증 완료(2026-07-15).
-4. JSON 로그의 Loki/Zabbix 수집 경로.
+~~리포·ECR·CI 자격~~ → **완료(2026-08-04)**: `monolith-rnd/cju-activity-moment-scan-process`
+(+`-deploy`)와 같은 이름의 ECR 리포가 생성되었고, develop 빌드가 ECR push와
+values-dev.yaml 태그 갱신까지 통과했다. 남은 것:
+
+1. **GPU 노드**: dev EKS에 GPU 노드그룹이 있는지, 있다면 라벨과 taint —
+   values-dev.yaml의 nodeSelector/tolerations [TODO] 두 칸에 채우면 된다.
+   파드 요구 = `nvidia.com/gpu: 1` (T4급 이상, 작업당 VRAM 최대 약 4GB).
+2. **Eureka 자격 시크릿**: EUREKA_TOKEN_URI/CLIENT_ID/CLIENT_SECRET 세 값을 담은
+   K8s 시크릿 생성 방식 협의(values의 envFrom [TODO]). 운영용 자격도 추후 필요.
+3. **파드의 S3 권한**: 노드 역할에 위 최소 권한이 이미 있는지, 아니면 IRSA
+   서비스어카운트를 만들지(values의 serviceAccountName [TODO]).
+4. JSON 로그의 Loki/Zabbix 수집 경로. (+ArgoCD 앱 등록 여부 확인)
 
 ## 검증 범위
 
