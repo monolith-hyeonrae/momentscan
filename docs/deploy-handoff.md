@@ -1,9 +1,21 @@
 # momentscan 배포 가이드 — DevOps 핸드오프
 
-> 인프라(ASG·IAM·네트워크)를 설정하는 DevOps 팀을 위한 문서. 이 문서만으로
+> 인프라(EKS 또는 ASG·IAM·네트워크)를 설정하는 DevOps 팀을 위한 문서. 이 문서만으로
 > 인스턴스를 띄울 수 있도록 작성했다. 검증 기록과 배경은
 > [deploy-alpha.md](deploy-alpha.md) §3b, 회사 연동 프로토콜은
 > [company-integration.md](company-integration.md) 참고. (2026-08-03 기준)
+
+## 배포 방식 — 회사 표준과의 정합
+
+회사 서비스들의 표준 흐름(2026-08-04, cju-activity-video-process 참고)은
+GitHub Actions 빌드 → ECR push(리포 이름 = GitHub 리포 이름, develop-`<sha>` /
+`v*.*.*` 태그) → 자매 `-deploy` 리포의 helm 값 갱신 → EKS 배포다. momentscan
+컨테이너는 K8s 배포 요건을 충족한다 — 단일 프로세스, 환경 변수 설정, `/health`
+프로브, SIGTERM 정상 종료, 무상태(데이터는 전부 S3). **GPU 노드(그룹)만 있으면
+Deployment로 올라간다.** 아래 "실행 방법"의 docker run은 EC2/ASG 직행이나
+로컬·온프레미스 실행의 참조 구현이고, EKS로 간다면 같은 이미지·같은 환경
+변수를 helm 차트로 옮기면 된다(차트 초안은 요청 시 제공 가능). 어느 쪽으로
+갈지는 DevOps 판단에 맡긴다.
 
 ## 배포 구성 요소
 
@@ -86,9 +98,12 @@ EUREKA_CLIENT_SECRET=…
 
 ## 요청 사항
 
-1. **ECR 리포지토리 생성**: `981park-moment-scan` (기존 이름 규칙에 맞춤).
-   현재 개발 계정에는 ecr:CreateRepository 권한이 없다(2026-08-03 확인).
-   CI가 push할 자격 증명도 함께 필요하다(OIDC 역할 권장).
+1. **회사 GitHub 리포 + 같은 이름의 ECR 리포**: 회사 표준은 ECR 리포 이름 =
+   GitHub 리포 이름이므로 리포 이름 협의가 먼저다(후보:
+   `cju-activity-moment-scan-process` — Eureka 앱 이름과 같은 계열).
+   CI가 ECR에 push할 AWS 자격 증명도 필요하다 — 기존 서비스 CI가 쓰는
+   계정(AWS_ACCESS_KEY_ID/SECRET 시크릿 방식)을 재사용할 수 있으면 그것으로.
+   (현재 개발 계정에는 ecr:CreateRepository 권한이 없다 — 2026-08-03 확인.)
 2. 인스턴스 IAM 역할(위 최소 권한) + 운영 버킷의 웨이트 번들 위치.
 3. EUREKA_* 운영 자격 증명(client_credentials). dev 자격으로는 검증 완료(2026-07-15).
 4. JSON 로그의 Loki/Zabbix 수집 경로.
