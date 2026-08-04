@@ -1,0 +1,104 @@
+# develop 브랜치 push → 이미지 빌드 → 이미지 안에서 계약 검증 → ECR push
+# → -deploy 리포의 values-dev.yaml 태그 갱신 (회사 표준 GitOps 흐름).
+#
+# 회사 표준(cju-activity-video-process)과 다른 점 두 가지:
+# 1. verify 단계 — 빌드된 이미지 안에서 momentscan verify registry/api를 통과해야
+#    push한다 (다른 서비스의 gradle test에 해당).
+# 2. substrate 체크아웃 — visualstack을 두 번째 체크아웃으로 받아 빌드 컨텍스트로
+#    넣는다 (pyproject가 ../visualstack 경로 의존). 시크릿 VISUALSTACK_SSH_KEY =
+#    visualstack의 읽기 전용 deploy key.
+name: develop build
+
+on:
+  push:
+    branches: [develop]
+    paths:            # 문서만 바뀐 push에는 빌드하지 않는다 (docs/api는 예외 — 런타임 검증 대상)
+      - '**'
+      - '!docs/**'
+      - 'docs/api/**'
+      - '!**.md'
+  workflow_dispatch:
+
+jobs:
+  build-verify-push:
+    runs-on: ubuntu-latest
+    steps:
+      # 기본 러너 여유 디스크(~14GB)가 이미지(11.9GB)보다 작다 — 선탑재 SDK 제거로 확보
+      - name: free disk
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
+          df -h / | tail -1
+
+      - name: Source checkout
+        uses: actions/checkout@v4
+        with:
+          path: momentscan
+
+      - name: Substrate checkout (visualstack)
+        uses: actions/checkout@v4
+        with:
+          repository: monolith-hyeonrae/visualstack
+          ssh-key: ${{ secrets.VISUALSTACK_SSH_KEY }}
+          path: visualstack
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ap-northeast-2
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Set environment variable
+        run: |
+          echo "APPLICATION_NAME=$(echo '${{ github.repository }}' | awk -F '/' '{print $2}')" >> $GITHUB_ENV
+          echo "IMAGE_TAG=develop-$(echo '${{ github.sha }}' | cut -c1-7)" >> $GITHUB_ENV
+        shell: bash
+
+      - name: Build image (load for verify)
+        uses: docker/build-push-action@v6
+        with:
+          context: momentscan
+          file: momentscan/deploy/docker/Dockerfile
+          build-contexts: |
+            visualstack=visualstack
+          load: true
+          tags: ${{ steps.login-ecr.outputs.registry }}/${{ env.APPLICATION_NAME }}:${{ env.IMAGE_TAG }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Verify in image
+        run: |
+          IMG=${{ steps.login-ecr.outputs.registry }}/${{ env.APPLICATION_NAME }}:${{ env.IMAGE_TAG }}
+          docker run --rm --entrypoint momentscan $IMG verify registry
+          docker run --rm --entrypoint momentscan $IMG verify api
+
+      - name: Push image to Amazon ECR
+        run: |
+          docker push ${{ steps.login-ecr.outputs.registry }}/${{ env.APPLICATION_NAME }}:${{ env.IMAGE_TAG }}
+
+      - name: Checkout helm manifests
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.repository }}-deploy
+          ref: main
+          token: ${{ secrets.DEPLOY_REPO_TOKEN }}
+          path: deploy-repo
+
+      - name: Set new image tag on helm
+        run: |
+          cd deploy-repo/helm
+          sed -i 's/    tag:.*/    tag: "${{ env.IMAGE_TAG }}"/g' values-dev.yaml
+
+      - name: Commit and push helm manifests
+        run: |
+          cd deploy-repo
+          git config --global user.email ${{ github.event.pusher.login || 'monolith' }}
+          git config --global user.name ${{ github.event.pusher.login || 'monolith' }}
+          git commit -am "Deploy application version ${{ env.IMAGE_TAG }}"
+          git push
