@@ -54,8 +54,8 @@ uv run momentscan map|report|inspect|viz             # maps · result pages · i
 ## Where output goes
 
 `output/<clip>/` — stage artifacts (parquet·json), `index.html` (report),
-`inspect/clip.html` (inspector). Products egress only what
-`analyzers.PRODUCTS` declares ∩ open products (`--products`).
+`inspect/clip.html` (inspector). Only files declared as product egress
+AND belonging to an open product (`--products`) are exported outward.
 
 ## Useful adjacent tools
 

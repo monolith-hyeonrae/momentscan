@@ -2,10 +2,10 @@
 
 > ⚠️ **PoC — 평가 단계 코드베이스** (2026-08 현재). 데일리 배치 평가로 정량·정성
 > 퍼포먼스를 검증하는 것이 지금 목적이며, 운영 수준으로 가는 과정에서 내부 구조·
-> 알고리즘·저장 형식의 **큰 변경이 예정**되어 있다. 외부에서 기대도 되는 경계는
-> 두 개뿐이다 — **출력 계약**(반출물 likeness.json·provenance.json과 Result 스키마)
-> 과 **API 계약**([docs/api/openapi.yaml](docs/api/openapi.yaml)). 내부 모듈을 직접
-> import·의존하지 말 것(계약 밖은 예고 없이 바뀐다). 라이선스: 일부 모델 웨이트
+> 알고리즘·저장 형식의 **큰 변경이 예정**되어 있다. 외부에서 의존해도 되는 것은
+> 두 가지뿐이다 — **출력 계약**(결과 파일 likeness.json·provenance.json과 Result
+> 스키마)과 **API 계약**([docs/api/openapi.yaml](docs/api/openapi.yaml)). 내부 모듈을
+> 직접 import하지 말 것 — 계약 밖은 예고 없이 바뀐다. 라이선스: 일부 모델 웨이트
 > (insightface buffalo_l)가 **비상업 연구 라이선스**라 상업 운영 투입 전 교체 또는
 > 합의가 필수다(내부 트래킹 중 — [docs/deploy-handoff.md](docs/deploy-handoff.md) 참조).
 
@@ -33,21 +33,22 @@
 
 ### 이 레포의 위치
 
-p981 메타 레포(크로스-시스템 계약·결정 홈)의 멤버. 형제 레포 **visualstack**(일반
-비전 substrate — visualbus·visualpath)을 경로 의존으로 끌어 쓰고, 그 위에서 세 제품을
-만든다. (구 portrait981 모노레포에서의 분리·이주는 2026-07-07 완료 — 경위는 docs/.)
+p981 메타 레포(시스템 간 계약과 결정을 모아둔 상위 레포)의 구성 레포. 형제 레포
+**visualstack**(범용 비전 기반 계층 — visualbus·visualpath)을 경로 의존성으로 사용하고,
+그 위에서 세 제품을 만든다. 구 portrait981 모노레포에서의 분리·이주는 2026-07-07에
+완료했다.
 
 ### 디렉토리 지도
 
 | 위치 | 무엇 |
 |---|---|
 | `apps/momentscan/` | 제품 코드 (perception·products·surface·infra 층 — [`ARCHITECTURE.md`](ARCHITECTURE.md)) |
-| `plugins/` | 격리 FeatureSource 스택 (Track A onnx/mediapipe · Track B torch/V-JEPA) |
-| `policies/` | 선별 정책·신호 범위 (데이터) |
-| `workbench/` | 연구 워크벤치 — 알고리즘 검증용 참조 구현·프로브 (제품 코드 아님, [`workbench/README.md`](workbench/README.md)) |
-| `deploy/` | 컨테이너·관측 스택 ([`docs/deploy-handoff.md`](docs/deploy-handoff.md)) |
-| `docs/` | 문서 사슬 (계약 C1~C12 → 원장 → 청사진; 진입은 [`docs/ids.md`](docs/ids.md)) |
-| `fixtures/` | 특성화 골든·평가 라벨 |
+| `plugins/` | FeatureSource 패키지 — 의존성 충돌 격리 (Track A onnx/mediapipe · Track B torch/V-JEPA) |
+| `policies/` | 선별 정책과 신호 범위 (데이터 파일) |
+| `workbench/` | 연구 워크벤치 — 알고리즘 검증용 참조 구현 (제품 코드 아님, [`workbench/README.md`](workbench/README.md)) |
+| `deploy/` | 컨테이너 빌드와 모니터링 구성 ([`docs/deploy-handoff.md`](docs/deploy-handoff.md)) |
+| `docs/` | 설계·계약 문서 (읽기 시작점: [`docs/ids.md`](docs/ids.md)) |
+| `fixtures/` | 테스트 골든 파일과 평가 라벨 |
 
 ---
 
