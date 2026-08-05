@@ -6,6 +6,8 @@
 #   MS_PORT=8080  MS_OUT=/data/out  MS_PRODUCTS=likeness
 #   MS_APP_NAME / MS_EUREKA / MS_CONTROL_URL / MS_S3_BUCKET / MS_OUTPUT_URI
 #   MS_ADVERTISE_HOST / MS_FPS
+#   MS_LOG_FILE        로그 목적지 (기본 "-" = stdout — K8s/ArgoCD 로그 관례.
+#                      파일 수집 환경이면 /data/logs/... 경로 지정)
 #   EUREKA_TOKEN_URI / EUREKA_CLIENT_ID / EUREKA_CLIENT_SECRET (회사 Eureka JWT — env로만)
 #
 # 종료 규약: SIGTERM(docker stop·스팟 예고) → 서버의 우아한 경로(유레카 즉시 해지).
@@ -30,7 +32,7 @@ fi
 # ── ③ 서버 기동 준비 (감시는 서버 PID가 필요해 먼저 조립) ──
 mkdir -p "${MS_OUT:=/data/out}" /data/logs
 args=(server start --port "${MS_PORT:=8080}" --out "$MS_OUT"
-      --log-file "/data/logs/momentscan-${MS_PORT}.log")
+      --log-file "${MS_LOG_FILE:--}")
 [[ -n "${MS_PRODUCTS:-}"       ]] && args+=(--products "$MS_PRODUCTS")
 [[ -n "${MS_APP_NAME:-}"       ]] && args+=(--app-name "$MS_APP_NAME")
 [[ -n "${MS_EUREKA:-}"         ]] && args+=(--eureka "$MS_EUREKA")
