@@ -125,13 +125,21 @@ class EurekaClient:
             return e.code
 
     def _call(self, method: str, path: str, body: dict | None = None) -> int:
-        tok = self.token_provider.token() if self.token_provider else None
-        code = self._do(method, path, body, tok)
-        if code == 401 and self.token_provider:
-            # 만료/회수 레이스 — 강제 갱신 후 1회 재시도 (재귀 없음)
-            tok = self.token_provider.token(force_refresh=True)
+        # 네트워크·토큰 실패가 호출자를 죽이면 안 된다 — 부팅 등록 실패로 프로세스가
+        # 내려가면 K8s 크래시루프가 된다 (2026-08-04 로컬 실증: Eureka 연결 거부 →
+        # URLError → 사망). 실패는 코드 0으로 정규화하고, 회복은 heartbeat 루프가
+        # 맡는다 (404 재등록 경로가 미등록 상태도 함께 수습).
+        try:
+            tok = self.token_provider.token() if self.token_provider else None
             code = self._do(method, path, body, tok)
-        return code
+            if code == 401 and self.token_provider:
+                # 만료/회수 레이스 — 강제 갱신 후 1회 재시도 (재귀 없음)
+                tok = self.token_provider.token(force_refresh=True)
+                code = self._do(method, path, body, tok)
+            return code
+        except Exception as e:
+            log.warning("eureka.call.error", extra={"path": path, "error": str(e)})
+            return 0
 
     def register(self) -> bool:
         payload = {"instance": {
@@ -150,6 +158,9 @@ class EurekaClient:
             # 정확히 이 @class 문자열이어야 함 — Eureka 역직렬화 계약 (AWS가 아니면 MyOwn)
             "dataCenterInfo": {"@class": "com.netflix.appinfo.InstanceInfo$DefaultDataCenterInfo",
                                "name": "MyOwn"},
+            # control 디스패처가 읽는 부하 신호 — 값 = 진행 중 작업 수 (등록 시 0=유휴).
+            # 회사 워커들과 같은 키 (video-process EurekaMetaService와 동일 규약).
+            "metadata": {"service-available-status": "0"},
             "leaseInfo": {"renewalIntervalInSecs": RENEWAL_S, "durationInSecs": DURATION_S},
         }}
         code = self._call("POST", f"/apps/{self.app}", payload)
@@ -169,6 +180,17 @@ class EurekaClient:
     def deregister(self) -> None:
         code = self._call("DELETE", f"/apps/{self.app}/{self.instance_id}")
         log.info("eureka.deregister", extra={"instance": self.instance_id, "code": code})
+
+    def set_available_status(self, count: int) -> None:
+        """진행 중 작업 수를 Eureka 인스턴스 메타데이터로 알린다.
+
+        control 디스패처가 이 값(service-available-status)으로 여유 워커를 고른다.
+        서비스의 잡 시작/종료 훅(Service.on_inflight)이 호출한다. 실패는 경고만 —
+        이 신호가 없어도 포화 응답(10002) 재시도 경로가 디스패치를 지켜준다."""
+        code = self._call(
+            "PUT", f"/apps/{self.app}/{self.instance_id}/metadata?service-available-status={int(count)}")
+        if code != 200:
+            log.warning("eureka.metadata.fail", extra={"code": code, "count": count})
 
     # ── 수명주기 ──────────────────────────────────────────────────────────
     def start(self) -> None:

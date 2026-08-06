@@ -183,6 +183,9 @@ class JobRunner:
         # 처리했나"의 답. Result·/health·/info·모든 로그 라인(constants)에 도장.
         self.node = node
         self.open_products = tuple(p for p in open_products if p in ALL_PRODUCTS)
+        # 진행 작업 수 알림 훅 — serve()가 Eureka 메타데이터(service-available-status)로
+        # 배선한다. None(기본) = 알림 없음.
+        self.on_inflight = None
         self.jobs: dict[str, dict] = {}                 # clip_id → {status, job, result, error}
         self._q: list[str] = []
         self._cv = threading.Condition()
@@ -252,6 +255,7 @@ class JobRunner:
             # 언제 시작했나 — 대시보드 잡 테이블의 행이 되는 이벤트들.
             log.info("service.job.started", extra={"clip_id": clip_id,
                                                    "source_uri": st["job"].get("source_uri")})
+            self._notify_inflight(1)
             try:
                 st["result"] = self._run(st["job"])
                 st["status"] = "done"
@@ -266,6 +270,16 @@ class JobRunner:
                     cb(st)
                 except Exception:
                     log.exception("service.job.on_complete", extra={"clip_id": clip_id})
+            self._notify_inflight(0)
+
+    def _notify_inflight(self, count: int) -> None:
+        cb = self.on_inflight
+        if not cb:
+            return
+        try:
+            cb(count)
+        except Exception as e:              # 알림 실패가 잡 처리를 막으면 안 된다
+            log.warning("service.inflight.error", extra={"error": str(e)})
 
     def _run(self, job: dict) -> dict:
         from momentscan.infra.pipeline.runner import run_pipeline
@@ -532,6 +546,9 @@ def serve_http(out_root: str, *, port: int = 8080, fps: int = 6,
         eureka = EurekaClient(eureka_url, app_name, port=port, host=advertise_host,
                               token_provider=tp)
         eureka.start()
+        # 잡 시작/종료 → Eureka 메타데이터(service-available-status) — control이
+        # 이 값으로 여유 워커를 고른다 (회사 워커들과 같은 규약).
+        runner.on_inflight = eureka.set_available_status
 
     # 런타임 레코드 — 데몬의 daemon.sock 관례와 나란한 로컬 발견 지점:
     # `momentscan status`가 이 파일로 "이 머신에 어떤 HTTP 면이 떠 있나"를 안다.
