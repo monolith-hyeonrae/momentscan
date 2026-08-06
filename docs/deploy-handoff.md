@@ -102,18 +102,21 @@ EUREKA_CLIENT_SECRET=…
 (+`-deploy`)와 같은 이름의 ECR 리포가 생성되었고, develop 빌드가 ECR push와
 values-dev.yaml 태그 갱신까지 통과했다. 남은 것:
 
-1. **GPU 노드**: dev EKS에 GPU 노드그룹이 있는지, 있다면 라벨과 taint —
-   values-dev.yaml의 nodeSelector/tolerations [TODO] 두 칸에 채우면 된다.
-   파드 요구 = `nvidia.com/gpu: 1` (T4급 이상, 작업당 VRAM 최대 약 4GB).
-2. **Eureka 자격 시크릿**: EUREKA_TOKEN_URI/CLIENT_ID/CLIENT_SECRET 세 값을 담은
-   K8s 시크릿 생성 방식 협의(values의 envFrom [TODO]). 운영용 자격도 추후 필요.
-3. **파드의 S3 권한**: 노드 역할에 위 최소 권한이 이미 있는지, 아니면 IRSA
-   서비스어카운트를 만들지(values의 serviceAccountName [TODO]).
-4. JSON 로그의 Loki/Zabbix 수집 경로. (+ArgoCD 앱 등록 여부 확인)
+~~GPU 노드 / Eureka 시크릿 / S3 권한 / ArgoCD~~ → **전부 해소(2026-08-06)**:
+Karpenter GPU 노드풀(karpenter-node: cju-gpu) · 인증 시크릿(sealed-secret,
+cju-configmap-and-secret-deploy PR #284) · 서비스어카운트 `cju-activity-video` 공용.
+남은 협의 항목:
+
+1. JSON 로그의 Loki/Zabbix 수집 경로 (현재 파드 stdout으로 방출 중).
+2. 운영(prd) 전환 시: 운영 GPU 노드풀, 운영용 인증 클라이언트/시크릿,
+   운영 버킷의 웨이트 번들 위치, 운영 게이트웨이 라우트.
 
 ## 검증 범위
 
-로컬 GPU 장비의 컨테이너에서 전 구간 테스트 완료(2026-08-03): Eureka 등록과
-해제, 작업 수신과 포화 시 10002 응답, S3 소스 다운로드(.ts/.mp4) → 11단계
-파이프라인 → S3 결과 업로드, 성공/실패 콜백, 오프라인 모델 로드, SIGTERM 정상
-종료. 아직 확인하지 못한 것: 실제 스팟 중단 이벤트, 운영 Eureka 서버 대상 등록.
+**dev EKS에서 전 구간 검증 완료(2026-08-06)**: GPU 노드 스케줄과 컨테이너의 GPU
+인식(T4) · 게이트웨이 라우트 경유 실클립 GPU 파이프라인 완주와 S3 반출 ·
+dev control Eureka 등록(전용 클라이언트 JWT, 부하 신호 메타데이터 포함) ·
+control 테스트 트리거 → 디스패치 수신 → 완료 콜백 → 큐 제거 왕복.
+그보다 앞서 로컬 컨테이너에서 확인(2026-08-03): 포화 시 10002 응답, .ts/.mp4
+소화, 성공/실패 콜백, 오프라인 모델 로드, SIGTERM 정상 종료.
+아직 확인하지 못한 것: 실제 스팟 중단 이벤트, 운영(prd) 환경 전반.
