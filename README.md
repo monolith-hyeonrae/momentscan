@@ -1,3 +1,5 @@
+> **이관됨**: 이 리포는 [monolith-rnd/cju-activity-moment-scan-process](https://github.com/monolith-rnd/cju-activity-moment-scan-process)로 이관되었습니다 (2026-08-06). 여기는 읽기 전용 아카이브입니다.
+
 # momentscan
 
 > ⚠️ **PoC — 평가 단계 코드베이스** (2026-08 현재). 데일리 배치 평가로 정량·정성
