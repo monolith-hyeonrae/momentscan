@@ -9,6 +9,8 @@
 #   MS_LOG_FILE        로그 목적지 (기본 "-" = stdout — K8s/ArgoCD 로그 관례.
 #                      파일 수집 환경이면 /data/logs/... 경로 지정)
 #   EUREKA_TOKEN_URI / EUREKA_CLIENT_ID / EUREKA_CLIENT_SECRET (회사 Eureka JWT — env로만)
+#   또는 회사 표준 시크릿 키 그대로: OAUTH2_ISSUER_URI / OAUTH2_CLIENT_ID /
+#   OAUTH2_CLIENT_SECRET (video-process 등의 -auth-secret 모양 — 아래에서 매핑)
 #
 # 종료 규약: SIGTERM(docker stop·스팟 예고) → 서버의 우아한 경로(유레카 즉시 해지).
 set -euo pipefail
@@ -27,6 +29,17 @@ if [[ -n "${MS_MODELS_URI:-}" ]]; then
         echo "$MS_MODELS_URI" > "$marker"
         log "웨이트 전개 완료: $(du -sh "$HOME/.portrait981" 2>/dev/null | cut -f1) portrait981"
     fi
+fi
+
+# ── ② 회사 표준 인증 시크릿(OAUTH2_*) 매핑 — EUREKA_*가 비어 있을 때만 ──
+# 회사 서비스들은 <서비스명>-auth-secret에 OAUTH2_* 키를 담아 envFrom으로 주입한다.
+# 같은 모양을 그대로 받아들이면 시크릿을 우리용으로 따로 성형할 필요가 없다.
+if [[ -z "${EUREKA_TOKEN_URI:-}" && -n "${OAUTH2_ISSUER_URI:-}" ]]; then
+    export EUREKA_TOKEN_URI="${OAUTH2_ISSUER_URI%/}/oauth2/token"
+    export EUREKA_CLIENT_ID="${OAUTH2_CLIENT_ID:-}"
+    export EUREKA_CLIENT_SECRET="${OAUTH2_CLIENT_SECRET:-}"
+    export EUREKA_TOKEN_SCOPE="${EUREKA_TOKEN_SCOPE:-api.write api.read}"
+    log "인증 매핑: OAUTH2_ISSUER_URI → EUREKA_TOKEN_URI (${EUREKA_TOKEN_URI})"
 fi
 
 # ── ③ 서버 기동 준비 (감시는 서버 PID가 필요해 먼저 조립) ──
